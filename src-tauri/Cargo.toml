@@ -66,3 +66,38 @@ tuic = { path = "../../tuic/tuic", default-features = false }
 tuic-quinn = { path = "../../tuic/tuic-quinn" }
 tauri-plugin-dialog = "2"
 tauri-plugin-android-fs = { version = "8.2.1", features = ["avoid-issue1"] }
+
+actix-files = "0.6.5"
+actix-multipart = "0.7"
+actix-web = { version = "4", features = ["macros", "compress-brotli", "compress-gzip", "compress-zstd"], default-features = false }
+actix-web-httpauth = "0.8"
+alphanumeric-sort = "1"
+anyhow = "1"
+async-walkdir = "2.1.0"
+bytesize = "2"
+chrono = "0.4"
+chrono-humanize = "0.2"
+clap = { version = "4", features = ["derive", "cargo", "wrap_help", "deprecated", "env"] }
+clap_complete = "4"
+clap_mangen = "0.2"
+colored = "3"
+comrak = { version = "0.37", default-features = false }
+dav-server = { version = "0.7", features = ["actix-compat"] }
+fast_qr = { version = "0.12", features = ["svg"] }
+grass = { version = "0.13", features = ["macro"], default-features = false }
+hex = "0.4"
+httparse = "1"
+if-addrs = "0.13"
+libflate = "2"
+maud = "0.27"
+mime = "0.3"
+nanoid = "0.4"
+percent-encoding = "2"
+port_check = "0.2"
+regex = "1"
+sha2 = "0.10"
+simplelog = "0.12"
+strum = { version = "0.27", features = ["derive"] }
+tar = "0.4"
+tempfile = "3.17.0"
+zip = { version = "2", default-features = false }
