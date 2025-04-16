@@ -1,0 +1,68 @@
+[package]
+name = "localshare"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "localshare_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["devtools", "config-json5", "rustls-tls", "webview-data-url"] }
+tauri-plugin-view = "0.0.5"
+network-interface = { version = "*", features = ["serde"] }
+sysinfo = { version = "*", features = ["serde"] }
+tauri-plugin-fs = "2"
+tauri-plugin-opener = "2"
+futures = "0.3.31"
+# https://docs.rs/reqwest/latest/reqwest/#optional-features
+reqwest = { version = "0.12.12", default-features = false, features = ["http2", "rustls-tls", "socks"] }
+#openssl = { version = "0.10", features = ["vendored"] }
+tokio = "1.43.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-notification = "2"
+tauri-plugin-http = "2"
+obfstr = "0.4.4"
+bytes = { version = "1.10.0", default-features = false, features = ["std"] }
+crossbeam-utils = { version = "0.8.21", default-features = false, features = ["std"] }
+env_logger = { version = "0.11.6", default-features = false, features = ["humantime"] }
+humantime = { version = "2.1.0", default-features = false }
+lexopt = { version = "0.3.0", default-features = false }
+log = { version = "0.4.25", default-features = false, features = ["serde", "std"] }
+once_cell = { version = "1.20.3", default-features = false, features = ["parking_lot", "std"] }
+parking_lot = { version = "0.12.3", default-features = false, features = ["send_guard"] }
+quinn = { version = "0.11.6", features = ["futures-io", "runtime-tokio"] }
+quinn-proto = "0.11.9"
+register-count = { version = "0.1.0", default-features = false, features = ["std"] }
+rustls = { version = "0.23.23" }
+rustls-native-certs = { version = "0.8.1" }
+rustls-pemfile = { version = "2.2.0" }
+rustls-pki-types = "1.11.0"
+#serde = { version = "1.0.217", default-features = false, features = ["derive", "std"] }
+#serde_json = { version = "1.0.138", default-features = false, features = ["std"] }
+socket2 = { version = "0.5.8", default-features = false }
+thiserror = { version = "2.0.11", default-features = false }
+#tokio = { version = "1.38.1", default-features = false, features = ["io-util", "macros", "net", "parking_lot", "rt-multi-thread", "time"] }
+tokio-util = { version = "0.7.13", default-features = false, features = ["compat"] }
+uuid = { version = "1.13.2", default-features = false, features = ["serde", "std"] }
+dotenvy = "0.15.7"
+dotenvy_macro = "0.15.7"
+url = "2.5.4"
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+socks5-proto = { path = "../../socks5-server/socks5-proto", default-features = false }
+socks5-server = { path = "../../socks5-server/socks5-server", default-features = false }
+tuic = { path = "../../tuic/tuic", default-features = false }
+tuic-quinn = { path = "../../tuic/tuic-quinn" }
+tauri-plugin-dialog = "2"
+tauri-plugin-android-fs = { version = "8.2.1", features = ["avoid-issue1"] }

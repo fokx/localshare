@@ -1,0 +1,215 @@
+<script lang="ts">
+  import {invoke} from "@tauri-apps/api/core";
+  // import {BaseDirectory, writeTextFile} from '@tauri-apps/plugin-fs';
+  import {onMount} from "svelte";
+  // import {enable, isEnabled} from '@tauri-apps/plugin-autostart';
+  import { ask } from '@tauri-apps/plugin-dialog';
+  import { open } from '@tauri-apps/plugin-dialog';
+  import { exists, readFile } from '@tauri-apps/plugin-fs';
+  let name = $state("");
+  let greetMsg = $state("");
+  import * as path from '@tauri-apps/api/path';
+  async function greet(event: Event) {
+    event.preventDefault();
+// when using `"withGlobalTauri": true`, you may use
+// const { open } = window.__TAURI__.dialog;
+
+// Open a dialog
+//     const file = await open({
+//       multiple: false,
+//       directory: false,
+//     });
+//     console.log(file);
+// Prints file path or URI
+
+    // Prints boolean to the console
+    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+    // greetMsg += await invoke("collect_nic_info");
+    //
+    // const contents = await readFile(file);
+
+    // greetMsg += file;
+    // greetMsg += '\n';
+    // greetMsg += contents.slice(0, 100).toString();
+    // let ret = await invoke("greet", {name});
+    // console.log('ret', ret);
+    // greetMsg += ret;
+    invoke('folder_picker_example')
+    // invoke('file_picker_example')
+            .then((res) =>
+                    console.log(res)
+            )
+            .catch((e) => console.error(e));
+    // write(file);
+  }
+
+  let greetInputEl: HTMLInputElement | null;
+
+  async function write(message: string) {
+    // await writeTextFile('test.txt', message, {baseDir: BaseDirectory.Home});
+  }
+
+  // when using `"withGlobalTauri": true`, you may use
+  // const { enable, isEnabled, disable } = window.__TAURI__.autostart;
+
+  onMount(async () => {
+
+    // Enable autostart
+    // await enable();
+    // Check enable state
+    // console.log(`registered for autostart? ${await isEnabled()}`);
+    // Disable autostart
+    // disable();
+    // import tauriapi from '@tauri-apps/api';
+    // const { taurishell } = tauriapi.shell;
+    // const command = Command.sidecar('binaries/tcc-xapp-hhk', []);
+    // const response = await command.execute();
+    // console.log(response);
+  });
+</script>
+
+<main class="container">
+  <h1>Welcome to Tauri + Svelte</h1>
+
+  <div class="row">
+    <a href="https://vitejs.dev" target="_blank">
+      <img src="/vite.svg" class="logo vite" alt="Vite Logo"/>
+    </a>
+    <a href="https://tauri.app" target="_blank">
+      <img src="/tauri.svg" class="logo tauri" alt="Tauri Logo"/>
+    </a>
+    <a href="https://kit.svelte.dev" target="_blank">
+      <img src="/svelte.svg" class="logo svelte-kit" alt="SvelteKit Logo"/>
+    </a>
+  </div>
+  <p>Click on the Tauri, Vite, and SvelteKit logos to learn more.</p>
+
+  <form class="row" onsubmit={greet}>
+    <input id="greet-input" placeholder="Enter a name..." bind:value={name}/>
+    <button type="submit">Greet</button>
+  </form>
+  <p>{greetMsg}</p>
+</main>
+
+<style>
+  .logo.vite:hover {
+    filter: drop-shadow(0 0 2em #747bff);
+  }
+
+  .logo.svelte-kit:hover {
+    filter: drop-shadow(0 0 2em #ff3e00);
+  }
+
+  :root {
+    font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 400;
+
+    color: #0f0f0f;
+    background-color: #f6f6f6;
+
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .container {
+    margin: 0;
+    padding-top: 10vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .logo {
+    height: 6em;
+    padding: 1.5em;
+    will-change: filter;
+    transition: 0.75s;
+  }
+
+  .logo.tauri:hover {
+    filter: drop-shadow(0 0 2em #24c8db);
+  }
+
+  .row {
+    display: flex;
+    justify-content: center;
+  }
+
+  a {
+    font-weight: 500;
+    color: #646cff;
+    text-decoration: inherit;
+  }
+
+  a:hover {
+    color: #535bf2;
+  }
+
+  h1 {
+    text-align: center;
+  }
+
+  input,
+  button {
+    border-radius: 8px;
+    border: 1px solid transparent;
+    padding: 0.6em 1.2em;
+    font-size: 1em;
+    font-weight: 500;
+    font-family: inherit;
+    color: #0f0f0f;
+    background-color: #ffffff;
+    transition: border-color 0.25s;
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:hover {
+    border-color: #396cd8;
+  }
+
+  button:active {
+    border-color: #396cd8;
+    background-color: #e8e8e8;
+  }
+
+  input,
+  button {
+    outline: none;
+  }
+
+  #greet-input {
+    margin-right: 5px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color: #f6f6f6;
+      background-color: #2f2f2f;
+    }
+
+    a:hover {
+      color: #24c8db;
+    }
+
+    input,
+    button {
+      color: #ffffff;
+      background-color: #0f0f0f98;
+    }
+
+    button:active {
+      background-color: #0f0f0f69;
+    }
+  }
+
+</style>
