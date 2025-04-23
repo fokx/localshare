@@ -3,9 +3,20 @@ use network_interface::NetworkInterface;
 use network_interface::NetworkInterfaceConfig;
 use sysinfo::{Disks, System};
 use tauri::Manager;
+use tauri::path::PathResolver;
 use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, Entry};
 use tokio;
 
+
+use actix_files as fs;
+use actix_web::{App, HttpServer};
+
+async fn actix_main() {
+    HttpServer::new(|| App::new().service(fs::Files::new("/", "/storage/emulated/0/").show_files_listing()))
+            .bind(("0.0.0.0", 4804)).unwrap()
+            .run()
+            .await;
+}
 
 #[tauri::command]
 fn folder_picker_example(app: tauri::AppHandle) -> Result<String, String> {
@@ -28,7 +39,9 @@ fn folder_picker_example(app: tauri::AppHandle) -> Result<String, String> {
         // },
         // }
         // }
-        return Ok(format!("Selected folder: {:?}", dir_uri));
+        let file_path: tauri_plugin_fs::FilePath = dir_uri.into();
+        // let file_path = PathResolver::file_name(dir_uri);
+        return Ok(format!("Selected folder: {:?}", file_path));
     }
     return Err("Folder picker canceled".to_string());
 }
@@ -135,7 +148,7 @@ pub fn run() {
             .plugin(tauri_plugin_dialog::init())
             .setup(|app| {
                 // std::thread::spawn(move || block_on(tcc_main()));
-                // tauri::async_runtime::spawn(miniserve_main());
+                tauri::async_runtime::spawn(actix_main());
                 Ok(())
             })
             .invoke_handler(tauri::generate_handler![
