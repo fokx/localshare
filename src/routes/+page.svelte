@@ -5,6 +5,7 @@
   // import {enable, isEnabled} from '@tauri-apps/plugin-autostart';
   import { ask } from '@tauri-apps/plugin-dialog';
   import { open } from '@tauri-apps/plugin-dialog';
+
   import { exists, readFile } from '@tauri-apps/plugin-fs';
   let name = $state("");
   let greetMsg = $state("");
@@ -34,12 +35,21 @@
     // let ret = await invoke("greet", {name});
     // console.log('ret', ret);
     // greetMsg += ret;
-    invoke('folder_picker_example')
+
+
+// Open a file selection dialog
+//     const filePath = await open({
+//       directory: false,
+//       multiple: false,
+//     });
+
     // invoke('file_picker_example')
+    invoke('folder_picker_example')
             .then((res) =>
                     console.log(res)
             )
             .catch((e) => console.error(e));
+
     // write(file);
   }
 

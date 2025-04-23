@@ -4,15 +4,44 @@ use network_interface::NetworkInterfaceConfig;
 use sysinfo::{Disks, System};
 use tauri::Manager;
 use tauri::path::PathResolver;
-use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, Entry};
 use tokio;
+use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, FileUri, InitialLocation, PersistableAccessMode, PrivateDir};
 
-
-use actix_files as fs;
 use actix_web::{App, HttpServer};
+use actix_web_httpauth::{extractors::basic::BasicAuth, middleware::HttpAuthentication};
+use actix_web::{
+    dev::ServiceRequest, error::ErrorUnauthorized, Error as ActixError};
+
+async fn do_auth(
+    req: ServiceRequest,
+    creds: BasicAuth,
+) -> Result<ServiceRequest, (ActixError, ServiceRequest)> {
+    // if creds.user_id() == "user" && creds.password() == Some("2379612fc9111043a09140c9e080ed537e19a2789e99d52d6e18cb1353797ab1") {
+        Ok(req)
+    // } else {
+    //     Err((ErrorUnauthorized("nope"), req))
+    // }
+}
 
 async fn actix_main() {
-    HttpServer::new(|| App::new().service(fs::Files::new("/", "/storage/emulated/0/").show_files_listing()))
+    let cur_path = std::env::current_dir().unwrap();
+    println!("The current directory is {}", cur_path.display());
+
+    //let html_content = std::fs::read_to_string("/storage/emulated/0/books/index.html").unwrap();
+    //println!("---------------------------The content of the file is {}", html_content);
+    let paths = std::fs::read_dir("/storage/emulated/0/").unwrap();
+
+    for path in paths {
+        println!("------------------------------------Name: {}", path.unwrap().path().display())
+    }
+
+    HttpServer::new(|| App::new()
+            // .wrap(HttpAuthentication::basic(do_auth))
+            // .service(actix_files::Files::new("/", "./")
+            .service(actix_files::Files::new("/", "/storage/emulated/0/")
+            // .service(actix_files::Files::new("/", "/tmp")
+                    .show_files_listing().use_hidden_files()
+            ))
             .bind(("0.0.0.0", 4804)).unwrap()
             .run()
             .await;
@@ -21,15 +50,14 @@ async fn actix_main() {
 #[tauri::command]
 fn folder_picker_example(app: tauri::AppHandle) -> Result<String, String> {
     let api = app.android_fs();
-    let api = app.android_fs();
 
     // pick folder to read and write
     let selected_folder = api.show_manage_dir_dialog(
         None, // Initial location
     ).unwrap();
 
-    if let Some(dir_uri) = selected_folder {
-        // for entry in api.read_dir(&dir_uri).unwrap() {
+    if let Some(selected_dir_uri) = selected_folder {
+        // for entry in api.read_dir(&selected_dir_uri).unwrap() {
         //     match entry {
         //         Entry::File { name, uri, last_modified, len, mime_type, .. } => {
         // return Ok(format!("File: {} - {:?} - {:?} - {}", name, uri, last_modified, len))
@@ -39,9 +67,31 @@ fn folder_picker_example(app: tauri::AppHandle) -> Result<String, String> {
         // },
         // }
         // }
-        let file_path: tauri_plugin_fs::FilePath = dir_uri.into();
-        // let file_path = PathResolver::file_name(dir_uri);
-        return Ok(format!("Selected folder: {:?}", file_path));
+
+        let res1 = api.check_persisted_uri_permission(&selected_dir_uri, PersistableAccessMode::ReadAndWrite).unwrap();
+        println!("res1 {:?}", res1);
+        let res2 = api.take_persistable_uri_permission(&selected_dir_uri).unwrap();
+        println!("res2 {:?}", res2);
+        let persisted_uri_perms = api.get_all_persisted_uri_permissions();
+        for permission in persisted_uri_perms {
+            println!("Persisted URI: {:?}", permission.collect::<Vec<_>>());
+        }
+        // let file_path: tauri_plugin_fs::FilePath = selected_dir_uri.into();
+        // let file_path = PathResolver::file_name(selected_dir_uri);
+
+            for entry in api.read_dir(&selected_dir_uri).unwrap() {
+                match entry {
+                    tauri_plugin_android_fs::Entry::File { name, uri, last_modified, len, mime_type, .. } => {
+                        println!("***file {:?}", (name, uri, last_modified, len, mime_type));
+
+                    },
+                    tauri_plugin_android_fs::Entry::Dir { name, uri, last_modified, .. } => {
+                        println!("***dir {:?}", (name, uri, last_modified));
+
+                    },
+                }
+            }
+        return Ok(format!("Selected folder: {:?}", selected_dir_uri));
     }
     return Err("Folder picker canceled".to_string());
 }

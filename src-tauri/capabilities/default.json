@@ -10,7 +10,13 @@
     "opener:default",
     "view:allow-view",
     "dialog:default",
-    "fs:default",
+    {
+      "identifier": "fs:scope",
+      "allow": [{ "path": "/**" }]
+    },
+    "fs:read-all",
+    "fs:read-meta",
+    "fs:write-files",
     "android-fs:default"
   ]
 }
