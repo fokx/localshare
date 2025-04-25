@@ -129,7 +129,7 @@
     <button type="submit">Greet</button>
   </form>
 
-  <button onclick="toggle_server">toggle server</button>
+  <button onclick={toggle_server}>toggle server</button>
 
   <p>{greetMsg}</p>
 </main>

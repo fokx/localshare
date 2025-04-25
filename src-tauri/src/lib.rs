@@ -6,11 +6,13 @@ use tauri::Manager;
 use tauri::path::PathResolver;
 use tokio;
 use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, FileUri, InitialLocation, PersistableAccessMode, PrivateDir};
-
+use std::sync::{Arc, Mutex};
+// use tokio::task::JoinHandle;
 use actix_web::{App, HttpServer};
 use actix_web_httpauth::{extractors::basic::BasicAuth, middleware::HttpAuthentication};
 use actix_web::{
     dev::ServiceRequest, error::ErrorUnauthorized, Error as ActixError};
+// use tauri::async_runtime::TokioJoinHandle;
 
 async fn do_auth(
     req: ServiceRequest,
@@ -47,13 +49,25 @@ async fn actix_main() {
             .await;
 }
 
+
+
 #[tauri::command]
-fn toggle_server(app: tauri::AppHandle) -> Result<String, String> {
-    // check if the actix_main() is already running, and toggle the status
-    let handle = tauri::async_runtime::spawn(actix_main());
+fn toggle_server(
+    app: tauri::AppHandle,
+    server_handle: tauri::State<Arc<Mutex<Option<tauri::async_runtime::JoinHandle<()>>>>>,
+) -> Result<String, String> {
+    let mut handle = server_handle.lock().unwrap();
 
-    return Ok("done".to_string());
-
+    if handle.is_some() {
+        // Stop the server
+        handle.take().unwrap().abort();
+        return Ok("Server stopped".to_string());
+    } else {
+        // Start the server
+        let new_handle = tauri::async_runtime::spawn(actix_main());
+        *handle = Some(new_handle);
+        return Ok("Server started".to_string());
+    }
 }
 
 #[tauri::command]
@@ -203,7 +217,9 @@ fn collect_nic_info() -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let server_handle = Arc::new(Mutex::new(None::<tauri::async_runtime::JoinHandle<()>>));
     tauri::Builder::default()
+            .manage(server_handle.clone())
             .plugin(tauri_plugin_fs::init())
             .plugin(tauri_plugin_android_fs::init())
             .plugin(tauri_plugin_opener::init())
