@@ -16,11 +16,11 @@ async fn do_auth(
     req: ServiceRequest,
     creds: BasicAuth,
 ) -> Result<ServiceRequest, (ActixError, ServiceRequest)> {
-    // if creds.user_id() == "user" && creds.password() == Some("2379612fc9111043a09140c9e080ed537e19a2789e99d52d6e18cb1353797ab1") {
+    if creds.user_id() == "user" && creds.password() == Some("2379612fc9111043a09140c9e080ed537e19a2789e99d52d6e18cb1353797ab1") {
         Ok(req)
-    // } else {
-    //     Err((ErrorUnauthorized("nope"), req))
-    // }
+    } else {
+        Err((ErrorUnauthorized("not authorized"), req))
+    }
 }
 
 async fn actix_main() {
@@ -36,7 +36,7 @@ async fn actix_main() {
     }
 
     HttpServer::new(|| App::new()
-            // .wrap(HttpAuthentication::basic(do_auth))
+            .wrap(HttpAuthentication::basic(do_auth))
             // .service(actix_files::Files::new("/", "./")
             .service(actix_files::Files::new("/", "/storage/emulated/0/")
             // .service(actix_files::Files::new("/", "/tmp")
@@ -48,10 +48,21 @@ async fn actix_main() {
 }
 
 #[tauri::command]
+fn toggle_server(app: tauri::AppHandle) -> Result<String, String> {
+    // check if the actix_main() is already running, and toggle the status
+    let handle = tauri::async_runtime::spawn(actix_main());
+
+    return Ok("done".to_string());
+
+}
+
+#[tauri::command]
 fn folder_picker_example(app: tauri::AppHandle) -> Result<String, String> {
     let api = app.android_fs();
 
     // pick folder to read and write
+    api.acquire_manage_external_storage();
+    return Ok("done".to_string());
     let selected_folder = api.show_manage_dir_dialog(
         None, // Initial location
     ).unwrap();
@@ -67,6 +78,10 @@ fn folder_picker_example(app: tauri::AppHandle) -> Result<String, String> {
         // },
         // }
         // }
+        println!("reading /storage/emulated/0/books/index.html");
+        println!("Selected folder: {:?}", &selected_dir_uri);
+        let res3 = std::fs::read_to_string("/storage/emulated/0/books/index.html").unwrap();
+        println!("res3: {:?}", res3);
 
         let res1 = api.check_persisted_uri_permission(&selected_dir_uri, PersistableAccessMode::ReadAndWrite).unwrap();
         println!("res1 {:?}", res1);
@@ -78,12 +93,10 @@ fn folder_picker_example(app: tauri::AppHandle) -> Result<String, String> {
         }
         // let file_path: tauri_plugin_fs::FilePath = selected_dir_uri.into();
         // let file_path = PathResolver::file_name(selected_dir_uri);
-
             for entry in api.read_dir(&selected_dir_uri).unwrap() {
                 match entry {
                     tauri_plugin_android_fs::Entry::File { name, uri, last_modified, len, mime_type, .. } => {
                         println!("***file {:?}", (name, uri, last_modified, len, mime_type));
-
                     },
                     tauri_plugin_android_fs::Entry::Dir { name, uri, last_modified, .. } => {
                         println!("***dir {:?}", (name, uri, last_modified));
@@ -196,15 +209,17 @@ pub fn run() {
             .plugin(tauri_plugin_opener::init())
             .plugin(tauri_plugin_view::init())
             .plugin(tauri_plugin_dialog::init())
+
             .setup(|app| {
                 // std::thread::spawn(move || block_on(tcc_main()));
-                tauri::async_runtime::spawn(actix_main());
+                // tauri::async_runtime::spawn(actix_main());
                 Ok(())
             })
             .invoke_handler(tauri::generate_handler![
             greet,
             file_picker_example,
             folder_picker_example,
+                toggle_server,
             collect_nic_info
         ])
             .run(tauri::generate_context!())

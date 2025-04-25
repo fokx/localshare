@@ -1,5 +1,4 @@
 <script lang="ts">
-  import {invoke} from "@tauri-apps/api/core";
   // import {BaseDirectory, writeTextFile} from '@tauri-apps/plugin-fs';
   import {onMount} from "svelte";
   // import {enable, isEnabled} from '@tauri-apps/plugin-autostart';
@@ -10,6 +9,25 @@
   let name = $state("");
   let greetMsg = $state("");
   import * as path from '@tauri-apps/api/path';
+
+
+  import { invoke, type PermissionState } from '@tauri-apps/api/core'
+
+  interface Permissions {
+    manageExternalStorage: PermissionState
+  }
+
+
+
+  async function toggle_server(event: Event) {
+    event.preventDefault();
+    invoke('toggle_server')
+            .then((res) =>
+                    console.log(res)
+            )
+            .catch((e) => console.error(e));
+
+  }
   async function greet(event: Event) {
     event.preventDefault();
 // when using `"withGlobalTauri": true`, you may use
@@ -44,6 +62,18 @@
 //     });
 
     // invoke('file_picker_example')
+    // check permission state
+    // const permission = await invoke<Permissions>('plugin:tauri_plugin_android_fs|checkPermissions')
+
+    // if (permission.manageExternalStorage === 'prompt-with-rationale') {
+    //   show information to the user about why permission is needed
+    // }
+
+    // request permission
+    // if (permission.manageExternalStorage.startsWith('prompt')) {
+    //   const state = await invoke<Permissions>('plugin:tauri_plugin_android_fs|requestPermissions', { permissions: ['manageExternalStorage'] })
+    // }
+
     invoke('folder_picker_example')
             .then((res) =>
                     console.log(res)
@@ -98,6 +128,9 @@
     <input id="greet-input" placeholder="Enter a name..." bind:value={name}/>
     <button type="submit">Greet</button>
   </form>
+
+  <button onclick="toggle_server">toggle server</button>
+
   <p>{greetMsg}</p>
 </main>
 

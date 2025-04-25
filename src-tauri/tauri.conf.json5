@@ -22,6 +22,9 @@
     }
   },
   "bundle": {
+    "android": {
+      "minSdkVersion": 30
+    },
     "active": true,
     "targets": "all",
     "icon": [
