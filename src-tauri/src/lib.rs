@@ -13,6 +13,7 @@ use actix_web_httpauth::{extractors::basic::BasicAuth, middleware::HttpAuthentic
 use actix_web::{
     dev::ServiceRequest, error::ErrorUnauthorized, Error as ActixError};
 // use tauri::async_runtime::TokioJoinHandle;
+use tokio::sync::oneshot;
 
 async fn do_auth(
     req: ServiceRequest,
@@ -25,47 +26,61 @@ async fn do_auth(
     }
 }
 
-async fn actix_main() {
+async fn actix_main(shutdown_rx: oneshot::Receiver<()>) {
     let cur_path = std::env::current_dir().unwrap();
     println!("The current directory is {}", cur_path.display());
 
-    //let html_content = std::fs::read_to_string("/storage/emulated/0/books/index.html").unwrap();
-    //println!("---------------------------The content of the file is {}", html_content);
     let paths = std::fs::read_dir("/storage/emulated/0/").unwrap();
-
     for path in paths {
-        println!("------------------------------------Name: {}", path.unwrap().path().display())
+        println!("------------------------------------Name: {}", path.unwrap().path().display());
     }
 
-    HttpServer::new(|| App::new()
-            .wrap(HttpAuthentication::basic(do_auth))
-            // .service(actix_files::Files::new("/", "./")
-            .service(actix_files::Files::new("/", "/storage/emulated/0/")
-            // .service(actix_files::Files::new("/", "/tmp")
-                    .show_files_listing().use_hidden_files()
-            ))
-            .bind(("0.0.0.0", 4804)).unwrap()
-            .run()
-            .await;
-}
+    let server = HttpServer::new(|| {
+        App::new()
+                .wrap(HttpAuthentication::basic(do_auth))
+                .service(
+                    actix_files::Files::new("/", "/storage/emulated/0/")
+                            .show_files_listing()
+                            .use_hidden_files()
+                )
+    })
+            .bind(("0.0.0.0", 4804))
+            .unwrap();
 
+    let server_handle = server.run();
+
+    // Wait for the shutdown signal
+    tokio::select! {
+        _ = server_handle => {
+            println!("serving");
+        },
+        _ = shutdown_rx => {
+            println!("Shutdown signal received. Stopping server...");
+        }
+    }
+}
 
 
 #[tauri::command]
 fn toggle_server(
     app: tauri::AppHandle,
-    server_handle: tauri::State<Arc<Mutex<Option<tauri::async_runtime::JoinHandle<()>>>>>,
+    server_handle: tauri::State<Arc<Mutex<Option<oneshot::Sender<()>>>>>,
 ) -> Result<String, String> {
-    let mut handle = server_handle.lock().unwrap();
+    let mut state_locked = server_handle.lock().unwrap();
 
-    if handle.is_some() {
+    if let Some(shutdown_tx) = state_locked.take() {
         // Stop the server
-        handle.take().unwrap().abort();
+        println!("Stopping server");
+        let _ = shutdown_tx.send(()); // Send the shutdown signal
         return Ok("Server stopped".to_string());
     } else {
         // Start the server
-        let new_handle = tauri::async_runtime::spawn(actix_main());
-        *handle = Some(new_handle);
+        let (shutdown_tx, shutdown_rx) = oneshot::channel();
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        runtime.spawn(async move {
+            actix_main(shutdown_rx).await;
+        });
+        *state_locked = Some(shutdown_tx);
         return Ok("Server started".to_string());
     }
 }
@@ -217,7 +232,7 @@ fn collect_nic_info() -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let server_handle = Arc::new(Mutex::new(None::<tauri::async_runtime::JoinHandle<()>>));
+    let server_handle = Arc::new(Mutex::new(None::<oneshot::Sender<()>>));
     tauri::Builder::default()
             .manage(server_handle.clone())
             .plugin(tauri_plugin_fs::init())

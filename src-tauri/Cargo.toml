@@ -25,7 +25,7 @@ sysinfo = { version = "*", features = ["serde"] }
 tauri-plugin-fs = "2"
 tauri-plugin-opener = "2"
 futures = "0.3.31"
-tokio = "1.44"
+tokio = {version = "1.44.2", features = ["macros"] }
 tauri-plugin-dialog = "2"
 #tauri-plugin-android-fs = { version = "9.1.0", features = ["avoid-issue1"] }
 tauri-plugin-android-fs = { path = "../../tauri-plugin-android-fs", features = ["avoid-issue1"] }
