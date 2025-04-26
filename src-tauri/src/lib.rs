@@ -45,16 +45,17 @@ async fn actix_main(shutdown_rx: oneshot::Receiver<()>) {
                 )
     })
             .bind(("0.0.0.0", 4804))
-            .unwrap();
+            .unwrap().run();
 
-    let server_handle = server.run();
+    let server_handle = server.handle();
 
     // Wait for the shutdown signal
     tokio::select! {
-        _ = server_handle => {
+        _ = server => {
             println!("serving");
         },
         _ = shutdown_rx => {
+            server_handle.stop(false).await;
             println!("Shutdown signal received. Stopping server...");
         }
     }
@@ -76,10 +77,11 @@ fn toggle_server(
     } else {
         // Start the server
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-        runtime.spawn(async move {
-            actix_main(shutdown_rx).await;
-        });
+        // let runtime = tokio::runtime::Runtime::new().unwrap();
+        let join_handle = tauri::async_runtime::spawn(actix_main(shutdown_rx));
+        // runtime.spawn(async move {
+        //     actix_main(shutdown_rx).await;
+        // });
         *state_locked = Some(shutdown_tx);
         return Ok("Server started".to_string());
     }
