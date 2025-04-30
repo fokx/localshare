@@ -60,7 +60,7 @@ use tower_http::{
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 
-async fn dufs_main(shutdown_rx: oneshot::Receiver<()>) -> Result<()> {
+async fn dufs_main(shutdown_rx: oneshot::Receiver<()>, port: usize) -> Result<()> {
     let cmd = build_cli();
     let matches = cmd.get_matches();
     if let Some(generator) = matches.get_one::<Shell>("completions") {
@@ -76,7 +76,7 @@ async fn dufs_main(shutdown_rx: oneshot::Receiver<()>) -> Result<()> {
     // let listening = print_listening(&args, &print_addrs)?;
     // let listener = create_listener(SocketAddr::new("0.0.0.0".parse()?, 4804))
     //         .with_context(|| format!("Failed to bind"))?;
-    let listener = TcpListener::bind("0.0.0.0:4804").await?;
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
     let http = hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new());
     // let mut http = http1::Builder::new();
     let graceful = hyper_util::server::graceful::GracefulShutdown::new();
@@ -377,28 +377,30 @@ async fn shutdown_signal() {
         .expect("Failed to install CTRL+C signal handler")
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 fn toggle_server(
     app: tauri::AppHandle,
     server_handle: tauri::State<Arc<Mutex<Option<oneshot::Sender<()>>>>>,
+    port: usize,
 ) -> Result<String, String> {
+    println!("using port: {}", port);
     let mut state_locked = server_handle.lock().unwrap();
 
     if let Some(shutdown_tx) = state_locked.take() {
         // Stop the server
         println!("Stopping server");
         let _ = shutdown_tx.send(()); // Send the shutdown signal
-        return Ok("Server stopped".to_string());
+        return Ok("stopped".to_string());
     } else {
         // Start the server
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
         // let runtime = tokio::runtime::Runtime::new().unwrap();
-        let join_handle = tauri::async_runtime::spawn(dufs_main(shutdown_rx));
+        let join_handle = tauri::async_runtime::spawn(dufs_main(shutdown_rx, port));
         // runtime.spawn(async move {
         //     actix_main(shutdown_rx).await;
         // });
         *state_locked = Some(shutdown_tx);
-        return Ok("Server started".to_string());
+        return Ok("started".to_string());
     }
 }
 

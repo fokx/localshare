@@ -1,35 +1,75 @@
 <script lang="ts">
-  // import {BaseDirectory, writeTextFile} from '@tauri-apps/plugin-fs';
-  import {onMount} from "svelte";
-  // import {enable, isEnabled} from '@tauri-apps/plugin-autostart';
-  import { ask } from '@tauri-apps/plugin-dialog';
-  import { open } from '@tauri-apps/plugin-dialog';
+    // import {BaseDirectory, writeTextFile} from '@tauri-apps/plugin-fs';
+    import {onMount} from "svelte";
+    // import {enable, isEnabled} from '@tauri-apps/plugin-autostart';
+    import {invoke, type PermissionState} from '@tauri-apps/api/core'
 
-  import { exists, readFile } from '@tauri-apps/plugin-fs';
-  let name = $state("");
-  let greetMsg = $state("");
-  import * as path from '@tauri-apps/api/path';
+    // generate a random port number
+    let server_port = $state(Math.floor(Math.random() * (65535 - 1024 + 1) + 1024));
+    let server_running = $state(false);
+    let server_host = $state("0.0.0.0");
+    let toggle_disable = $state(false);
+    interface Permissions {
+        manageExternalStorage: PermissionState
+    }
 
-
-  import { invoke, type PermissionState } from '@tauri-apps/api/core'
-
-  interface Permissions {
-    manageExternalStorage: PermissionState
-  }
-
-
-
-  async function toggle_server(event: Event) {
-    event.preventDefault();
-    invoke('toggle_server')
-            .then((res) =>
-                    console.log(res)
-            )
+    async function change_server_port(event: Event) {
+        event.preventDefault();
+        toggle_disable = true;
+        if (server_port < 1024 || server_port > 65535) {
+            alert('port number must be between 1024 and 65535');
+            return;
+        }
+        if (server_running) {
+            invoke('toggle_server', {port: server_port})
+                .then((res) => {
+                    console.log('res', res);
+                    if (res === 'started') {
+                        server_running = true;
+                    } else if (res === 'stopped') {
+                        server_running = false;
+                    } else {
+                        console.error('unknown response from server');
+                    }
+                })
+                .catch((e) => console.error(e));
+            // sleep 1s for server to shut down
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            invoke('toggle_server', {port: server_port})
+                .then((res) => {
+                    console.log('res', res);
+                    if (res === 'started') {
+                        server_running = true;
+                    } else if (res === 'stopped') {
+                        server_running = false;
+                    } else {
+                        console.error('unknown response from server');
+                    }
+                })
+                .catch((e) => console.error(e));
+        }
+        toggle_disable = false;
+    }
+    async function toggle_server(event: Event) {
+        toggle_disable = true;
+        event.preventDefault();
+        invoke('toggle_server', {port: server_port})
+            .then((res) => {
+                console.log('res', res);
+                if (res === 'started') {
+                    server_running = true;
+                } else if (res === 'stopped') {
+                    server_running = false;
+                } else {
+                    console.error('unknown response from server');
+                }
+            })
             .catch((e) => console.error(e));
+        toggle_disable = false;
+    }
 
-  }
-  async function greet(event: Event) {
-    event.preventDefault();
+    async function greet(event: Event) {
+        event.preventDefault();
 // when using `"withGlobalTauri": true`, you may use
 // const { open } = window.__TAURI__.dialog;
 
@@ -41,18 +81,18 @@
 //     console.log(file);
 // Prints file path or URI
 
-    // Prints boolean to the console
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    // greetMsg += await invoke("collect_nic_info");
-    //
-    // const contents = await readFile(file);
+        // Prints boolean to the console
+        // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+        // greetMsg += await invoke("collect_nic_info");
+        //
+        // const contents = await readFile(file);
 
-    // greetMsg += file;
-    // greetMsg += '\n';
-    // greetMsg += contents.slice(0, 100).toString();
-    // let ret = await invoke("greet", {name});
-    // console.log('ret', ret);
-    // greetMsg += ret;
+        // greetMsg += file;
+        // greetMsg += '\n';
+        // greetMsg += contents.slice(0, 100).toString();
+        // let ret = await invoke("greet", {server_port});
+        // console.log('ret', ret);
+        // greetMsg += ret;
 
 
 // Open a file selection dialog
@@ -61,198 +101,181 @@
 //       multiple: false,
 //     });
 
-    // invoke('file_picker_example')
-    // check permission state
-    // const permission = await invoke<Permissions>('plugin:tauri_plugin_android_fs|checkPermissions')
+        // invoke('file_picker_example')
+        // check permission state
+        // const permission = await invoke<Permissions>('plugin:tauri_plugin_android_fs|checkPermissions')
 
-    // if (permission.manageExternalStorage === 'prompt-with-rationale') {
-    //   show information to the user about why permission is needed
-    // }
+        // if (permission.manageExternalStorage === 'prompt-with-rationale') {
+        //   show information to the user about why permission is needed
+        // }
 
-    // request permission
-    // if (permission.manageExternalStorage.startsWith('prompt')) {
-    //   const state = await invoke<Permissions>('plugin:tauri_plugin_android_fs|requestPermissions', { permissions: ['manageExternalStorage'] })
-    // }
+        // request permission
+        // if (permission.manageExternalStorage.startsWith('prompt')) {
+        //   const state = await invoke<Permissions>('plugin:tauri_plugin_android_fs|requestPermissions', { permissions: ['manageExternalStorage'] })
+        // }
 
-    invoke('folder_picker_example')
+        invoke('folder_picker_example')
             .then((res) =>
-                    console.log(res)
+                console.log(res)
             )
             .catch((e) => console.error(e));
 
-    // write(file);
-  }
+        // write(file);
+    }
 
-  let greetInputEl: HTMLInputElement | null;
+    // let greetInputEl: HTMLInputElement | null;
 
-  async function write(message: string) {
-    // await writeTextFile('test.txt', message, {baseDir: BaseDirectory.Home});
-  }
+    async function write(message: string) {
+        // await writeTextFile('test.txt', message, {baseDir: BaseDirectory.Home});
+    }
 
-  // when using `"withGlobalTauri": true`, you may use
-  // const { enable, isEnabled, disable } = window.__TAURI__.autostart;
+    // when using `"withGlobalTauri": true`, you may use
+    // const { enable, isEnabled, disable } = window.__TAURI__.autostart;
 
-  onMount(async () => {
+    onMount(async () => {
 
-    // Enable autostart
-    // await enable();
-    // Check enable state
-    // console.log(`registered for autostart? ${await isEnabled()}`);
-    // Disable autostart
-    // disable();
-    // import tauriapi from '@tauri-apps/api';
-    // const { taurishell } = tauriapi.shell;
-    // const command = Command.sidecar('binaries/tcc-xapp-hhk', []);
-    // const response = await command.execute();
-    // console.log(response);
-  });
+        // Enable autostart
+        // await enable();
+        // Check enable state
+        // console.log(`registered for autostart? ${await isEnabled()}`);
+        // Disable autostart
+        // disable();
+        // import tauriapi from '@tauri-apps/api';
+        // const { taurishell } = tauriapi.shell;
+        // const command = Command.sidecar('binaries/tcc-xapp-hhk', []);
+        // const response = await command.execute();
+        // console.log(response);
+    });
 </script>
 
 <main class="container">
-  <h1>Welcome to Tauri + Svelte</h1>
+    <h2>Share file locally</h2>
 
-  <div class="row">
-    <a href="https://vitejs.dev" target="_blank">
-      <img src="/vite.svg" class="logo vite" alt="Vite Logo"/>
+    <button class="toggle_button" onclick={toggle_server} disabled={toggle_disable}>
+        {#if server_running}stop{:else}start{/if} sharing
+    </button>
+
+
+    <form onsubmit={change_server_port}>
+        <label for="port-input">Port</label>
+        <input id="port-input" type="number" placeholder="Change server port" bind:value={server_port}/>
+        <button type="submit">Change</button>
+    </form>
+    {#if server_running}
+        server listening at:
+        <p>{server_host}:{server_port}</p>
+    {/if}
+    <a href="https://github.com/fokx/localshare" target="_blank">
+        source code at github
     </a>
-    <a href="https://tauri.app" target="_blank">
-      <img src="/tauri.svg" class="logo tauri" alt="Tauri Logo"/>
-    </a>
-    <a href="https://kit.svelte.dev" target="_blank">
-      <img src="/svelte.svg" class="logo svelte-kit" alt="SvelteKit Logo"/>
-    </a>
-  </div>
-  <p>Click on the Tauri, Vite, and SvelteKit logos to learn more.</p>
 
-  <form class="row" onsubmit={greet}>
-    <input id="greet-input" placeholder="Enter a name..." bind:value={name}/>
-    <button type="submit">Greet</button>
-  </form>
 
-  <button onclick={toggle_server}>toggle server</button>
-
-  <p>{greetMsg}</p>
 </main>
 
 <style>
-  .logo.vite:hover {
-    filter: drop-shadow(0 0 2em #747bff);
-  }
-
-  .logo.svelte-kit:hover {
-    filter: drop-shadow(0 0 2em #ff3e00);
-  }
-
-  :root {
-    font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-    font-size: 16px;
-    line-height: 24px;
-    font-weight: 400;
-
-    color: #0f0f0f;
-    background-color: #f6f6f6;
-
-    font-synthesis: none;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    -webkit-text-size-adjust: 100%;
-  }
-
-  .container {
-    margin: 0;
-    padding-top: 10vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    text-align: center;
-  }
-
-  .logo {
-    height: 6em;
-    padding: 1.5em;
-    will-change: filter;
-    transition: 0.75s;
-  }
-
-  .logo.tauri:hover {
-    filter: drop-shadow(0 0 2em #24c8db);
-  }
-
-  .row {
-    display: flex;
-    justify-content: center;
-  }
-
-  a {
-    font-weight: 500;
-    color: #646cff;
-    text-decoration: inherit;
-  }
-
-  a:hover {
-    color: #535bf2;
-  }
-
-  h1 {
-    text-align: center;
-  }
-
-  input,
-  button {
-    border-radius: 8px;
-    border: 1px solid transparent;
-    padding: 0.6em 1.2em;
-    font-size: 1em;
-    font-weight: 500;
-    font-family: inherit;
-    color: #0f0f0f;
-    background-color: #ffffff;
-    transition: border-color 0.25s;
-    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-  }
-
-  button {
-    cursor: pointer;
-  }
-
-  button:hover {
-    border-color: #396cd8;
-  }
-
-  button:active {
-    border-color: #396cd8;
-    background-color: #e8e8e8;
-  }
-
-  input,
-  button {
-    outline: none;
-  }
-
-  #greet-input {
-    margin-right: 5px;
-  }
-
-  @media (prefers-color-scheme: dark) {
     :root {
-      color: #f6f6f6;
-      background-color: #2f2f2f;
+        font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+        font-size: 16px;
+        line-height: 24px;
+        font-weight: 400;
+
+        color: #0f0f0f;
+        background-color: #f6f6f6;
+
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        -webkit-text-size-adjust: 100%;
+    }
+
+    .container {
+        margin: 0;
+        padding-top: 10vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        text-align: center;
+    }
+
+    a {
+        font-weight: 500;
+        color: #646cff;
+        text-decoration: inherit;
     }
 
     a:hover {
-      color: #24c8db;
+        color: #535bf2;
     }
 
     input,
     button {
-      color: #ffffff;
-      background-color: #0f0f0f98;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        padding: 0.6em 1.2em;
+        font-size: 1em;
+        font-weight: 500;
+        font-family: inherit;
+        color: #0f0f0f;
+        background-color: #ffffff;
+        transition: border-color 0.25s;
+        box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    button {
+        cursor: pointer;
+    }
+
+    button:hover {
+        border-color: #396cd8;
     }
 
     button:active {
-      background-color: #0f0f0f69;
+        border-color: #396cd8;
+        background-color: #e8e8e8;
     }
-  }
 
+    input,
+    button {
+        outline: none;
+    }
+
+    #port-input {
+        margin-right: 5px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            color: #f6f6f6;
+            background-color: #2f2f2f;
+        }
+
+        a:hover {
+            color: #24c8db;
+        }
+
+        input,
+        button {
+            color: #ffffff;
+            background-color: #0f0f0f98;
+        }
+
+        button:active {
+            background-color: #0f0f0f69;
+        }
+    }
+    .toggle_button {
+        width: 160px;
+        align-self: center;
+        margin-bottom: 10px;
+    }
+
+    .toggle_button:disabled {
+        background-color: #e8e8e8;
+        color: #646cff;
+        cursor: not-allowed;
+        box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+        transition: background-color 0.25s;
+        border-color: #396cd8;
+    }
 </style>
