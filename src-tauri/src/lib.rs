@@ -69,12 +69,11 @@ async fn dufs_main(shutdown_rx: oneshot::Receiver<()>) -> Result<()> {
         return Ok(());
     }
     let mut args = Args::parse(matches)?;
-    logger::init(args.log_file.clone()).map_err(|e| anyhow!("Failed to init logger, {e}"))?;
-    let (new_addrs, print_addrs) = check_addrs(&args)?;
-    args.addrs = new_addrs;
+    // logger::init(args.log_file.clone()).map_err(|e| anyhow!("Failed to init logger, {e}"))?;
+    // let (new_addrs, print_addrs) = check_addrs(&args)?;
+    // args.addrs = new_addrs;
     let running = Arc::new(AtomicBool::new(true));
-    let listening = print_listening(&args, &print_addrs)?;
-
+    // let listening = print_listening(&args, &print_addrs)?;
     // let listener = create_listener(SocketAddr::new("0.0.0.0".parse()?, 4804))
     //         .with_context(|| format!("Failed to bind"))?;
     let listener = TcpListener::bind("0.0.0.0:4804").await?;
@@ -83,7 +82,6 @@ async fn dufs_main(shutdown_rx: oneshot::Receiver<()>) -> Result<()> {
     let graceful = hyper_util::server::graceful::GracefulShutdown::new();
     let mut signal = std::pin::pin!(shutdown_rx);
     let server_handle = Arc::new(Server::init(args, running.clone())?);
-
     loop {
         tokio::select! {
             conn = listener.accept() => {
