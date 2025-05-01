@@ -20,6 +20,9 @@ importers:
       '@tauri-apps/plugin-biometric':
         specifier: ~2.2.0
         version: 2.2.0
+      '@tauri-apps/plugin-clipboard-manager':
+        specifier: ~2.2.2
+        version: 2.2.2
       '@tauri-apps/plugin-dialog':
         specifier: ^2.2.1
         version: 2.2.1
@@ -44,6 +47,9 @@ importers:
       '@tauri-apps/plugin-sql':
         specifier: ~2.2.0
         version: 2.2.0
+      svelte-qrcode:
+        specifier: ^1.0.1
+        version: 1.0.1
       tauri-plugin-system-info-api:
         specifier: ^2.0.10
         version: 2.0.10(typescript@5.6.3)
@@ -470,6 +476,9 @@ packages:
   '@tauri-apps/plugin-biometric@2.2.0':
     resolution: {integrity: sha512-bxetRUGNGIuH/zMMlZ1VuYG7B0pWA/GkNDyMKmajCC3T3AIgL+siyeorDw+lAcp9KDNnTZ8vSOlxiAcwdbWN4Q==}
 
+  '@tauri-apps/plugin-clipboard-manager@2.2.2':
+    resolution: {integrity: sha512-bZvDLMqfcNmsw7Ag8I49jlaCjdpDvvlJHnpp6P+Gg/3xtpSERdwlDxm7cKGbs2mj46dsw4AuG3RoAgcpwgioUA==}
+
   '@tauri-apps/plugin-dialog@2.2.1':
     resolution: {integrity: sha512-wZmCouo4PgTosh/UoejPw9DPs6RllS5Pp3fuOV2JobCu36mR5AXU2MzU9NZiVaFi/5Zfc8RN0IhcZHnksJ1o8A==}
 
@@ -604,6 +613,9 @@ packages:
     resolution: {integrity: sha512-dle9A3yYxlBSrt8Fu+IpjGT8SY8hN0mlaA6GY8t0P5PjIOZemULz/E2Bnm/2dcUOena75OTNkHI76uZBNUUq3A==}
     engines: {node: ^10 || ^12 || >=14}
 
+  qrious@4.0.2:
+    resolution: {integrity: sha512-xWPJIrK1zu5Ypn898fBp8RHkT/9ibquV2Kv24S/JY9VYEhMBMKur1gHVsOiNUh7PHP9uCgejjpZUHUIXXKoU/g==}
+
   readdirp@4.1.2:
     resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
     engines: {node: '>= 14.18.0'}
@@ -635,6 +647,9 @@ packages:
     peerDependencies:
       svelte: ^4.0.0 || ^5.0.0-next.0
       typescript: '>=5.0.0'
+
+  svelte-qrcode@1.0.1:
+    resolution: {integrity: sha512-l1RcxDWkQqtBWUkolYee/IHGVKSgm1I2PdF8yVoIRqzKCc3kXpCXSVsMfrMSavWW2/BXvKu5Orv+JGbrO5onsw==}
 
   svelte@5.27.0:
     resolution: {integrity: sha512-Uai13Ydt1ZE+bUHme6b9U38PCYVNCqBRoBMkUKbFbKiD7kHWjdUUrklYAQZJxyKK81qII4mrBwe/YmvEMSlC9w==}
@@ -983,6 +998,10 @@ snapshots:
     dependencies:
       '@tauri-apps/api': 2.5.0
 
+  '@tauri-apps/plugin-clipboard-manager@2.2.2':
+    dependencies:
+      '@tauri-apps/api': 2.5.0
+
   '@tauri-apps/plugin-dialog@2.2.1':
     dependencies:
       '@tauri-apps/api': 2.5.0
@@ -1110,6 +1129,8 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
+  qrious@4.0.2: {}
+
   readdirp@4.1.2: {}
 
   rollup@4.40.0:
@@ -1163,6 +1184,10 @@ snapshots:
       typescript: 5.6.3
     transitivePeerDependencies:
       - picomatch
+
+  svelte-qrcode@1.0.1:
+    dependencies:
+      qrious: 4.0.2
 
   svelte@5.27.0:
     dependencies:

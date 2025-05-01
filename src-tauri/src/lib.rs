@@ -32,12 +32,12 @@ use args::BindAddr;
 use clap_complete::Shell;
 use futures_util::future::join_all;
 
-use hyper::{body::Incoming, service::service_fn };
+use hyper::{body::Incoming, service::service_fn};
 use hyper_util::{
     rt::{TokioExecutor, TokioIo},
     server::conn::auto::Builder,
 };
-use std::net::{IpAddr,  TcpListener as StdTcpListener};
+use std::net::{IpAddr, TcpListener as StdTcpListener};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex,
@@ -58,7 +58,6 @@ use tower_http::{
     trace::TraceLayer,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
 
 async fn dufs_main(shutdown_rx: oneshot::Receiver<()>, port: usize) -> Result<()> {
     let cmd = build_cli();
@@ -131,13 +130,13 @@ async fn dufs_main(shutdown_rx: oneshot::Receiver<()>, port: usize) -> Result<()
     }
 
     tokio::select! {
-    _ = graceful.shutdown() => {
-        eprintln!("all connections gracefully closed");
-    },
-    _ = tokio::time::sleep(std::time::Duration::from_secs(1)) => {
-        eprintln!("timed out wait for all connections to close");
+        _ = graceful.shutdown() => {
+            eprintln!("all connections gracefully closed");
+        },
+        _ = tokio::time::sleep(std::time::Duration::from_secs(1)) => {
+            eprintln!("timed out wait for all connections to close");
+        }
     }
-}
 
     Ok(())
 }
@@ -404,6 +403,37 @@ fn toggle_server(
     }
 }
 
+#[tauri::command(rename_all = "snake_case")]
+fn get_nic_info(
+    app: tauri::AppHandle,
+    server_handle: tauri::State<Arc<Mutex<Option<oneshot::Sender<()>>>>>,
+) -> Vec<String> {
+    let args = Args::default();
+    let (new_addrs, print_addrs) = check_addrs(&args).unwrap();
+    let urls = print_addrs
+        .iter()
+        .map(|bind_addr| match bind_addr {
+            BindAddr::IpAddr(addr) => {
+                let addr = match addr {
+                    IpAddr::V4(_) => format!("{}", addr),
+                    IpAddr::V6(_) => "".parse().unwrap()
+                };
+                let protocol = if args.tls_cert.is_some() {
+                    "https"
+                } else {
+                    "http"
+                };
+                format!("{}://{}{}", protocol, addr, args.uri_prefix)
+            }
+            #[cfg(unix)]
+            BindAddr::SocketPath(path) => path.to_string(),
+        })
+        .collect::<Vec<_>>().iter().filter(|x| !x.is_empty()).map(|x| x.to_string()).collect::<Vec<_>>();
+
+    return urls;
+    // return Ok(format!("{:?}", urls));
+}
+
 #[tauri::command]
 fn folder_picker_example(app: tauri::AppHandle) -> Result<String, String> {
     let api = app.android_fs();
@@ -514,7 +544,7 @@ fn greet(app_handle: tauri::AppHandle, name: &str) -> String {
 }
 // use futures::executor::block_on;
 #[tauri::command]
-fn collect_nic_info() -> String {
+fn collect_sys_info() -> String {
     let network_interfaces = NetworkInterface::show().unwrap();
     let mut result: String = "".to_owned();
     for itf in network_interfaces.iter() {
@@ -570,6 +600,7 @@ fn collect_nic_info() -> String {
 pub fn run() {
     let server_handle = Arc::new(Mutex::new(None::<oneshot::Sender<()>>));
     tauri::Builder::default()
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(server_handle.clone())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_android_fs::init())
@@ -586,7 +617,8 @@ pub fn run() {
             file_picker_example,
             folder_picker_example,
             toggle_server,
-            collect_nic_info
+            get_nic_info,
+            collect_sys_info
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

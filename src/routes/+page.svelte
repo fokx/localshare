@@ -3,14 +3,41 @@
     import {onMount} from "svelte";
     // import {enable, isEnabled} from '@tauri-apps/plugin-autostart';
     import {invoke, type PermissionState} from '@tauri-apps/api/core'
+    import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
+    import QrCode from "svelte-qrcode";
 
     // generate a random port number
     let server_port = $state(Math.floor(Math.random() * (65535 - 1024 + 1) + 1024));
     let server_running = $state(false);
     let server_host = $state("0.0.0.0");
     let toggle_disable = $state(false);
+    let listening_urls: Array<string> = $state([]);
+
     interface Permissions {
         manageExternalStorage: PermissionState
+    }
+
+    async function get_nic_info() {
+        invoke('get_nic_info')
+            .then((res) => {
+                // dedup
+                res = [...new Set(res)];
+                // show 192.168.x.x if exists first
+                res = res.sort((a, b) => {
+                    if (a.includes('192.168') && !b.includes('192.168')) {
+                        return -1;
+                    } else if (!a.includes('192.168') && b.includes('192.168')) {
+                        return 1;
+                    } else {
+                        return 0;
+                    }
+                });
+                res = res.map(v => v + ":" + server_port);
+                console.log(res);
+                listening_urls = res;
+                }
+            )
+            .catch((e) => console.error(e));
     }
 
     async function change_server_port(event: Event) {
@@ -50,7 +77,9 @@
         }
         toggle_disable = false;
     }
+
     async function toggle_server(event: Event) {
+        await get_nic_info();
         toggle_disable = true;
         event.preventDefault();
         invoke('toggle_server', {port: server_port})
@@ -83,7 +112,7 @@
 
         // Prints boolean to the console
         // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-        // greetMsg += await invoke("collect_nic_info");
+        // greetMsg += await invoke("collect_sys_info");
         //
         // const contents = await readFile(file);
 
@@ -110,7 +139,7 @@
         // }
 
         // request permission
-        // if (permission.manageExternalStorage.startsWith('prompt')) {
+        // if (permission.manageExternalStorage.includes('prompt')) {
         //   const state = await invoke<Permissions>('plugin:tauri_plugin_android_fs|requestPermissions', { permissions: ['manageExternalStorage'] })
         // }
 
@@ -164,6 +193,13 @@
     {#if server_running}
         server listening at:
         <p>{server_host}:{server_port}</p>
+        use the following links to access:
+        {#each listening_urls as url}
+            <p><button onclick={()=>{writeText(url); alert('link copied to clipboard'); }}>{url}</button></p>
+            <div class="link-qr">
+                <QrCode value={url} />
+            </div>
+        {/each}
     {/if}
     <a href="https://github.com/fokx/localshare" target="_blank">
         source code at github
@@ -264,6 +300,7 @@
             background-color: #0f0f0f69;
         }
     }
+
     .toggle_button {
         width: 160px;
         align-self: center;

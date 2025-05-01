@@ -12,11 +12,16 @@
     "dialog:default",
     {
       "identifier": "fs:scope",
-      "allow": [{ "path": "/**" }]
+      "allow": [
+        {
+          "path": "/**"
+        }
+      ]
     },
     "fs:read-all",
     "fs:read-meta",
     "fs:write-files",
-    "android-fs:default"
+    "android-fs:default",
+    "clipboard-manager:allow-write-text"
   ]
 }
