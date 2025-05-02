@@ -461,7 +461,7 @@ fn get_nic_info(
 }
 
 #[tauri::command]
-fn folder_picker_example(app: tauri::AppHandle) -> Result<String, String> {
+fn acquire_permission_android(app: tauri::AppHandle) -> Result<String, String> {
     let api = app.android_fs();
 
     // pick folder to read and write
@@ -641,7 +641,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             file_picker_example,
-            folder_picker_example,
+            acquire_permission_android,
             toggle_server,
             get_nic_info,
             collect_sys_info
