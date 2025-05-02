@@ -3,11 +3,15 @@
     import {onMount} from "svelte";
     // import {enable, isEnabled} from '@tauri-apps/plugin-autostart';
     import {invoke, type PermissionState} from '@tauri-apps/api/core'
-    import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
-    import QrCode from "svelte-qrcode";
-
+    import UrlInfo from '../components/UrlInfo.svelte';
+    import {toast} from "@zerodevx/svelte-toast";
     // generate a random port number
     let server_port = $state(Math.floor(Math.random() * (65535 - 1024 + 1) + 1024));
+    let require_auth = $state(false);
+    let auth_user = $state("user");
+    let auth_passwd = $state("User@1234");
+    let allow_upload = $state(true);
+
     let server_running = $state(false);
     let server_host = $state("0.0.0.0");
     let toggle_disable = $state(false);
@@ -20,35 +24,45 @@
     async function get_nic_info() {
         invoke('get_nic_info')
             .then((res) => {
-                // dedup
-                res = [...new Set(res)];
-                // show 192.168.x.x if exists first
-                res = res.sort((a, b) => {
-                    if (a.includes('192.168') && !b.includes('192.168')) {
-                        return -1;
-                    } else if (!a.includes('192.168') && b.includes('192.168')) {
-                        return 1;
-                    } else {
-                        return 0;
-                    }
-                });
-                res = res.map(v => v + ":" + server_port);
-                console.log(res);
-                listening_urls = res;
+                    // dedup
+                    res = [...new Set(res)];
+                    // show 192.168.x.x if exists first
+                    res = res.sort((a, b) => {
+                        if (a.includes('192.168') && !b.includes('192.168')) {
+                            return -1;
+                        } else if (!a.includes('192.168') && b.includes('192.168')) {
+                            return 1;
+                        } else {
+                            return 0;
+                        }
+                    });
+                    res = res.map(v => v + ":" + server_port);
+                    console.log(res);
+                    listening_urls = res;
                 }
             )
             .catch((e) => console.error(e));
     }
 
-    async function change_server_port(event: Event) {
+    async function reconfigure_server(event: Event) {
         event.preventDefault();
         toggle_disable = true;
         if (server_port < 1024 || server_port > 65535) {
-            alert('port number must be between 1024 and 65535');
+            toast.push('port number must be between 1024 and 65535', {
+                theme: {
+                    '--toastBackground': 'red',
+                    '--toastColor': 'black',
+                }
+            });
             return;
         }
         if (server_running) {
-            invoke('toggle_server', {port: server_port})
+            invoke('toggle_server', {
+                server_port: server_port,
+                require_auth: require_auth,
+                auth_user: auth_user,
+                auth_passwd: auth_passwd, allow_upload: allow_upload
+            })
                 .then((res) => {
                     console.log('res', res);
                     if (res === 'started') {
@@ -61,8 +75,13 @@
                 })
                 .catch((e) => console.error(e));
             // sleep 1s for server to shut down
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            invoke('toggle_server', {port: server_port})
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            invoke('toggle_server', {
+                server_port: server_port,
+                require_auth: require_auth,
+                auth_user: auth_user,
+                auth_passwd: auth_passwd, allow_upload: allow_upload
+            })
                 .then((res) => {
                     console.log('res', res);
                     if (res === 'started') {
@@ -82,7 +101,12 @@
         await get_nic_info();
         toggle_disable = true;
         event.preventDefault();
-        invoke('toggle_server', {port: server_port})
+        invoke('toggle_server', {
+            server_port: server_port,
+            require_auth: require_auth,
+            auth_user: auth_user,
+            auth_passwd: auth_passwd, allow_upload: allow_upload
+        })
             .then((res) => {
                 console.log('res', res);
                 if (res === 'started') {
@@ -177,6 +201,7 @@
     });
 </script>
 
+
 <main class="container">
     <h2>Share file locally</h2>
 
@@ -185,26 +210,42 @@
     </button>
 
 
-    <form onsubmit={change_server_port}>
-        <label for="port-input">Port</label>
-        <input id="port-input" type="number" placeholder="Change server port" bind:value={server_port}/>
-        <button type="submit">Change</button>
+    <form onsubmit={reconfigure_server}>
+        <div>
+            <label for="server_port">Port</label>
+            <input disabled={toggle_disable}  id="server_port" type="number" placeholder="Change server port" bind:value={server_port}/>
+        </div>
+        <div>
+            <label for="allow_upload">Allow upload</label>
+            <input disabled={toggle_disable}  id="allow_upload" type="checkbox"
+                   bind:checked={allow_upload}/>
+        </div> <div>
+            <label for="require_auth">Require Authentication</label>
+            <input disabled={toggle_disable}  id="require_auth" type="checkbox"
+                   bind:checked={require_auth}/>
+        </div>
+        <div>
+            <label for="auth_user">Auth User</label>
+            <input disabled={toggle_disable}  id="auth_user" type="text" placeholder="Change auth user" required bind:value={auth_user}/>
+        </div>
+        <div>
+            <label for="auth_passwd">Auth User</label>
+            <input disabled={toggle_disable}  id="auth_passwd" type="password" placeholder="Change auth password" required bind:value={auth_passwd}/>
+        </div>
+
+        <button class="toggle_button" disabled={toggle_disable} type="submit">Change</button>
     </form>
     {#if server_running}
         server listening at:
         <p>{server_host}:{server_port}</p>
         use the following links to access:
         {#each listening_urls as url}
-            <p><button onclick={()=>{writeText(url); alert('link copied to clipboard'); }}>{url}</button></p>
-            <div class="link-qr">
-                <QrCode value={url} />
-            </div>
+            <UrlInfo url={url}/>
         {/each}
     {/if}
     <a href="https://github.com/fokx/localshare" target="_blank">
         source code at github
     </a>
-
 
 </main>
 
@@ -274,10 +315,6 @@
     input,
     button {
         outline: none;
-    }
-
-    #port-input {
-        margin-right: 5px;
     }
 
     @media (prefers-color-scheme: dark) {

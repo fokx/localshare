@@ -48,6 +48,7 @@ use tokio::{net::TcpListener, task::JoinHandle};
 #[cfg(feature = "tls")]
 use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 
+use crate::auth::AccessControl;
 use axum::{
     extract::Request, handler::HandlerWithoutStateExt, http::StatusCode, routing::get, Router,
 };
@@ -59,7 +60,46 @@ use tower_http::{
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-async fn dufs_main(shutdown_rx: oneshot::Receiver<()>, port: usize) -> Result<()> {
+#[tauri::command(rename_all = "snake_case")]
+fn toggle_server(
+    app: tauri::AppHandle,
+    server_handle: tauri::State<Arc<Mutex<Option<oneshot::Sender<()>>>>>,
+    server_port: usize,
+    require_auth: bool,
+    auth_user: String,
+    auth_passwd: String,
+    allow_upload: bool,
+) -> Result<String, String> {
+    println!("using server_port: {}", server_port);
+    let mut state_locked = server_handle.lock().unwrap();
+
+    if let Some(shutdown_tx) = state_locked.take() {
+        // Stop the server
+        println!("Stopping server");
+        let _ = shutdown_tx.send(()); // Send the shutdown signal
+        return Ok("stopped".to_string());
+    } else {
+        // Start the server
+        let (shutdown_tx, shutdown_rx) = oneshot::channel();
+        // let runtime = tokio::runtime::Runtime::new().unwrap();
+        let join_handle =
+            tauri::async_runtime::spawn(dufs_main(shutdown_rx, server_port, require_auth, auth_user, auth_passwd, allow_upload));
+        // runtime.spawn(async move {
+        //     actix_main(shutdown_rx).await;
+        // });
+        *state_locked = Some(shutdown_tx);
+        return Ok("started".to_string());
+    }
+}
+
+async fn dufs_main(
+    shutdown_rx: oneshot::Receiver<()>,
+    server_port: usize,
+    require_auth: bool,
+    auth_user: String,
+    auth_passwd: String,
+    allow_upload: bool,
+) -> Result<()> {
     let cmd = build_cli();
     let matches = cmd.get_matches();
     if let Some(generator) = matches.get_one::<Shell>("completions") {
@@ -67,7 +107,14 @@ async fn dufs_main(shutdown_rx: oneshot::Receiver<()>, port: usize) -> Result<()
         print_completions(*generator, &mut cmd);
         return Ok(());
     }
-    let mut args = Args::parse(matches)?;
+    let mut args = Args::parse(matches).unwrap();
+    if require_auth {
+        let rules = vec![format!("{}:{}@/:rw", auth_user, auth_passwd)];
+        let rules: Vec<_> = rules.iter().map(|s|s.as_str()).collect();
+        args.auth = AccessControl::new(&rules).unwrap();
+    }
+
+    args.allow_upload = allow_upload;
     // logger::init(args.log_file.clone()).map_err(|e| anyhow!("Failed to init logger, {e}"))?;
     // let (new_addrs, print_addrs) = check_addrs(&args)?;
     // args.addrs = new_addrs;
@@ -75,7 +122,7 @@ async fn dufs_main(shutdown_rx: oneshot::Receiver<()>, port: usize) -> Result<()
     // let listening = print_listening(&args, &print_addrs)?;
     // let listener = create_listener(SocketAddr::new("0.0.0.0".parse()?, 4804))
     //         .with_context(|| format!("Failed to bind"))?;
-    let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", server_port)).await?;
     let http = hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new());
     // let mut http = http1::Builder::new();
     let graceful = hyper_util::server::graceful::GracefulShutdown::new();
@@ -377,33 +424,6 @@ async fn shutdown_signal() {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn toggle_server(
-    app: tauri::AppHandle,
-    server_handle: tauri::State<Arc<Mutex<Option<oneshot::Sender<()>>>>>,
-    port: usize,
-) -> Result<String, String> {
-    println!("using port: {}", port);
-    let mut state_locked = server_handle.lock().unwrap();
-
-    if let Some(shutdown_tx) = state_locked.take() {
-        // Stop the server
-        println!("Stopping server");
-        let _ = shutdown_tx.send(()); // Send the shutdown signal
-        return Ok("stopped".to_string());
-    } else {
-        // Start the server
-        let (shutdown_tx, shutdown_rx) = oneshot::channel();
-        // let runtime = tokio::runtime::Runtime::new().unwrap();
-        let join_handle = tauri::async_runtime::spawn(dufs_main(shutdown_rx, port));
-        // runtime.spawn(async move {
-        //     actix_main(shutdown_rx).await;
-        // });
-        *state_locked = Some(shutdown_tx);
-        return Ok("started".to_string());
-    }
-}
-
-#[tauri::command(rename_all = "snake_case")]
 fn get_nic_info(
     app: tauri::AppHandle,
     server_handle: tauri::State<Arc<Mutex<Option<oneshot::Sender<()>>>>>,
@@ -416,7 +436,7 @@ fn get_nic_info(
             BindAddr::IpAddr(addr) => {
                 let addr = match addr {
                     IpAddr::V4(_) => format!("{}", addr),
-                    IpAddr::V6(_) => "".parse().unwrap()
+                    IpAddr::V6(_) => "".parse().unwrap(),
                 };
                 let protocol = if args.tls_cert.is_some() {
                     "https"
@@ -428,7 +448,11 @@ fn get_nic_info(
             #[cfg(unix)]
             BindAddr::SocketPath(path) => path.to_string(),
         })
-        .collect::<Vec<_>>().iter().filter(|x| !x.is_empty()).map(|x| x.to_string()).collect::<Vec<_>>();
+        .collect::<Vec<_>>()
+        .iter()
+        .filter(|x| !x.is_empty())
+        .map(|x| x.to_string())
+        .collect::<Vec<_>>();
 
     return urls;
     // return Ok(format!("{:?}", urls));
