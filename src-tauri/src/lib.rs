@@ -65,6 +65,7 @@ fn toggle_server(
     app: tauri::AppHandle,
     server_handle: tauri::State<Arc<Mutex<Option<oneshot::Sender<()>>>>>,
     server_port: usize,
+    serve_path: String,
     require_auth: bool,
     auth_user: String,
     auth_passwd: String,
@@ -83,7 +84,7 @@ fn toggle_server(
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
         // let runtime = tokio::runtime::Runtime::new().unwrap();
         let join_handle =
-            tauri::async_runtime::spawn(dufs_main(shutdown_rx, server_port, require_auth, auth_user, auth_passwd, allow_upload));
+            tauri::async_runtime::spawn(dufs_main(shutdown_rx, server_port, serve_path,  require_auth, auth_user, auth_passwd, allow_upload));
         // runtime.spawn(async move {
         //     actix_main(shutdown_rx).await;
         // });
@@ -95,6 +96,7 @@ fn toggle_server(
 async fn dufs_main(
     shutdown_rx: oneshot::Receiver<()>,
     server_port: usize,
+    serve_path: String,
     require_auth: bool,
     auth_user: String,
     auth_passwd: String,
@@ -113,7 +115,7 @@ async fn dufs_main(
         let rules: Vec<_> = rules.iter().map(|s|s.as_str()).collect();
         args.auth = AccessControl::new(&rules).unwrap();
     }
-
+    args.serve_path = serve_path.parse()?;
     args.allow_upload = allow_upload;
     // logger::init(args.log_file.clone()).map_err(|e| anyhow!("Failed to init logger, {e}"))?;
     // let (new_addrs, print_addrs) = check_addrs(&args)?;

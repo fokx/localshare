@@ -9,6 +9,7 @@
     let server_port = $state(Math.floor(Math.random() * (65535 - 1024 + 1) + 1024));
     let require_auth = $state(false);
     let auth_user = $state("user");
+    let serve_path = $state("/storage/emulated/0/");
     let auth_passwd = $state("User@1234");
     let allow_upload = $state(true);
 
@@ -59,6 +60,7 @@
         if (server_running) {
             invoke('toggle_server', {
                 server_port: server_port,
+                serve_path: serve_path,
                 require_auth: require_auth,
                 auth_user: auth_user,
                 auth_passwd: auth_passwd, allow_upload: allow_upload
@@ -74,10 +76,11 @@
                     }
                 })
                 .catch((e) => console.error(e));
-            // sleep 1s for server to shut down
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            // sleep 500 ms for server to shut down
+            await new Promise(resolve => setTimeout(resolve, 500));
             invoke('toggle_server', {
                 server_port: server_port,
+                serve_path: serve_path,
                 require_auth: require_auth,
                 auth_user: auth_user,
                 auth_passwd: auth_passwd, allow_upload: allow_upload
@@ -103,6 +106,7 @@
         event.preventDefault();
         invoke('toggle_server', {
             server_port: server_port,
+            serve_path: serve_path,
             require_auth: require_auth,
             auth_user: auth_user,
             auth_passwd: auth_passwd, allow_upload: allow_upload
@@ -213,24 +217,33 @@
     <form onsubmit={reconfigure_server}>
         <div>
             <label for="server_port">Port</label>
-            <input disabled={toggle_disable}  id="server_port" type="number" placeholder="Change server port" bind:value={server_port}/>
+            <input disabled={toggle_disable} id="server_port" type="number" placeholder="Change server port"
+                   bind:value={server_port}/>
         </div>
         <div>
             <label for="allow_upload">Allow upload</label>
-            <input disabled={toggle_disable}  id="allow_upload" type="checkbox"
+            <input disabled={toggle_disable} id="allow_upload" type="checkbox"
                    bind:checked={allow_upload}/>
-        </div> <div>
+        </div>
+        <div>
+            <label for="serve_path">Serve Path</label>
+            <input disabled={toggle_disable} id="serve_path" type="text" placeholder="Change auth user" required
+                   bind:value={serve_path}/>
+        </div>
+        <div>
             <label for="require_auth">Require Authentication</label>
-            <input disabled={toggle_disable}  id="require_auth" type="checkbox"
+            <input disabled={toggle_disable} id="require_auth" type="checkbox"
                    bind:checked={require_auth}/>
         </div>
         <div>
             <label for="auth_user">Auth User</label>
-            <input disabled={toggle_disable}  id="auth_user" type="text" placeholder="Change auth user" required bind:value={auth_user}/>
+            <input disabled={toggle_disable} id="auth_user" type="text" placeholder="Change auth user" required
+                   bind:value={auth_user}/>
         </div>
         <div>
             <label for="auth_passwd">Auth User</label>
-            <input disabled={toggle_disable}  id="auth_passwd" type="password" placeholder="Change auth password" required bind:value={auth_passwd}/>
+            <input disabled={toggle_disable} id="auth_passwd" type="password" placeholder="Change auth password"
+                   required bind:value={auth_passwd}/>
         </div>
 
         <button class="toggle_button" disabled={toggle_disable} type="submit">Change</button>
