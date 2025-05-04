@@ -6,14 +6,15 @@
     import {toast} from "@zerodevx/svelte-toast";
     import {A, Button, ButtonGroup, Checkbox, Heading, Input, InputAddon} from 'svelte-5-ui-lib';
     import {EyeOutline, EyeSlashOutline, GithubSolid} from 'flowbite-svelte-icons';
-
+    import { load } from '@tauri-apps/plugin-store';
+    import {onMount} from "svelte";
     let show_password = $state(false);
 
     // generate a random port number
-    let server_port = $state(Math.floor(Math.random() * (65535 - 1024 + 1) + 1024));
+    let server_port = $state(0);
+    let serve_path = $state("/storage/emulated/0/");
     let require_auth = $state(true);
     let auth_user = $state("user");
-    let serve_path = $state("/storage/emulated/0/");
     let auth_passwd = $state("User@1234");
     let allow_upload = $state(true);
 
@@ -26,6 +27,12 @@
         manageExternalStorage: PermissionState
     }
 
+    function share_files(){
+
+    }
+    function share_folder(){
+
+    }
     async function get_nic_info() {
         invoke('get_nic_info')
             .then((res) => {
@@ -62,6 +69,7 @@
             });
             return;
         }
+        await store.set('cfg', {server_port: server_port, serve_path: serve_path, require_auth: require_auth, auth_user: auth_user, auth_passwd: auth_passwd, allow_upload: allow_upload});
         if (server_running) {
             invoke('toggle_server', {
                 server_port: server_port,
@@ -190,12 +198,35 @@
     async function write(message: string) {
         // await writeTextFile('test.txt', message, {baseDir: BaseDirectory.Home});
     }
-
+    let store;
     // when using `"withGlobalTauri": true`, you may use
     // const { enable, isEnabled, disable } = window.__TAURI__.autostart;
-
-    // onMount(async () => {
-
+    onMount(async () => {
+        store = await load('settings.json', { autoSave: true });
+        const val = await store.get<{server_port:number, serve_path: string, require_auth: boolean, auth_user: string, auth_passwd: string, allow_upload: boolean}>('cfg');
+        if (val===undefined){
+            let _server_port = Math.floor(Math.random() * (65535 - 1024 + 1) + 1024);
+            let _serve_path ="/storage/emulated/0/";
+            let _require_auth =true;
+            let _auth_user ="user";
+            let _auth_passwd ="User@1234";
+            let _allow_upload =true;
+            await store.set('cfg', {server_port:_server_port, serve_path: _serve_path, require_auth: _require_auth, auth_user: _auth_user, auth_passwd: _auth_passwd, allow_upload: _allow_upload});
+            server_port = _server_port;
+            serve_path = _serve_path;
+            require_auth = _require_auth;
+            auth_user = _auth_user;
+            auth_passwd = _auth_passwd;
+            allow_upload = _allow_upload;
+            await store.save()
+        } else{
+            server_port = val.server_port;
+            serve_path = val.serve_path;
+            require_auth = val.require_auth;
+            auth_user = val.auth_user;
+            auth_passwd = val.auth_passwd;
+            allow_upload = val.allow_upload;
+        }
     // Enable autostart
     // await enable();
     // Check enable state
@@ -207,7 +238,7 @@
     // const command = Command.sidecar('binaries/tcc-xapp-hhk', []);
     // const response = await command.execute();
     // console.log(response);
-    // });
+    });
 
 </script>
 
@@ -272,7 +303,7 @@
                 </div>
             </div>
 
-            <Button class="toggle_button" disabled={toggle_disable} type="submit">Change</Button>
+            <Button class="toggle_button" disabled={toggle_disable} type="submit">Reconfigure</Button>
         </form>
         {#if server_running}
             server listening at:
@@ -280,10 +311,16 @@
             use the following links to access (tap to copy link):
             {#each listening_urls as url}
                 <div class="mt-4">
-                    <UrlInfo url={url}/>
+                    <UrlInfo url={url} require_auth={require_auth}/>
                 </div>
             {/each}
         {/if}
+        <Button class="ms-2" onclick={share_files}>
+            Share file(s)
+        </Button>
+        <Button class="ms-2" onclick={share_folder}>
+            Share a folder
+        </Button>
         <Button class="ms-2" onclick={acquire_permission_android}>
             Acquire permission on Android
         </Button>
@@ -292,7 +329,6 @@
             source code
         </A>
     </div>
-
 </main>
 
 

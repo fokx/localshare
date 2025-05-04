@@ -83,8 +83,15 @@ fn toggle_server(
         // Start the server
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
         // let runtime = tokio::runtime::Runtime::new().unwrap();
-        let join_handle =
-            tauri::async_runtime::spawn(dufs_main(shutdown_rx, server_port, serve_path,  require_auth, auth_user, auth_passwd, allow_upload));
+        let join_handle = tauri::async_runtime::spawn(dufs_main(
+            shutdown_rx,
+            server_port,
+            serve_path,
+            require_auth,
+            auth_user,
+            auth_passwd,
+            allow_upload,
+        ));
         // runtime.spawn(async move {
         //     actix_main(shutdown_rx).await;
         // });
@@ -112,7 +119,7 @@ async fn dufs_main(
     let mut args = Args::parse(matches).unwrap();
     if require_auth {
         let rules = vec![format!("{}:{}@/:rw", auth_user, auth_passwd)];
-        let rules: Vec<_> = rules.iter().map(|s|s.as_str()).collect();
+        let rules: Vec<_> = rules.iter().map(|s| s.as_str()).collect();
         args.auth = AccessControl::new(&rules).unwrap();
     }
     args.serve_path = serve_path.parse()?;
@@ -465,7 +472,7 @@ fn acquire_permission_android(app: tauri::AppHandle) -> Result<String, String> {
     let api = app.android_fs();
 
     // pick folder to read and write
-    api.acquire_manage_external_storage();
+    api.acquire_app_manage_external_storage();
     return Ok("done".to_string());
     let selected_folder = api
         .show_manage_dir_dialog(
@@ -626,6 +633,7 @@ fn collect_sys_info() -> String {
 pub fn run() {
     let server_handle = Arc::new(Mutex::new(None::<oneshot::Sender<()>>));
     tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(server_handle.clone())
         .plugin(tauri_plugin_fs::init())
