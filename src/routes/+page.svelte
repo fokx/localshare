@@ -6,8 +6,9 @@
     import {toast} from "@zerodevx/svelte-toast";
     import {A, Button, ButtonGroup, Checkbox, Heading, Input, InputAddon} from 'svelte-5-ui-lib';
     import {EyeOutline, EyeSlashOutline, GithubSolid} from 'flowbite-svelte-icons';
-    import { load } from '@tauri-apps/plugin-store';
+    import {load} from '@tauri-apps/plugin-store';
     import {onMount} from "svelte";
+
     let show_password = $state(false);
 
     // generate a random port number
@@ -15,7 +16,7 @@
     let serve_path = $state("/storage/emulated/0/");
     let require_auth = $state(true);
     let auth_user = $state("user");
-    let auth_passwd = $state("User@1234");
+    let auth_passwd = $state("User*1234");
     let allow_upload = $state(true);
 
     let server_running = $state(false);
@@ -27,12 +28,14 @@
         manageExternalStorage: PermissionState
     }
 
-    function share_files(){
+    function share_files() {
 
     }
-    function share_folder(){
+
+    function share_folder() {
 
     }
+
     async function get_nic_info() {
         invoke('get_nic_info')
             .then((res) => {
@@ -56,6 +59,10 @@
             .catch((e) => console.error(e));
     }
 
+    function is_str_invalid(s: string) {
+        return s.includes("@") || s.includes(":") || s.includes(" ") || s.includes("/") || s.includes("\\");
+    }
+
     async function reconfigure_server(event: Event) {
         event.preventDefault();
         toast.push('configuration saved');
@@ -67,48 +74,76 @@
                     '--toastColor': 'black',
                 }
             });
-            return;
-        }
-        await store.set('cfg', {server_port: server_port, serve_path: serve_path, require_auth: require_auth, auth_user: auth_user, auth_passwd: auth_passwd, allow_upload: allow_upload});
-        if (server_running) {
-            invoke('toggle_server', {
+        } else if (is_str_invalid(auth_user)) {
+            toast.push('auth_user cannot contain @: /\\', {
+                theme: {
+                    '--toastBackground': 'red',
+                    '--toastColor': 'black',
+                }
+            });
+        } else if (is_str_invalid(auth_passwd)) {
+            toast.push('auth_passwd cannot contain @: /\\', {
+                theme: {
+                    '--toastBackground': 'red',
+                    '--toastColor': 'black',
+                }
+            });
+        } else {
+            await store.set('cfg', {
                 server_port: server_port,
                 serve_path: serve_path,
                 require_auth: require_auth,
                 auth_user: auth_user,
-                auth_passwd: auth_passwd, allow_upload: allow_upload
-            })
-                .then((res) => {
-                    console.log('res', res);
-                    if (res === 'started') {
-                        server_running = true;
-                    } else if (res === 'stopped') {
-                        server_running = false;
-                    } else {
-                        console.error('unknown response from server');
-                    }
+                auth_passwd: auth_passwd,
+                allow_upload: allow_upload
+            });
+            if (server_running) {
+                invoke('toggle_server', {
+                    server_port: server_port,
+                    serve_path: serve_path,
+                    require_auth: require_auth,
+                    auth_user: auth_user,
+                    auth_passwd: auth_passwd, allow_upload: allow_upload
                 })
-                .catch((e) => console.error(e));
-            // sleep 500 ms for server to shut down
-            await new Promise(resolve => setTimeout(resolve, 500));
-            invoke('toggle_server', {
-                server_port: server_port,
-                serve_path: serve_path,
-                require_auth: require_auth,
-                auth_user: auth_user,
-                auth_passwd: auth_passwd, allow_upload: allow_upload
-            })
-                .then((res) => {
-                    console.log('res', res);
-                    if (res === 'started') {
-                        server_running = true;
-                    } else if (res === 'stopped') {
-                        server_running = false;
-                    } else {
-                        console.error('unknown response from server');
-                    }
+                    .then((res) => {
+                        console.log('res', res);
+                        if (res === 'started') {
+                            server_running = true;
+                        } else if (res === 'stopped') {
+                            server_running = false;
+                        } else {
+                            console.error('unknown response from server');
+                        }
+                    })
+                    .catch((e) => console.error(e))
+                    .finally(() => {
+                        toggle_disable = false;
+
+                    });
+                // sleep 500 ms for server to shut down
+                await new Promise(resolve => setTimeout(resolve, 500));
+                invoke('toggle_server', {
+                    server_port: server_port,
+                    serve_path: serve_path,
+                    require_auth: require_auth,
+                    auth_user: auth_user,
+                    auth_passwd: auth_passwd, allow_upload: allow_upload
                 })
-                .catch((e) => console.error(e));
+                    .then((res) => {
+                        console.log('res', res);
+                        if (res === 'started') {
+                            server_running = true;
+                        } else if (res === 'stopped') {
+                            server_running = false;
+                        } else {
+                            console.error('unknown response from server');
+                        }
+                    })
+                    .catch((e) => console.error(e))
+                    .finally(() => {
+                        toggle_disable = false;
+                    });
+            }
         }
         toggle_disable = false;
     }
@@ -198,20 +233,35 @@
     async function write(message: string) {
         // await writeTextFile('test.txt', message, {baseDir: BaseDirectory.Home});
     }
+
     let store;
     // when using `"withGlobalTauri": true`, you may use
     // const { enable, isEnabled, disable } = window.__TAURI__.autostart;
     onMount(async () => {
-        store = await load('settings.json', { autoSave: true });
-        const val = await store.get<{server_port:number, serve_path: string, require_auth: boolean, auth_user: string, auth_passwd: string, allow_upload: boolean}>('cfg');
-        if (val===undefined){
+        store = await load('settings.json', {autoSave: true});
+        const val = await store.get<{
+            server_port: number,
+            serve_path: string,
+            require_auth: boolean,
+            auth_user: string,
+            auth_passwd: string,
+            allow_upload: boolean
+        }>('cfg');
+        if (val === undefined) {
             let _server_port = Math.floor(Math.random() * (65535 - 1024 + 1) + 1024);
-            let _serve_path ="/storage/emulated/0/";
-            let _require_auth =true;
-            let _auth_user ="user";
-            let _auth_passwd ="User@1234";
-            let _allow_upload =true;
-            await store.set('cfg', {server_port:_server_port, serve_path: _serve_path, require_auth: _require_auth, auth_user: _auth_user, auth_passwd: _auth_passwd, allow_upload: _allow_upload});
+            let _serve_path = "/storage/emulated/0/";
+            let _require_auth = true;
+            let _auth_user = "user";
+            let _auth_passwd = "User@1234";
+            let _allow_upload = true;
+            await store.set('cfg', {
+                server_port: _server_port,
+                serve_path: _serve_path,
+                require_auth: _require_auth,
+                auth_user: _auth_user,
+                auth_passwd: _auth_passwd,
+                allow_upload: _allow_upload
+            });
             server_port = _server_port;
             serve_path = _serve_path;
             require_auth = _require_auth;
@@ -219,7 +269,7 @@
             auth_passwd = _auth_passwd;
             allow_upload = _allow_upload;
             await store.save()
-        } else{
+        } else {
             server_port = val.server_port;
             serve_path = val.serve_path;
             require_auth = val.require_auth;
@@ -227,17 +277,17 @@
             auth_passwd = val.auth_passwd;
             allow_upload = val.allow_upload;
         }
-    // Enable autostart
-    // await enable();
-    // Check enable state
-    // console.log(`registered for autostart? ${await isEnabled()}`);
-    // Disable autostart
-    // disable();
-    // import tauriapi from '@tauri-apps/api';
-    // const { taurishell } = tauriapi.shell;
-    // const command = Command.sidecar('binaries/tcc-xapp-hhk', []);
-    // const response = await command.execute();
-    // console.log(response);
+        // Enable autostart
+        // await enable();
+        // Check enable state
+        // console.log(`registered for autostart? ${await isEnabled()}`);
+        // Disable autostart
+        // disable();
+        // import tauriapi from '@tauri-apps/api';
+        // const { taurishell } = tauriapi.shell;
+        // const command = Command.sidecar('binaries/tcc-xapp-hhk', []);
+        // const response = await command.execute();
+        // console.log(response);
     });
 
 </script>
@@ -311,7 +361,7 @@
             use the following links to access (tap to copy link):
             {#each listening_urls as url}
                 <div class="mt-4">
-                    <UrlInfo url={url} require_auth={require_auth}/>
+                    <UrlInfo url={url} require_auth={require_auth} auth_user={auth_user} auth_passwd={auth_passwd}/>
                 </div>
             {/each}
         {/if}
@@ -324,7 +374,7 @@
         <Button class="ms-2" onclick={acquire_permission_android}>
             Acquire permission on Android
         </Button>
-        <A href="https://github.com/fokx/localshare" target="_blank"  class="font-medium hover:underline">
+        <A href="https://github.com/fokx/localshare" target="_blank" class="font-medium hover:underline">
             <GithubSolid class="ms-2 h-6 w-6 me-1"/>
             source code
         </A>

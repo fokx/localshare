@@ -124,6 +124,8 @@ async fn dufs_main(
     }
     args.serve_path = serve_path.parse()?;
     args.allow_upload = allow_upload;
+    args.allow_search = true;
+    args.allow_archive = true;
     // logger::init(args.log_file.clone()).map_err(|e| anyhow!("Failed to init logger, {e}"))?;
     // let (new_addrs, print_addrs) = check_addrs(&args)?;
     // args.addrs = new_addrs;
