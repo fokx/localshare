@@ -252,7 +252,7 @@
             let _serve_path = "/storage/emulated/0/";
             let _require_auth = true;
             let _auth_user = "user";
-            let _auth_passwd = "User@1234";
+            let _auth_passwd = "User*1234";
             let _allow_upload = true;
             await store.set('cfg', {
                 server_port: _server_port,
@@ -365,12 +365,12 @@
                 </div>
             {/each}
         {/if}
-        <Button class="ms-2" onclick={share_files}>
-            Share file(s)
-        </Button>
-        <Button class="ms-2" onclick={share_folder}>
-            Share a folder
-        </Button>
+<!--        <Button class="ms-2" onclick={share_files}>-->
+<!--            Share file(s)-->
+<!--        </Button>-->
+<!--        <Button class="ms-2" onclick={share_folder}>-->
+<!--            Share a folder-->
+<!--        </Button>-->
         <Button class="ms-2" onclick={acquire_permission_android}>
             Acquire permission on Android
         </Button>
