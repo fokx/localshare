@@ -21,6 +21,8 @@
     "fs:read-all",
     "fs:read-meta",
     "fs:write-files",
+    "fs:allow-mkdir",
+    "fs:allow-remove",
     "android-fs:default",
     "clipboard-manager:allow-write-text",
     "opener:default",
@@ -32,6 +34,7 @@
         }
       ]
     },
-    "store:default"
+    "store:default",
+    "sharetarget:default"
   ]
 }

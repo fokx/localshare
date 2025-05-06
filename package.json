@@ -1,6 +1,6 @@
 {
   "name": "localshare",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "",
   "type": "module",
   "scripts": {
@@ -37,7 +37,8 @@
     "@tauri-apps/plugin-store": "~2",
     "tailwindcss": "^4.1.5",
     "tauri-plugin-system-info-api": "^2.0.10",
-    "tauri-plugin-view-api": "^0.0.5"
+    "tauri-plugin-view-api": "^0.0.5",
+    "tauri-plugin-sharetarget-api": "0.1.6"
   },
   "devDependencies": {
     "@castlenine/svelte-qrcode": "^2.3.0",

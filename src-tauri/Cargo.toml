@@ -1,6 +1,6 @@
 [package]
 name = "localshare"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -78,3 +78,4 @@ pin-project-lite = "0.2"
 sha2 = "0.10.8"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-store = "2"
+tauri-plugin-sharetarget = { path = "../../tauri-plugin-sharetarget" }

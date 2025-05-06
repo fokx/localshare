@@ -56,6 +56,9 @@ importers:
       tailwindcss:
         specifier: ^4.1.5
         version: 4.1.5
+      tauri-plugin-sharetarget-api:
+        specifier: 0.1.6
+        version: 0.1.6
       tauri-plugin-system-info-api:
         specifier: ^2.0.10
         version: 2.0.10(typescript@5.6.3)
@@ -919,6 +922,9 @@ packages:
     resolution: {integrity: sha512-GNzQvQTOIP6RyTfE2Qxb8ZVlNmw0n88vp1szwWRimP02mnTsx3Wtn5qRdqY9w2XduFNUgvOwhNnQsjwCp+kqaQ==}
     engines: {node: '>=6'}
 
+  tauri-plugin-sharetarget-api@0.1.6:
+    resolution: {integrity: sha512-R9LgXu7hn8LaCW5ll8tJ4es0N2nCNVnptT4v3HTXInDra9pm5CuXalX3m5W7+/XTwOFn0sMRv4eOKz8S5FEy1w==}
+
   tauri-plugin-system-info-api@2.0.10:
     resolution: {integrity: sha512-QalL92OgjARjyBoK4RFMV1+JRdWKyWBqv+kMi2Y7rnLkIGQUvsMQwvyCcbjdV3qoDbeAdU97G7qu7uPoO+c+OQ==}
 
@@ -1667,6 +1673,10 @@ snapshots:
   tailwindcss@4.1.5: {}
 
   tapable@2.2.1: {}
+
+  tauri-plugin-sharetarget-api@0.1.6:
+    dependencies:
+      '@tauri-apps/api': 2.5.0
 
   tauri-plugin-system-info-api@2.0.10(typescript@5.6.3):
     dependencies:

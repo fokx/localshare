@@ -643,6 +643,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_view::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_sharetarget::init())
         .setup(|app| {
             // std::thread::spawn(move || block_on(tcc_main()));
             // tauri::async_runtime::spawn(actix_main());
