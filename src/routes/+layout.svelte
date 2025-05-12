@@ -37,11 +37,11 @@
 </main>
 <div class="">
     <BottomNav {activeUrl} position="absolute" innerClass="grid-cols-2">
-        <BottomNavItem btnName="Dufs" href="/">
-            <HomeSolid />
-        </BottomNavItem>
-        <BottomNavItem btnName="LocalSend" href="/localsend">
+        <BottomNavItem btnName="LocalSend" href="/">
             <ShareNodesSolid />
+        </BottomNavItem>
+        <BottomNavItem btnName="Dufs" href="/dufs">
+            <HomeSolid />
         </BottomNavItem>
     </BottomNav>
     <SvelteToast {options} />
