@@ -13,6 +13,7 @@ use tokio;
 // use tokio::task::JoinHandle;
 // use tauri::async_runtime::TokioJoinHandle;
 use tokio::sync::oneshot;
+use tauri_plugin_store::StoreExt;
 
 mod args;
 mod auth;
@@ -69,7 +70,7 @@ mod common;
 
 use crate::common::generate_fingerprint_plain;
 use axum::extract::Path;
-use common::{create_udp_socket, Message};
+use common::{create_udp_socket, Message, PeerInfo};
 // use std::io::prelude::*;
 use futures::{Stream, TryStreamExt};
 use std::collections::HashMap;
@@ -149,18 +150,29 @@ async fn announce(my_response: Arc<Message>) -> std::io::Result<()> {
     let udp = create_udp_socket(port)?;
     let addr: std::net::Ipv4Addr = "224.0.0.48".parse().unwrap();
     let mut count = 0;
-    // loop {
-    println!("{}", count);
-    let response_clone = my_response.clone();
-    udp.send_to(
-        &serde_json::to_vec(&*my_response).expect("Failed to serialize Message"),
-        (addr, port),
-    )
-    .await
-    .expect("cannot send message to socket");
-    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-    count += 1;
-    // }
+    let ANNOUNCE_INTERVAL = 3;
+    loop {
+        println!("{}", count);
+        let my_response_new = Message {
+            alias: my_response.alias.clone(),
+            version: my_response.version.clone(),
+            device_model: my_response.device_model.clone(),
+            device_type: my_response.device_type.clone(),
+            fingerprint: my_response.fingerprint.clone(),
+            port: my_response.port,
+            protocol: my_response.protocol.clone(),
+            download: my_response.download,
+            announce: true,
+        };
+        udp.send_to(
+            &serde_json::to_vec(&my_response_new).expect("Failed to serialize Message"),
+            (addr, port),
+        )
+        .await
+        .expect("cannot send message to socket");
+        tokio::time::sleep(std::time::Duration::from_secs(ANNOUNCE_INTERVAL)).await;
+        count += 1;
+    }
     Ok(())
 }
 
@@ -236,13 +248,13 @@ async fn client_test() -> std::io::Result<()> {
     println!("test client fingerprint : {}", my_fingerprint);
     let port = 8848;
     let my_response = Arc::new(Message {
-        alias: "example".to_string(),
-        version: "1.0".to_string(),
-        device_model: Some("model_x".to_string()),
-        device_type: Some("type_y".to_string()),
+        alias: my_fingerprint[0..6].to_string(),
+        version: "2.1".to_string(),
+        device_model: Some("unimplemented".to_string()),
+        device_type: Some("unimplemented".to_string()),
         fingerprint: my_fingerprint.clone(),
         port,
-        protocol: "UDP".to_string(),
+        protocol: "http".to_string(),
         download: Some(true),
         announce: false,
     });
@@ -840,6 +852,7 @@ fn collect_sys_info() -> String {
     return result;
 }
 async fn daemon(
+    app_handle: tauri::AppHandle,
     port: u16,
     my_response: Arc<Message>,
     my_fingerprint: String,
@@ -847,6 +860,8 @@ async fn daemon(
     let udp = create_udp_socket(port)?;
     let mut buf = [0; 1024];
     let addr: std::net::Ipv4Addr = "224.0.0.48".parse().unwrap();
+    let app_handle_clone = app_handle.clone();
+    let store = app_handle_clone.store("peers.json").unwrap();
 
     loop {
         let (count, remote_addr) = udp.recv_from(&mut buf).await?;
@@ -854,16 +869,23 @@ async fn daemon(
         let udp_clone = Arc::clone(&udp);
         let response_clone = my_response.clone();
         let my_fingerprint_clone = my_fingerprint.clone();
+        let store_clone = store.clone();
 
         tauri::async_runtime::spawn(async move {
-            if let Ok(parsed) = serde_json::from_slice::<Message>(&data) {
-                if parsed.fingerprint == my_fingerprint_clone {
+            if let Ok(parsed_msg) = serde_json::from_slice::<Message>(&data) {
+                let peer_fingerprint = parsed_msg.fingerprint.clone();
+                if parsed_msg.fingerprint == my_fingerprint_clone {
                     println!("skip my own fingerprint");
                     return;
                 }
+                // if fingerprint is in keys of the store, return
+                if store_clone.get(&peer_fingerprint).is_some() {
+                    println!("skip already registered fingerprint: {}", peer_fingerprint);
+                    return;
+                }
                 println!(
-                    "received multicast message from {:?}: {:?}",
-                    remote_addr, parsed
+                    "received new multicast message from {:?}: {:?}",
+                    remote_addr, parsed_msg
                 );
                 udp_clone
                     .send_to(
@@ -872,6 +894,11 @@ async fn daemon(
                     )
                     .await
                     .expect("Send error");
+                let peer_info = PeerInfo{
+                    message: parsed_msg,
+                    remote_addrs: vec![remote_addr],
+                };
+                store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
             } else {
                 println!("Failed to parse message");
             }
@@ -947,7 +974,9 @@ pub fn run() {
                     .unwrap();
                 axum::serve(listener, app).await.unwrap()
             });
+            let app_handle = app.handle().clone();
             let handle_daemon = tauri::async_runtime::spawn(daemon(
+                app_handle,
                 port,
                 my_response_for_daemon,
                 my_fingerprint.clone(),

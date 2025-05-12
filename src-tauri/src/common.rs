@@ -20,6 +20,12 @@ pub struct Message {
     pub announce: bool,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct PeerInfo {
+    pub message: Message,
+    pub remote_addrs: Vec<SocketAddr>,
+}
+
 pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket>> {
     let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
     socket.set_reuse_address(true)?;
