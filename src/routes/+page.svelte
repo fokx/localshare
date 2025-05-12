@@ -1,17 +1,17 @@
 <script lang="ts">
     // import {BaseDirectory, writeTextFile} from '@tauri-apps/plugin-fs';
     // import {enable, isEnabled} from '@tauri-apps/plugin-autostart';
-    import {invoke, type PermissionState} from '@tauri-apps/api/core'
+    import {invoke, type PermissionState, PluginListener} from '@tauri-apps/api/core'
     import UrlInfo from '../components/UrlInfo.svelte';
     import {toast} from "@zerodevx/svelte-toast";
     import {A, Button, ButtonGroup, Checkbox, Heading, Input, InputAddon} from 'svelte-5-ui-lib';
     import {EyeOutline, EyeSlashOutline, GithubSolid} from 'flowbite-svelte-icons';
     import {load} from '@tauri-apps/plugin-store';
     import {onMount} from "svelte";
-    import { listenForShareEvents, type ShareEvent } from 'tauri-plugin-sharetarget-api';
-    import { PluginListener } from '@tauri-apps/api/core';
-    import {BaseDirectory, exists, mkdir, readFile, remove, writeFile} from "@tauri-apps/plugin-fs";
+    import {listenForShareEvents, type ShareEvent} from 'tauri-plugin-sharetarget-api';
+    import {exists, mkdir, readFile, writeFile} from "@tauri-apps/plugin-fs";
     import * as path from '@tauri-apps/api/path';
+
     let show_password = $state(false);
 
     // generate a random port number
@@ -246,7 +246,7 @@
         let listener: PluginListener;
         const setupListener = async () => {
             listener = await listenForShareEvents(async (intent: ShareEvent) => {
-                if(intent.stream) {
+                if (intent.stream) {
                     const contents = await readFile(intent.stream).catch((error: Error) => {
                         console.warn('fetching shared content failed:');
                         throw error;
@@ -266,7 +266,7 @@
                     // console.log(await path.resourceDir());
                     // console.log('2');
                     // console.log(await path.tempDir());
-                    log_disp += "\n----------------------------------\n"+tmp_dir_name;
+                    log_disp += "\n----------------------------------\n" + tmp_dir_name;
                     const dirExists = await exists(tmp_dir_name);
                     if (!dirExists) {
                         // await remove(tmp_dir_name, {
@@ -330,10 +330,10 @@
                     log_disp = 'unable to share:\n' + intent.uri;
                     console.warn('unused share intent', intent.uri);
                 }
-                log_disp += "\n----------------------------------\n"+intent.name;
-                log_disp += "\n----------------------------------\n"+intent.stream;
-                log_disp += "\n----------------------------------\n"+intent.content_type;
-                log_disp += "\n----------------------------------\n"+intent.uri;
+                log_disp += "\n----------------------------------\n" + intent.name;
+                log_disp += "\n----------------------------------\n" + intent.stream;
+                log_disp += "\n----------------------------------\n" + intent.content_type;
+                log_disp += "\n----------------------------------\n" + intent.uri;
             });
         };
         setupListener();
@@ -400,132 +400,96 @@
 
 </script>
 
-<main class="container">
-    <Heading tag="h2" class="text-primary-700 dark:text-primary-500"
-    >Share file locally
-        <Button class="ms-2" onclick={toggle_server} disabled={toggle_disable}>
-            {#if server_running}stop{:else}start{/if} sharing
-        </Button>
-    </Heading>
+<Heading tag="h2" class="text-primary-700 dark:text-primary-500"
+>Share file locally
+    <Button class="ms-2" onclick={toggle_server} disabled={toggle_disable}>
+        {#if server_running}stop{:else}start{/if} sharing
+    </Button>
+</Heading>
 
-    <div class="my-3">
-        <form class="mb-4" onsubmit={reconfigure_server}>
-            <div class="mb-6 grid grid-cols-2">
-                <div>
-                    <label class="black dark:bg-black" for="server_port">Port</label>
-                    <Input disabled={toggle_disable} id="server_port" type="number" placeholder="Change server port"
-                           bind:value={server_port}/>
-                </div>
-                <div>
-                    <label for="allow_upload">Allow upload</label>
-                    <Checkbox disabled={toggle_disable} id="allow_upload" type="checkbox"
-                              bind:checked={allow_upload}/>
-                </div>
-                <div>
-                    <label for="serve_path">Serve Path</label>
-                    <Input disabled={toggle_disable} id="serve_path" type="text" placeholder="Change auth user" required
-                           bind:value={serve_path}/>
-                </div>
-                <div>
-                    <label for="require_auth">Require Authentication</label>
-                    <Checkbox disabled={toggle_disable} id="require_auth"
-                              bind:checked={require_auth}/>
-                </div>
-                <div>
-                    <label for="auth_user">Auth User</label>
-                    <Input disabled={toggle_disable} id="auth_user" type="text" placeholder="Change auth user" required
-                           bind:value={auth_user}/>
-                </div>
-                <div>
-                    <label for="auth_passwd">Auth Password</label>
-                    <ButtonGroup size="lg">
-                        <InputAddon size="sm">
-                            <Button size="xs" class="mx-0" onclick={() => (show_password = !show_password)}>
-                                {#if show_password}
-                                    <EyeOutline/>
-                                {:else}
-                                    <EyeSlashOutline/>
-                                {/if}
-                            </Button>
-                        </InputAddon>
-                        <Input
-                                id="auth_passwd"
-                                type={show_password ? 'text' : 'password'}
-                                autocomplete="new-password"
-                                placeholder="Change auth password"
-                                disabled={toggle_disable}
-                                required
-                                bind:value={auth_passwd}
-                        />
-                    </ButtonGroup>
-                </div>
+<div class="my-3">
+    <form class="mb-4" onsubmit={reconfigure_server}>
+        <div class="mb-6 grid grid-cols-2">
+            <div>
+                <label class="black dark:bg-black" for="server_port">Port</label>
+                <Input disabled={toggle_disable} id="server_port" type="number" placeholder="Change server port"
+                       bind:value={server_port}/>
             </div>
+            <div>
+                <label for="allow_upload">Allow upload</label>
+                <Checkbox disabled={toggle_disable} id="allow_upload" type="checkbox"
+                          bind:checked={allow_upload}/>
+            </div>
+            <div>
+                <label for="serve_path">Serve Path</label>
+                <Input disabled={toggle_disable} id="serve_path" type="text" placeholder="Change auth user" required
+                       bind:value={serve_path}/>
+            </div>
+            <div>
+                <label for="require_auth">Require Authentication</label>
+                <Checkbox disabled={toggle_disable} id="require_auth"
+                          bind:checked={require_auth}/>
+            </div>
+            <div>
+                <label for="auth_user">Auth User</label>
+                <Input disabled={toggle_disable} id="auth_user" type="text" placeholder="Change auth user" required
+                       bind:value={auth_user}/>
+            </div>
+            <div>
+                <label for="auth_passwd">Auth Password</label>
+                <ButtonGroup size="lg">
+                    <InputAddon size="sm">
+                        <Button size="xs" class="mx-0" onclick={() => (show_password = !show_password)}>
+                            {#if show_password}
+                                <EyeOutline/>
+                            {:else}
+                                <EyeSlashOutline/>
+                            {/if}
+                        </Button>
+                    </InputAddon>
+                    <Input
+                            id="auth_passwd"
+                            type={show_password ? 'text' : 'password'}
+                            autocomplete="new-password"
+                            placeholder="Change auth password"
+                            disabled={toggle_disable}
+                            required
+                            bind:value={auth_passwd}
+                    />
+                </ButtonGroup>
+            </div>
+        </div>
 
-            <Button class="toggle_button" disabled={toggle_disable} type="submit">Reconfigure</Button>
-        </form>
-        {#if server_running}
-            server listening at:
-            <p>{server_host}:{server_port}</p>
-            use the following links to access (tap to copy link):
-            {#each listening_urls as url}
-                <div class="mt-4">
-                    <UrlInfo url={url} require_auth={require_auth} auth_user={auth_user} auth_passwd={auth_passwd}/>
-                </div>
-            {/each}
-        {/if}
-<!--        <Button class="ms-2" onclick={share_files}>-->
-<!--            Share file(s)-->
-<!--        </Button>-->
-<!--        <Button class="ms-2" onclick={share_folder}>-->
-<!--            Share a folder-->
-<!--        </Button>-->
-        <Button class="ms-2" onclick={acquire_permission_android}>
-            Acquire permission on Android
-        </Button>
-        <A href="https://github.com/fokx/localshare" target="_blank" class="font-medium hover:underline">
-            <GithubSolid class="ms-2 h-6 w-6 me-1"/>
-            source code
-        </A>
+        <Button class="toggle_button" disabled={toggle_disable} type="submit">Reconfigure</Button>
+    </form>
+    {#if server_running}
+        server listening at:
+        <p>{server_host}:{server_port}</p>
+        use the following links to access (tap to copy link):
+        {#each listening_urls as url}
+            <div class="mt-4">
+                <UrlInfo url={url} require_auth={require_auth} auth_user={auth_user} auth_passwd={auth_passwd}/>
+            </div>
+        {/each}
+    {/if}
+    <!--        <Button class="ms-2" onclick={share_files}>-->
+    <!--            Share file(s)-->
+    <!--        </Button>-->
+    <!--        <Button class="ms-2" onclick={share_folder}>-->
+    <!--            Share a folder-->
+    <!--        </Button>-->
+    <Button class="ms-2" onclick={acquire_permission_android}>
+        Acquire permission on Android
+    </Button>
+    <A href="https://github.com/fokx/localshare" target="_blank" class="font-medium hover:underline">
+        <GithubSolid class="ms-2 h-6 w-6 me-1"/>
+        source code
+    </A>
 
-        <p>log_disp</p>
-        <p>{log_disp}</p>
-        <p>{file}</p>
-    </div>
-
-</main>
+    <p>log_disp</p>
+    <p>{log_disp}</p>
+    <p>{file}</p>
+</div>
 
 
-<style>
-    :root {
-        font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-        /*font-size: 16px;*/
-        /*line-height: 24px;*/
-        /*font-weight: 400;*/
 
-        color: #0f0f0f;
-        background-color: #f6f6f6;
-
-        /*font-synthesis: none;*/
-        /*text-rendering: optimizeLegibility;*/
-        /*-webkit-font-smoothing: antialiased;*/
-        /*-moz-osx-font-smoothing: grayscale;*/
-        /*-webkit-text-size-adjust: 100%;*/
-    }
-
-    @media (prefers-color-scheme: dark) {
-        :root {
-            color: #f6f6f6;
-            background-color: #2f2f2f;
-        }
-    }
-
-    .container {
-        margin: 0;
-        padding-top: 10vh;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        text-align: center;
-    }
-
-</style>
