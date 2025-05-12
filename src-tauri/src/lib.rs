@@ -11,11 +11,11 @@ use tauri_plugin_android_fs::{
     AndroidFs, AndroidFsExt, FileUri, InitialLocation, PersistableAccessMode, PrivateDir,
 };
 
-use tokio;
 // use tokio::task::JoinHandle;
 // use tauri::async_runtime::TokioJoinHandle;
 use tauri_plugin_log::{Target, TargetKind};
 use tauri_plugin_store::StoreExt;
+use tokio;
 use tokio::sync::oneshot;
 mod args;
 mod auth;
@@ -881,26 +881,36 @@ async fn daemon(
                     return;
                 }
                 // if fingerprint is in keys of the store, return
-                if store_clone.get(&peer_fingerprint).is_some() {
-                    debug!("skip already registered fingerprint: {}", peer_fingerprint);
-                    return;
+                if let Some(sss) = store_clone.get(&peer_fingerprint) {
+                    let peer_info: PeerInfo = serde_json::from_value(sss).unwrap();
+                    if peer_info.remote_addrs.contains(&remote_addr) {
+                        debug!("skip already registered fingerprint: {}", peer_fingerprint);
+                        return;
+                    } else {
+                        debug!("add new remote address: {:?}", remote_addr);
+                        let mut peer_info = peer_info;
+                        peer_info.remote_addrs.push(remote_addr);
+                        store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
+                    }
+                } else {
+                    debug!(
+                        "received new multicast message from {:?}: {:?}",
+                        remote_addr, parsed_msg
+                    );
+                    udp_clone
+                        .send_to(
+                            &serde_json::to_vec(&*response_clone)
+                                .expect("Failed to serialize Message"),
+                            (addr, port),
+                        )
+                        .await
+                        .expect("Send error");
+                    let peer_info = PeerInfo {
+                        message: parsed_msg,
+                        remote_addrs: vec![remote_addr],
+                    };
+                    store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
                 }
-                debug!(
-                    "received new multicast message from {:?}: {:?}",
-                    remote_addr, parsed_msg
-                );
-                udp_clone
-                    .send_to(
-                        &serde_json::to_vec(&*response_clone).expect("Failed to serialize Message"),
-                        (addr, port),
-                    )
-                    .await
-                    .expect("Send error");
-                let peer_info = PeerInfo {
-                    message: parsed_msg,
-                    remote_addrs: vec![remote_addr],
-                };
-                store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
             } else {
                 log::warn!("Failed to parse incoming multicast message");
             }
@@ -910,6 +920,7 @@ async fn daemon(
     Ok(())
 }
 
+#[derive(Default)]
 struct AppData {
     addr: &'static str,
     port: u16,
