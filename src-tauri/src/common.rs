@@ -23,9 +23,17 @@ pub struct Message {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct PeerInfo {
     pub message: Message,
-    pub remote_addrs: Vec<SocketAddr>,
+    pub remote_addrs: std::collections::VecDeque<SocketAddr>,
 }
-
+impl PeerInfo {
+    pub fn add_remote_addr(&mut self, addr: SocketAddr) {
+        const MAX_SIZE: usize = 10; // Set your desired limit
+        if self.remote_addrs.len() == MAX_SIZE {
+            self.remote_addrs.pop_front(); // Remove the oldest element
+        }
+        self.remote_addrs.push_back(addr);
+    }
+}
 pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket>> {
     let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
     socket.set_reuse_address(true)?;

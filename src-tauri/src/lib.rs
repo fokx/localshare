@@ -889,7 +889,7 @@ async fn daemon(
                     } else {
                         debug!("add new remote address: {:?}", remote_addr);
                         let mut peer_info = peer_info;
-                        peer_info.remote_addrs.push(remote_addr);
+                        peer_info.add_remote_addr(remote_addr);
                         peers_store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
                     }
                 } else {
@@ -907,7 +907,7 @@ async fn daemon(
                         .expect("Send error");
                     let peer_info = PeerInfo {
                         message: parsed_msg,
-                        remote_addrs: vec![remote_addr],
+                        remote_addrs: vec![remote_addr].into(),
                     };
                     peers_store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
                 }
@@ -951,6 +951,7 @@ pub fn run() {
             //     port: 53317,
             // }));
             let my_fingerprint = generate_fingerprint_plain();
+            warn!("my fingerprint : {}", my_fingerprint);
             let port = 53317;
             let my_response = Arc::new(Message {
                 alias: "example".to_string(),
