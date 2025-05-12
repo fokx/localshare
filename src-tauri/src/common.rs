@@ -30,7 +30,7 @@ pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket
     let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
     socket.set_reuse_address(true)?;
     socket.set_nonblocking(true)?;
-    let addr = "224.0.0.48".parse().unwrap();
+    let addr = "224.0.0.167".parse().unwrap();
     socket.join_multicast_v4(&addr, &Ipv4Addr::UNSPECIFIED)?;
     #[cfg(not(windows))]
     socket.bind(&SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into())?;

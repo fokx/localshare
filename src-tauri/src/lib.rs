@@ -148,9 +148,9 @@ async fn upload_handler(
 }
 
 async fn announce(my_response: Arc<Message>) -> std::io::Result<()> {
-    let port = 8848;
+    let port = 53317;
     let udp = create_udp_socket(port)?;
-    let addr: std::net::Ipv4Addr = "224.0.0.48".parse().unwrap();
+    let addr: std::net::Ipv4Addr = "224.0.0.167".parse().unwrap();
     let mut count = 0;
     let ANNOUNCE_INTERVAL = 3;
     loop {
@@ -248,7 +248,7 @@ async fn client_test() -> std::io::Result<()> {
     // https://stackoverflow.com/questions/25106554/why-doesnt-println-work-in-rust-unit-tests
     let my_fingerprint = generate_fingerprint_plain();
     debug!("test client fingerprint : {}", my_fingerprint);
-    let port = 8848;
+    let port = 53317;
     let my_response = Arc::new(Message {
         alias: my_fingerprint[0..6].to_string(),
         version: "2.1".to_string(),
@@ -268,7 +268,7 @@ async fn client_test() -> std::io::Result<()> {
     // POST to "/api/localsend/v2/register"
     let client = reqwest::Client::new();
     let res = client
-        .post(format!("http://127.0.0.1:8848/api/localsend/v2/register"))
+        .post(format!("http://127.0.0.1:53317/api/localsend/v2/register"))
         .json(&*my_response_clone)
         .send()
         .await;
@@ -861,7 +861,7 @@ async fn daemon(
 ) -> std::io::Result<()> {
     let udp = create_udp_socket(port)?;
     let mut buf = [0; 1024];
-    let addr: std::net::Ipv4Addr = "224.0.0.48".parse().unwrap();
+    let addr: std::net::Ipv4Addr = "224.0.0.167".parse().unwrap();
     let app_handle_clone = app_handle.clone();
     let peers_store = app_handle_clone.store("peers.json").unwrap();
 
@@ -947,11 +947,11 @@ pub fn run() {
         .plugin(tauri_plugin_sharetarget::init())
         .setup(|app| {
             // app.manage(Mutex::new(AppData {
-            //     addr: "224.0.0.48",
-            //     port: 8848,
+            //     addr: "224.0.0.167",
+            //     port: 53317,
             // }));
             let my_fingerprint = generate_fingerprint_plain();
-            let port = 8848;
+            let port = 53317;
             let my_response = Arc::new(Message {
                 alias: "example".to_string(),
                 version: "1.0".to_string(),
