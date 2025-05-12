@@ -35,6 +35,8 @@
       ]
     },
     "store:default",
-    "sharetarget:default"
+    "sharetarget:default",
+    "log:default",
+    "log:default"
   ]
 }

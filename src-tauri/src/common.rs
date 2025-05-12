@@ -1,9 +1,9 @@
 // src/common.rs
+use rcgen::{Certificate, KeyPair};
+use serde::Serialize;
 use socket2::{Domain, Protocol, Socket, Type};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
-use rcgen::{Certificate, KeyPair};
-use serde::Serialize;
 
 // LocalSend Protocol v2.1
 // https://github.com/localsend/protocol/blob/main/README.md
@@ -41,7 +41,7 @@ pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket
     let addr = SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), port);
     #[cfg(windows)]
     socket.bind(&socket2::SockAddr::from(addr));
-    
+
     Ok(Arc::new(tokio::net::UdpSocket::from_std(socket.into())?))
 }
 
@@ -67,12 +67,11 @@ pub fn generate_fingerprint_plain() -> String {
 pub fn generate_cert_key() -> (Certificate, KeyPair) {
     use rcgen::{generate_simple_self_signed, CertifiedKey};
     // Generate a certificate that's valid for "localhost" and "hello.world.example"
-    let subject_alt_names = vec!["hello.world.example".to_string(),
-                                 "localhost".to_string()];
+    let subject_alt_names = vec!["hello.world.example".to_string(), "localhost".to_string()];
 
     let CertifiedKey { cert, key_pair } = generate_simple_self_signed(subject_alt_names).unwrap();
     // println!("{}", cert.pem());
     println!("{}", key_pair.serialize_pem());
- 
+
     return (cert, key_pair);
 }

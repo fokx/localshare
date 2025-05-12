@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate log;
 use futures::StreamExt;
+use log::{debug, error, info, trace, warn};
 use network_interface::NetworkInterface;
 use network_interface::NetworkInterfaceConfig;
 use sysinfo::{Disks, System};
@@ -9,12 +10,13 @@ use tauri::Manager;
 use tauri_plugin_android_fs::{
     AndroidFs, AndroidFsExt, FileUri, InitialLocation, PersistableAccessMode, PrivateDir,
 };
+
 use tokio;
 // use tokio::task::JoinHandle;
 // use tauri::async_runtime::TokioJoinHandle;
-use tokio::sync::oneshot;
+use tauri_plugin_log::{Target, TargetKind};
 use tauri_plugin_store::StoreExt;
-
+use tokio::sync::oneshot;
 mod args;
 mod auth;
 mod http_logger;
@@ -82,7 +84,7 @@ async fn register_handler(
     Json(payload): Json<Message>,
 ) -> Json<Message> {
     // Here you can process the payload as needed
-    println!("axum register_handler received message: {:?}", payload);
+    debug!("axum register_handler received message: {:?}", payload);
 
     // Use my_response instead of creating a new response Message
     // Return the pre-defined response as JSON
@@ -93,8 +95,8 @@ async fn prepare_upload_handler(
     Query(pin): Query<Option<String>>,
     Json(payload): Json<PrepareUploadRequest>,
 ) -> Json<HashMap<String, String>> {
-    println!("Received request with pin: {:?}", pin);
-    println!("Payload: {:?}", payload);
+    debug!("Received request with pin: {:?}", pin);
+    debug!("Payload: {:?}", payload);
 
     // Generate session ID and file tokens
     let session_id = format!("mySessionId"); // Replace it with actual session ID generation logic
@@ -152,7 +154,7 @@ async fn announce(my_response: Arc<Message>) -> std::io::Result<()> {
     let mut count = 0;
     let ANNOUNCE_INTERVAL = 3;
     loop {
-        println!("{}", count);
+        debug!("announce sequence {}", count);
         let my_response_new = Message {
             alias: my_response.alias.clone(),
             version: my_response.version.clone(),
@@ -245,7 +247,7 @@ async fn client_test() -> std::io::Result<()> {
     // cargo test -- --nocapture
     // https://stackoverflow.com/questions/25106554/why-doesnt-println-work-in-rust-unit-tests
     let my_fingerprint = generate_fingerprint_plain();
-    println!("test client fingerprint : {}", my_fingerprint);
+    debug!("test client fingerprint : {}", my_fingerprint);
     let port = 8848;
     let my_response = Arc::new(Message {
         alias: my_fingerprint[0..6].to_string(),
@@ -272,10 +274,10 @@ async fn client_test() -> std::io::Result<()> {
         .await;
     match res {
         Ok(response) => {
-            println!("Response: {:?}", response);
+            debug!("Response: {:?}", response);
         }
         Err(e) => {
-            println!("Error: {:?}", e);
+            debug!("Error: {:?}", e);
         }
     }
     Ok(())
@@ -292,12 +294,12 @@ fn toggle_server(
     auth_passwd: String,
     allow_upload: bool,
 ) -> Result<String, String> {
-    println!("using server_port: {}", server_port);
+    debug!("using server_port: {}", server_port);
     let mut state_locked = server_handle.lock().unwrap();
 
     if let Some(shutdown_tx) = state_locked.take() {
         // Stop the server
-        println!("Stopping server");
+        warn!("Stopping server");
         let _ = shutdown_tx.send(()); // Send the shutdown signal
         return Ok("stopped".to_string());
     } else {
@@ -366,12 +368,12 @@ async fn dufs_main(
                 let (stream, peer_addr) = match conn {
                     Ok(conn) => conn,
                     Err(e) => {
-                        eprintln!("accept error: {}", e);
+                        warn!("accept error: {}", e);
                         tokio::time::sleep(Duration::from_secs(1)).await;
                         continue;
                     }
                 };
-                eprintln!("incomming connection accepted: {}", peer_addr);
+                debug!("incomming connection accepted: {}", peer_addr);
                 // let io = TokioIo::new(stream);
                 let io = hyper_util::rt::TokioIo::new(Box::pin(stream));
                 let srever_handle_clone = server_handle.clone();
@@ -384,14 +386,14 @@ async fn dufs_main(
                 let fut = graceful.watch(conn.into_owned());
                 tokio::spawn(async move {
                     if let Err(e) = fut.await {
-                        eprintln!("Error serving connection: {:?}", e);
+                        warn!("Error serving connection: {:?}", e);
                     }
-                    eprintln!("connection dropped: {}", peer_addr);
+                    debug!("connection dropped: {}", peer_addr);
                 });
             },
             _ = signal.as_mut() => {
                 drop(listener);
-                eprintln!("graceful shutdown signal received");
+                warn!("graceful shutdown signal received");
                 // stop the accept loop
                 break;
             }
@@ -401,19 +403,19 @@ async fn dufs_main(
             //         Ok::<_,std::io::Error>(())
             //     } => {}
             // _ = rx => {
-            //     println!("terminating async task");
+            //     debug!("terminating async task");
             //     running.store(false, Ordering::SeqCst);
-            //     println!("async task terminated");
+            //     debug!("async task terminated");
             // },
         }
     }
 
     tokio::select! {
         _ = graceful.shutdown() => {
-            eprintln!("all connections gracefully closed");
+            warn!("all connections gracefully closed");
         },
         _ = tokio::time::sleep(std::time::Duration::from_secs(1)) => {
-            eprintln!("timed out wait for all connections to close");
+            warn!("timed out wait for all connections to close");
         }
     }
 
@@ -714,22 +716,22 @@ fn acquire_permission_android(app: tauri::AppHandle) -> Result<String, String> {
         // },
         // }
         // }
-        println!("reading /storage/emulated/0/books/index.html");
-        println!("Selected folder: {:?}", &selected_dir_uri);
+        debug!("reading /storage/emulated/0/books/index.html");
+        debug!("Selected folder: {:?}", &selected_dir_uri);
         let res3 = std::fs::read_to_string("/storage/emulated/0/books/index.html").unwrap();
-        println!("res3: {:?}", res3);
+        debug!("res3: {:?}", res3);
 
         let res1 = api
             .check_persisted_uri_permission(&selected_dir_uri, PersistableAccessMode::ReadAndWrite)
             .unwrap();
-        println!("res1 {:?}", res1);
+        debug!("res1 {:?}", res1);
         let res2 = api
             .take_persistable_uri_permission(&selected_dir_uri)
             .unwrap();
-        println!("res2 {:?}", res2);
+        debug!("res2 {:?}", res2);
         let persisted_uri_perms = api.get_all_persisted_uri_permissions();
         for permission in persisted_uri_perms {
-            println!("Persisted URI: {:?}", permission.collect::<Vec<_>>());
+            debug!("Persisted URI: {:?}", permission.collect::<Vec<_>>());
         }
         // let file_path: tauri_plugin_fs::FilePath = selected_dir_uri.into();
         // let file_path = PathResolver::file_name(selected_dir_uri);
@@ -743,7 +745,7 @@ fn acquire_permission_android(app: tauri::AppHandle) -> Result<String, String> {
                     mime_type,
                     ..
                 } => {
-                    println!("***file {:?}", (name, uri, last_modified, len, mime_type));
+                    debug!("***file {:?}", (name, uri, last_modified, len, mime_type));
                 }
                 tauri_plugin_android_fs::Entry::Dir {
                     name,
@@ -751,7 +753,7 @@ fn acquire_permission_android(app: tauri::AppHandle) -> Result<String, String> {
                     last_modified,
                     ..
                 } => {
-                    println!("***dir {:?}", (name, uri, last_modified));
+                    debug!("***dir {:?}", (name, uri, last_modified));
                 }
             }
         }
@@ -875,15 +877,15 @@ async fn daemon(
             if let Ok(parsed_msg) = serde_json::from_slice::<Message>(&data) {
                 let peer_fingerprint = parsed_msg.fingerprint.clone();
                 if parsed_msg.fingerprint == my_fingerprint_clone {
-                    println!("skip my own fingerprint");
+                    debug!("skip my own fingerprint");
                     return;
                 }
                 // if fingerprint is in keys of the store, return
                 if store_clone.get(&peer_fingerprint).is_some() {
-                    println!("skip already registered fingerprint: {}", peer_fingerprint);
+                    debug!("skip already registered fingerprint: {}", peer_fingerprint);
                     return;
                 }
-                println!(
+                debug!(
                     "received new multicast message from {:?}: {:?}",
                     remote_addr, parsed_msg
                 );
@@ -894,13 +896,13 @@ async fn daemon(
                     )
                     .await
                     .expect("Send error");
-                let peer_info = PeerInfo{
+                let peer_info = PeerInfo {
                     message: parsed_msg,
                     remote_addrs: vec![remote_addr],
                 };
                 store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
             } else {
-                println!("Failed to parse message");
+                log::warn!("Failed to parse incoming multicast message");
             }
         });
     }
@@ -916,8 +918,13 @@ struct AppData {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let server_handle = Arc::new(Mutex::new(None::<oneshot::Sender<()>>));
-
+    #[cfg(debug_assertions)]
+    let log_level = log::LevelFilter::Debug;
+    #[cfg(not(debug_assertions))]
+    let log_level = log::LevelFilter::Info;
     tauri::Builder::default()
+        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(tauri_plugin_log::Builder::new().level(log_level).build())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(server_handle.clone())
