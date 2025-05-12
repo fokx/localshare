@@ -863,7 +863,7 @@ async fn daemon(
     let mut buf = [0; 1024];
     let addr: std::net::Ipv4Addr = "224.0.0.48".parse().unwrap();
     let app_handle_clone = app_handle.clone();
-    let store = app_handle_clone.store("peers.json").unwrap();
+    let peers_store = app_handle_clone.store("peers.json").unwrap();
 
     loop {
         let (count, remote_addr) = udp.recv_from(&mut buf).await?;
@@ -871,7 +871,7 @@ async fn daemon(
         let udp_clone = Arc::clone(&udp);
         let response_clone = my_response.clone();
         let my_fingerprint_clone = my_fingerprint.clone();
-        let store_clone = store.clone();
+        let peers_store_clone = peers_store.clone();
 
         tauri::async_runtime::spawn(async move {
             if let Ok(parsed_msg) = serde_json::from_slice::<Message>(&data) {
@@ -881,7 +881,7 @@ async fn daemon(
                     return;
                 }
                 // if fingerprint is in keys of the store, return
-                if let Some(sss) = store_clone.get(&peer_fingerprint) {
+                if let Some(sss) = peers_store_clone.get(&peer_fingerprint) {
                     let peer_info: PeerInfo = serde_json::from_value(sss).unwrap();
                     if peer_info.remote_addrs.contains(&remote_addr) {
                         debug!("skip already registered fingerprint: {}", peer_fingerprint);
@@ -890,7 +890,7 @@ async fn daemon(
                         debug!("add new remote address: {:?}", remote_addr);
                         let mut peer_info = peer_info;
                         peer_info.remote_addrs.push(remote_addr);
-                        store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
+                        peers_store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
                     }
                 } else {
                     debug!(
@@ -909,7 +909,7 @@ async fn daemon(
                         message: parsed_msg,
                         remote_addrs: vec![remote_addr],
                     };
-                    store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
+                    peers_store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
                 }
             } else {
                 log::warn!("Failed to parse incoming multicast message");

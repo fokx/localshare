@@ -3,7 +3,7 @@
     // import {enable, isEnabled} from '@tauri-apps/plugin-autostart';
     import {invoke, type PermissionState, PluginListener} from '@tauri-apps/api/core'
     import {toast} from "@zerodevx/svelte-toast";
-    import {A, Button, ButtonGroup, Checkbox, Heading, Input, InputAddon} from 'svelte-5-ui-lib';
+    import {A, Card, Button, ButtonGroup, Checkbox, Heading, Input, InputAddon} from 'svelte-5-ui-lib';
     import {EyeOutline, EyeSlashOutline, GithubSolid} from 'flowbite-svelte-icons';
     import {load} from '@tauri-apps/plugin-store';
     import {onMount} from "svelte";
@@ -13,7 +13,7 @@
     import { warn, debug, trace, info, error } from '@tauri-apps/plugin-log';
 
     let peers_store;
-    let peers = $state();
+    let peers = $state([]);
     onMount(async () => {
         peers_store = await load('peers.json');
         /*
@@ -36,28 +36,27 @@ pub struct PeerInfo {
     pub remote_addrs: Vec<SocketAddr>,
 }
          */
-        const val = await peers_store.get<Array<{
-            message: {
-                alias: string;
-                version: string;
-                device_model: string|null;
-                device_type: string|null;
-                fingerprint: string;
-                port: number;
-                protocol: string;
-                download: boolean|null;
-                announce: boolean|null;
-            },
-            remote_addrs: Array<{
-                ip: string;
-                port: number;
-            }>
-        }>>('cfg');
-        if (val !== undefined) {
-            console.log(peers);
-            debug(peers);
+        const keys = await peers_store.keys();
+        for (const key of keys) {
+            const val = await peers_store.get<Array<{
+                message: {
+                    alias: string;
+                    version: string;
+                    device_model: string | null;
+                    device_type: string | null;
+                    fingerprint: string;
+                    port: number;
+                    protocol: string;
+                    download: boolean | null;
+                    announce: boolean | null;
+                },
+                remote_addrs: Array<string>
+            }>>(key);
+            if (val !== undefined) {
+                peers.push(val);
+                console.log(val);
+            }
         }
-        peers = val;
         // Enable autostart
         // await enable();
         // Check enable state
@@ -72,6 +71,25 @@ pub struct PeerInfo {
     })
 </script>
 <Heading tag="h2" class="text-primary-700 dark:text-primary-500">
-LocalSend in Rust
-    {$inspect(peers)}
+    LocalSend in Rust
 </Heading>
+
+<div>
+    <Heading tag="h4" class="text-primary-700 dark:text-primary-500">
+        Peer List:
+    </Heading>
+    {#each peers as p}
+        <Card class="max-w-[250px]">
+            <h5 class="font-bold">
+                {p.message.alias}
+            </h5>
+            <p class="leading-tight font-normal text-gray-700 dark:text-gray-400">
+                {#each p.remote_addrs as addr}
+                    {addr}
+                {/each}
+            </p>
+        </Card>
+    {/each}
+</div>
+
+
