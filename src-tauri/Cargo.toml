@@ -30,7 +30,7 @@ tauri-plugin-dialog = "2"
 tauri-plugin-android-fs = { path = "../../tauri-plugin-android-fs", features = ["avoid-issue1"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-axum = "0.8.3"
+axum = { version="0.8.4", features = ["query"] }
 tower = { version = "0.5.2", features = ["util"] }
 tower-http = { version = "0.6.1", features = ["fs", "trace"] }
 
@@ -38,7 +38,7 @@ tower-http = { version = "0.6.1", features = ["fs", "trace"] }
 tokio = {version = "1.44.2", features = ["full"] }
 clap = { version = "4.5", features = ["wrap_help", "env"] }
 clap_complete = "4.5"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
+chrono = { version = "0.4",  features = ["clock"] }
 tokio-util = { version = "0.7",  features = ["io-util", "compat"] }
 hyper = { version = "1", features = ["http1", "server"] }
 percent-encoding = "2.3"
@@ -87,3 +87,4 @@ hex = "0.4.3"
 reqwest= { version = "0.12.15", features = ["json"] }
 rcgen = "0.13.2"
 tauri-plugin-log = "2"
+thiserror = "2.0.12"

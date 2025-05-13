@@ -53,8 +53,7 @@ use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 
 use crate::auth::AccessControl;
 use axum::{
-    extract::Query,
-    extract::Request,
+    extract::{Query, Request, State},
     handler::HandlerWithoutStateExt,
     http::StatusCode,
     routing::{get, post},
@@ -77,10 +76,11 @@ use common::{create_udp_socket, Message, PeerInfo};
 use futures::{Stream, TryStreamExt};
 use std::collections::HashMap;
 use std::io::{self, Error, Write};
+use serde::Deserialize;
 use serde_json::Value;
 use tokio::{fs::File, io::BufWriter};
 use tokio_util::io::StreamReader;
-async fn register_handler(
+async fn handler_register(
     my_response: Arc<Message>,
     Json(payload): Json<Message>,
 ) -> () {
@@ -94,13 +94,33 @@ async fn register_handler(
     // Json((*my_response).clone())
     ()
 }
+#[derive(Debug, serde::Deserialize)]
+struct PrepareUploadParams {
+    #[serde(default, deserialize_with = "empty_string_as_none")]
+    pin: Option<String>,
+}
 
-async fn prepare_upload_handler(
-    Query(pin): Query<Option<String>>,
+fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
+where
+        D: serde::Deserializer<'de>,
+        T: std::str::FromStr,
+        T::Err: std::fmt::Display,
+{
+    let opt = Option::<String>::deserialize(de)?;
+    match opt.as_deref() {
+        None | Some("") => Ok(None),
+        Some(s) => std::str::FromStr::from_str(s).map_err(serde::de::Error::custom).map(Some),
+    }
+}
+
+async fn handler_prepare_upload(
+    State(app_handle): State<tauri::AppHandle>,
+    Query(params): Query<PrepareUploadParams>,
     Json(payload): Json<PrepareUploadRequest>,
 ) -> Json<HashMap<String, String>> {
-    debug!("Received request with pin: {:?}", pin);
-    debug!("Payload: {:?}", payload);
+    debug!("axum handler_prepare_upload Payload: {:?}", payload);
+    debug!("axum handler_prepare_upload Received request with params: {:?}", params);
+    app_handle.emit("prepare-upload", ()).unwrap();
 
     // Generate session ID and file tokens
     let session_id = format!("mySessionId"); // Replace it with actual session ID generation logic
@@ -122,10 +142,12 @@ async fn prepare_upload_handler(
     })
 }
 
-async fn upload_handler(
+async fn handler_upload(
     Query(query_params): Query<UploadQuery>,
     body: axum::body::Body,
 ) -> Json<Result<(), String>> {
+    debug!("axum handler_prepare_upload query_params: {:?}", query_params);
+
     // Verify the session_id, file_id, and token for security
     if query_params.session_id != "mySessionId"
         || query_params.file_id != "file_id"
@@ -212,8 +234,8 @@ enum DeviceType {
 
 #[derive(serde::Deserialize, Debug)]
 enum Protocol {
-    Http,
-    Https,
+    http,
+    https,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -226,20 +248,36 @@ struct Files {
 #[derive(serde::Deserialize, Debug)]
 struct UploadFile {
     id: String,
-    file_name: String,
+    fileName: String,
     size: u64, // bytes
-    file_type: String,
+    fileType: String,
     sha256: Option<String>,   // nullable
     preview: Option<Vec<u8>>, // nullable
     metadata: Option<Metadata>,
 }
 
+
 #[derive(serde::Deserialize, Debug)]
 struct Metadata {
+    #[serde(default, deserialize_with = "deserialize_system_time")]
     modified: Option<std::time::SystemTime>,
     accessed: Option<std::time::SystemTime>,
 }
-
+// Localsend's time is in ISO 8601 format (e.g., "2024-06-06T15:25:34.000Z").
+// SystemTime does not natively support deserialization from such strings.
+fn deserialize_system_time<'de, D>(deserializer: D) -> Result<Option<std::time::SystemTime>, D::Error>
+where
+        D: serde::Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+    if let Some(date_str) = opt {
+        let parsed = chrono::DateTime::parse_from_rfc3339(&date_str)
+                .map_err(serde::de::Error::custom)?;
+        Ok(Some(std::time::SystemTime::from(parsed)))
+    } else {
+        Ok(None)
+    }
+}
 #[derive(serde::Deserialize, Debug)]
 struct UploadQuery {
     session_id: String,
@@ -1018,7 +1056,7 @@ pub fn run() {
 
             let my_response = Arc::new(Message {
                 alias: my_fingerprint[0..6].to_string(),
-                version: "1.0".to_string(),
+                version: "2.1".to_string(),
                 device_model: None,
                 device_type: None,
                 fingerprint: my_fingerprint.clone(),
@@ -1029,7 +1067,7 @@ pub fn run() {
             });
             app.manage(Message {
                 alias: my_fingerprint[0..6].to_string(),
-                version: "1.0".to_string(),
+                version: "2.1".to_string(),
                 device_model: None,
                 device_type: None,
                 fingerprint: my_fingerprint.clone(),
@@ -1043,13 +1081,13 @@ pub fn run() {
             let my_response_for_daemon = Arc::clone(&my_response);
 
             let handle_announce = tauri::async_runtime::spawn(periodic_announce(my_response_for_announce));
-
+            let app_handle_axum = app.handle().clone();
             let handle_axum_server = tauri::async_runtime::spawn(async move {
-                let app = Router::new()
+                let axum_app = Router::new()
                     .route(
                         "/api/localsend/v2/register",
                         post(move |Json(payload): Json<Message>| {
-                            register_handler(
+                            handler_register(
                                 Arc::clone(&my_response_for_route),
                                 Json::from(payload),
                             )
@@ -1057,15 +1095,16 @@ pub fn run() {
                     )
                     .route(
                         "/api/localsend/v2/prepare-upload",
-                        post(prepare_upload_handler),
+                        post(handler_prepare_upload),
                     )
-                    .route("/api/localsend/v2/upload", post(upload_handler))
-                    .route("/", get(|| async { "This is an axum server" }));
+                    .route("/api/localsend/v2/upload", post(handler_upload))
+                    .route("/", get(|| async { "This is an axum server" }))
+                    .with_state(app_handle_axum);
 
                 let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
                     .await
                     .unwrap();
-                axum::serve(listener, app).await.unwrap()
+                axum::serve(listener, axum_app).await.unwrap()
             });
             let app_handle = app.handle().clone();
             let handle_daemon = tauri::async_runtime::spawn(daemon(

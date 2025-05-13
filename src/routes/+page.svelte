@@ -44,12 +44,16 @@
     onMount(async () => {
         peers_store = await load('peers.json');
         refresh_peers();
-        const unlisten = await listen('refresh-peers', (event) => {
+        const unlisten_refresh_peers = await listen('refresh-peers', (event) => {
             console.log('event: refresh-peers', event);
             refresh_peers();
         });
+        const unlisten_prepare_upload = await listen('prepare-upload', (event) => {
+            console.log('event: prepare-upload', event);
+        });
         return () => {
-            unlisten();
+            unlisten_refresh_peers();
+            unlisten_prepare_upload();
         };
     });
 
@@ -71,20 +75,26 @@
 <div>
     <Button onclick={announce_once} disabled={announce_btn_disable}>Discover peers</Button>
     <Heading tag="h4" class="text-primary-700 dark:text-primary-500">
-        Peer List:
+        Peer List
     </Heading>
-    {#each peers as p}
-        <Card padding="xs">
-            <h5 class="font-bold">
-                {p.message.alias}
-            </h5>
-            <p class="leading-tight font-normal text-gray-700 dark:text-gray-400">
-                {#each p.remote_addrs as addr}
-                    {addr} <br>
-                {/each}
-            </p>
-        </Card>
-    {/each}
+    {#if peers.length === 0}
+        <p class="text-gray-500 dark:text-gray-400">
+            No peers found
+        </p>
+    {:else}
+        {#each peers as p}
+            <Card padding="xs">
+                <h5 class="font-bold">
+                    {p.message.alias}
+                </h5>
+                <p class="leading-tight font-normal text-gray-700 dark:text-gray-400">
+                    {#each p.remote_addrs as addr}
+                        {addr} <br>
+                    {/each}
+                </p>
+            </Card>
+        {/each}
+    {/if}
 </div>
 
 
