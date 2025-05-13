@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 // LocalSend Protocol v2.1
 // https://github.com/localsend/protocol/blob/main/README.md
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Message {
     pub alias: String,
     pub version: String,
@@ -17,7 +17,8 @@ pub struct Message {
     pub port: u16,
     pub protocol: String,
     pub download: Option<bool>,
-    pub announce: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub announce: Option<bool>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -27,7 +28,7 @@ pub struct PeerInfo {
 }
 impl PeerInfo {
     pub fn add_remote_addr(&mut self, addr: SocketAddr) {
-        const MAX_SIZE: usize = 10; // Set your desired limit
+        const MAX_SIZE: usize = 6; // Set your desired limit
         if self.remote_addrs.len() == MAX_SIZE {
             self.remote_addrs.pop_front(); // Remove the oldest element
         }
