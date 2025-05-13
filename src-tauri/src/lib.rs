@@ -14,7 +14,7 @@ use tauri_plugin_android_fs::{
 // use tokio::task::JoinHandle;
 // use tauri::async_runtime::TokioJoinHandle;
 use tauri_plugin_log::{Target, TargetKind};
-use tauri_plugin_store::StoreExt;
+use tauri_plugin_store::{JsonValue, StoreExt};
 use tokio;
 use tokio::sync::oneshot;
 mod args;
@@ -117,27 +117,31 @@ async fn handler_prepare_upload(
     State(app_handle): State<tauri::AppHandle>,
     Query(params): Query<PrepareUploadParams>,
     Json(payload): Json<PrepareUploadRequest>,
-) -> Json<HashMap<String, String>> {
+) -> Json<HashMap<String, JsonValue>> {
     debug!("axum handler_prepare_upload Payload: {:?}", payload);
     debug!("axum handler_prepare_upload Received request with params: {:?}", params);
     app_handle.emit("prepare-upload", ()).unwrap();
 
     // Generate session ID and file tokens
-    let session_id = format!("mySessionId"); // Replace it with actual session ID generation logic
+    let sessionId = format!("mySessionId"); // Replace it with actual session ID generation logic
     let mut files_tokens = HashMap::new();
 
-    for (file_id, _) in &payload.files.files {
-        let token = format!("token_for_{}", file_id); // Replace it with actual token generation logic
-        files_tokens.insert(file_id.clone(), token);
+    for (fileId, _) in &payload.files.files {
+        let token = format!("token_for_{}", fileId); // Replace it with actual token generation logic
+        files_tokens.insert(fileId.clone(), token);
     }
 
     Json({
         let mut response = HashMap::new();
-        response.insert("sessionId".to_string(), session_id);
+        response.insert("sessionId".to_string(), serde_json::to_value(sessionId).unwrap());
         response.insert(
             "files".to_string(),
-            serde_json::to_value(files_tokens).unwrap().to_string(),
+            serde_json::to_value(files_tokens).unwrap(),
         );
+        // response.insert(
+        //     "files".to_string(),
+        //     serde_json::to_value(files_tokens).unwrap().to_string(),
+        // );
         response
     })
 }
@@ -148,15 +152,16 @@ async fn handler_upload(
 ) -> Json<Result<(), String>> {
     debug!("axum handler_prepare_upload query_params: {:?}", query_params);
 
-    // Verify the session_id, file_id, and token for security
-    if query_params.session_id != "mySessionId"
-        || query_params.file_id != "file_id"
-        || query_params.token != "someFileToken"
-    {
-        return Json(Err("Invalid session, fileId or token".to_string()));
-    }
+    // Verify the sessionId, fileId, and token for security
+    // if query_params.sessionId != "mySessionId"
+    //     || query_params.fileId != "fileId"
+    //     || query_params.token != "someFileToken"
+    // {
+    //     return Json(Err("Invalid session, fileId or token".to_string()));
+    // }
     let res = async {
-        let path = format!("/tmp/{:?}", query_params.file_id);
+        println!("{:?}", query_params);
+        let path = format!("/tmp/{:?}", query_params.fileId);
         // Save binary data to the file
         let body_with_io_error = body.into_data_stream().map_err(io::Error::other);
         let body_reader = StreamReader::new(body_with_io_error);
@@ -169,7 +174,10 @@ async fn handler_upload(
     .await;
     match res {
         Ok(_) => Json(Ok(())),
-        Err(_) => Json(Err(String::from("Invalid session, fileId or token"))),
+        Err(e) => {
+            error!("Error saving file: {:?}", e);
+            Json(Err(String::from(format!("Error saving file: {:?}", e))))
+        },
     }
 }
 
@@ -280,8 +288,8 @@ where
 }
 #[derive(serde::Deserialize, Debug)]
 struct UploadQuery {
-    session_id: String,
-    file_id: String,
+    sessionId: String,
+    fileId: String,
     token: String,
 }
 
