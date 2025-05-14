@@ -62,8 +62,7 @@ pub fn generate_fingerprint_cert(cert: Certificate) -> String {
     let fingerprint = hex::encode(result);
     fingerprint
 }
-pub fn generate_fingerprint_plain() -> String {
-    let length: u16 = 32;
+pub fn generate_random_string(length: u16) -> String {
     use rand::Rng;
     let mut rng = rand::rng();
     let mut fingerprint = String::new();

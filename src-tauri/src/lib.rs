@@ -6,7 +6,7 @@ use network_interface::NetworkInterface;
 use network_interface::NetworkInterfaceConfig;
 use sysinfo::{Disks, System};
 use tauri::path::PathResolver;
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Listener, Manager};
 use tauri_plugin_android_fs::{
     AndroidFs, AndroidFsExt, FileUri, InitialLocation, PersistableAccessMode, PrivateDir,
 };
@@ -66,10 +66,11 @@ use tower_http::{
     trace::TraceLayer,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
+const FINGERPRINT_LENGTH: u16 = 32;
+const SESSION_LENGTH: u16 = 32;
 mod common;
 
-use crate::common::generate_fingerprint_plain;
+use crate::common::generate_random_string;
 use axum::extract::Path;
 use common::{create_udp_socket, Message, PeerInfo};
 // use std::io::prelude::*;
@@ -94,7 +95,7 @@ async fn handler_register(
     // Json((*my_response).clone())
     ()
 }
-#[derive(Debug, serde::Deserialize)]
+#[derive(serde::Deserialize, Debug, Clone)]
 struct PrepareUploadParams {
     #[serde(default, deserialize_with = "empty_string_as_none")]
     pin: Option<String>,
@@ -120,10 +121,13 @@ async fn handler_prepare_upload(
 ) -> Json<HashMap<String, JsonValue>> {
     debug!("axum handler_prepare_upload Payload: {:?}", payload);
     debug!("axum handler_prepare_upload Received request with params: {:?}", params);
-    app_handle.emit("prepare-upload", ()).unwrap();
+    // waiting the state of whether user has accepted the request for 10s, if not, return error
+    let sessionId = generate_random_string(SESSION_LENGTH);
+    app_handle.emit("prepare-upload", PrepareUploadRequestAndSessionId{sessionId: sessionId.clone(), prepareUploadRequest: payload.clone() }).unwrap();
 
-    // Generate session ID and file tokens
-    let sessionId = format!("mySessionId"); // Replace it with actual session ID generation logic
+    let sessions_state = app_handle.state::<Mutex<Sessions>>();
+    let mut sessions = sessions_state.lock().unwrap();
+
     let mut files_tokens = HashMap::new();
 
     for (fileId, _) in &payload.files.files {
@@ -131,9 +135,11 @@ async fn handler_prepare_upload(
         files_tokens.insert(fileId.clone(), token);
     }
 
+    sessions.sessions.insert(sessionId.clone(), files_tokens.clone());
+
     Json({
         let mut response = HashMap::new();
-        response.insert("sessionId".to_string(), serde_json::to_value(sessionId).unwrap());
+        response.insert("sessionId".to_string(), serde_json::to_value(sessionId.clone()).unwrap());
         response.insert(
             "files".to_string(),
             serde_json::to_value(files_tokens).unwrap(),
@@ -213,13 +219,19 @@ async fn periodic_announce(my_response: Arc<Message>) -> std::io::Result<()> {
     Ok(())
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+struct PrepareUploadRequestAndSessionId {
+    sessionId: String,
+    prepareUploadRequest: PrepareUploadRequest,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 struct PrepareUploadRequest {
     info: Info,
     files: Files,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
 struct Info {
     alias: String,
     version: String,                 // protocol version (major.minor)
@@ -231,7 +243,7 @@ struct Info {
     download: bool, // if download API (section 5.2, 5.3) is active (optional, default: false)
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
 enum DeviceType {
     Mobile,
     Desktop,
@@ -240,20 +252,27 @@ enum DeviceType {
     Server,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
 enum Protocol {
     http,
     https,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
 struct Files {
     // Use serde_json's custom key deserialization to handle dynamic file IDs
     #[serde(flatten)]
     files: std::collections::HashMap<String, UploadFile>,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug,Clone, Default)]
+struct Sessions {
+    // Use serde_json's custom key deserialization to handle dynamic file IDs
+    #[serde(flatten)]
+    sessions: std::collections::HashMap<String, HashMap<String, String>>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
 struct UploadFile {
     id: String,
     fileName: String,
@@ -265,7 +284,7 @@ struct UploadFile {
 }
 
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
 struct Metadata {
     #[serde(default, deserialize_with = "deserialize_system_time")]
     modified: Option<std::time::SystemTime>,
@@ -286,7 +305,7 @@ where
         Ok(None)
     }
 }
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
 struct UploadQuery {
     sessionId: String,
     fileId: String,
@@ -297,7 +316,7 @@ struct UploadQuery {
 async fn client_test() -> std::io::Result<()> {
     // cargo test -- --nocapture
     // https://stackoverflow.com/questions/25106554/why-doesnt-println-work-in-rust-unit-tests
-    let my_fingerprint = generate_fingerprint_plain();
+    let my_fingerprint = generate_random_string(FINGERPRINT_LENGTH);
     debug!("test client fingerprint : {}", my_fingerprint);
     let port = 53317;
     let my_response = Arc::new(Message {
@@ -958,7 +977,7 @@ async fn daemon(
 
         tauri::async_runtime::spawn(async move {
             if let Ok(parsed_msg) = serde_json::from_slice::<Message>(&data) {
-                // debug!("recved: {}", serde_json::to_string(&*response_clone).unwrap());
+                debug!("daemon received msg: {}", serde_json::to_string(&*response_clone).unwrap());
 
                 let peer_fingerprint = parsed_msg.fingerprint.clone();
                 if parsed_msg.fingerprint == my_fingerprint_clone {
@@ -1015,6 +1034,8 @@ struct AppData {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let server_handle = Arc::new(Mutex::new(None::<oneshot::Sender<()>>));
+    // use tauri state to manage a vector of String
+    let sessions = Mutex::new(Sessions::default());
     #[cfg(debug_assertions)]
     let log_level = log::LevelFilter::Debug;
     #[cfg(not(debug_assertions))]
@@ -1025,6 +1046,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(server_handle.clone())
+        .manage(sessions)
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_android_fs::init())
         .plugin(tauri_plugin_opener::init())
@@ -1040,7 +1062,7 @@ pub fn run() {
             let localsend_setting = settings_store.get("localsend");
             let my_fingerprint = match localsend_setting {
                 None => {
-                    let _my_fingerprint = generate_fingerprint_plain();
+                    let _my_fingerprint = generate_random_string(FINGERPRINT_LENGTH);
                     info!("no fingerprint found, generate a new one");
                     settings_store.set(
                         "localsend",
