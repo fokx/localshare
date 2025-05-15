@@ -1,6 +1,6 @@
 [package]
 name = "localshare"
-version = "0.2.0"
+version = "0.3.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -84,7 +84,7 @@ tauri-plugin-sharetarget = { path = "../../tauri-plugin-sharetarget" }
 
 rand = "0.9.1"
 hex = "0.4.3"
-reqwest= { version = "0.12.15", features = ["json"] }
+reqwest= { version = "0.12.15", default-features = false,features = ["charset", "http2", "json", "macos-system-configuration", "rustls-tls"] }
 rcgen = "0.13.2"
 tauri-plugin-log = "2"
 thiserror = "2.0.12"
