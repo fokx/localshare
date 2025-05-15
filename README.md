@@ -3,7 +3,6 @@ Share your files by starting an HTTP server(using [dufs](https://github.com/sigo
 You can then access them from any device on your network using browser. Support authentication, searching and uploading.
 Support Windows, Linux and Android thanks to [tauri](https://github.com/tauri-apps/tauri).
 
-### build
 ```zsh
 pnpm tauri-build-win; pnpm tauri-build; pnpm tauri-build-apk
 mkdir /tmp/localshare
@@ -12,3 +11,8 @@ cp src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-r
 cp src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/localshare_${VERSION}_x64-setup.exe src-tauri/target/release/bundle/deb/localshare_${VERSION}_amd64.deb src-tauri/target/release/bundle/rpm/localshare-${VERSION}-1.x86_64.rpm src-tauri/target/release/bundle/appimage/localshare_${VERSION}_amd64.AppImage /tmp/localshare
 
 ```
+
+
+### Note
+
+currently, to send to a peer, the peer needs to disable encryption in LocalSend setting

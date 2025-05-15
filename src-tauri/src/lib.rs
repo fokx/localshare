@@ -520,17 +520,21 @@ async fn send_file_to_peer(app_handle: tauri::AppHandle, my_response: tauri::Sta
     let client = reqwest::Client::new();
 
     let mut files_map = HashMap::new();
+    let mut file_id_to_fullpath_map = HashMap::new();
     for file in files {
         let file_id = generate_random_string(FILE_ID_LENGTH);
+        let filename = app_handle.path().file_name(&file.clone()).unwrap();
+        debug!("filename: {}", filename);
         files_map.insert(file_id.clone(), UploadFile {
-            id: file_id,
-            fileName: file.clone(),
+            id: file_id.clone(),
+            fileName: filename,
             size: 0,
             fileType: "application/octet-stream".to_string(),
             sha256: None,
             preview: None,
             metadata: None,
         });
+        file_id_to_fullpath_map.insert(file_id.clone(), file.clone());
     }
     let request = PrepareUploadRequest {
         info: Message {
@@ -545,23 +549,71 @@ async fn send_file_to_peer(app_handle: tauri::AppHandle, my_response: tauri::Sta
             announce: None
         },
         files: Files {
-            files: files_map
+            files: files_map.clone()
         },
     };
+    let mut remote_host = remote_addrs.get(0).unwrap().clone();
+    let remote_host_53317 = SocketAddr::new(remote_host.ip(), 53317);
+    remote_addrs.push_front(remote_host_53317);
     for remote_addr in remote_addrs {
         let client_clone = client.clone();
-        debug!("remote host and port: {}:{}", remote_addr, remote_port);
+        debug!("remote host: {}", remote_addr);
         let res = client_clone
-                .post(format!("http://{}:{}/api/localsend/v2/prepare-upload", remote_addr, remote_port))
+                .post(format!("http://{}/api/localsend/v2/prepare-upload", remote_addr))
                 .json(&request)
                 .send()
                 .await;
         match res {
             Ok(response) => {
-                debug!("reqwest response: {:?}", response);
+                debug!("peer reply to prepare-upload: {:?}", response);
+                // log response content
+                let status = response.status();
+                debug!("peer reply to prepare-upload status: {:?}", status);
+                if status.is_success() {
+                    let response_text = response.text().await.unwrap();
+                    debug!("peer reply to prepare-upload response: {:?}", response_text);
+                    let response_json: HashMap<String, JsonValue> = serde_json::from_str(&response_text).unwrap();
+                    debug!("peer reply to prepare-upload response json: {:?}", response_json);
+                    if let Some(sessionId) = response_json.get("sessionId") {
+                        let sessionId = sessionId.as_str().unwrap();
+                        debug!("peer reply to prepare-upload sessionId: {:?}", sessionId);
+                        let filesIdToToken = response_json.get("files").unwrap();
+                        for (fileId, file) in &files_map {
+                            let token = filesIdToToken.get(fileId.clone()).unwrap();
+                            let token = token.as_str().unwrap();
+                            let client_clone = client.clone();
+                            // POST /api/localsend/v2/upload?sessionId=mySessionId&fileId=someFileId&token=someFileToken
+                            //
+                            // Request
+                            //
+                            // Binary data
+                            // read file body and send
+                            let fullpath = file_id_to_fullpath_map.get(fileId).unwrap();
+                            let file_binary = tokio::fs::read(fullpath).await.unwrap();
+                            let url = format!("http://{}/api/localsend/v2/upload?sessionId={}&fileId={}&token={}", remote_addr, sessionId, fileId, token);
+                            debug!("url: {}", url);
+                            let res = client_clone.post(url)
+                            .body(file_binary)
+                            .send()
+                            .await;
+                            match res {
+                                Ok(response) => {
+                                    debug!("peer reply to upload: {:?}", response);
+                                    let status = response.status();
+                                    debug!("peer reply to upload status: {:?}", status);
+                                }
+                                Err(e) => {
+                                    debug!("error uploadr: {:?}", e);
+                                }
+                            };
+                        }
+                    }
+                } else {
+                    debug!("peer reply to prepare-upload error: {:?}", response.text().await.unwrap());
+                }
             }
             Err(e) => {
-                debug!("reqwest error: {:?}", e);
+                debug!("error prepare-uploadr: {:?}", e);
             }
         }
     }
