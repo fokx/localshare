@@ -77,6 +77,7 @@ use common::{create_udp_socket, Message, PeerInfo};
 use futures::{Stream, TryStreamExt};
 use std::collections::HashMap;
 use std::io::{self, Error, Write};
+use clap::builder::Str;
 use serde::Deserialize;
 use serde_json::Value;
 use tokio::{fs::File, io::BufWriter};
@@ -114,6 +115,8 @@ where
     }
 }
 
+#[axum::debug_handler]
+#[allow(non_snake_case)]
 async fn handler_prepare_upload(
     State(app_handle): State<tauri::AppHandle>,
     Query(params): Query<PrepareUploadParams>,
@@ -123,33 +126,99 @@ async fn handler_prepare_upload(
     debug!("axum handler_prepare_upload Received request with params: {:?}", params);
     // waiting the state of whether user has accepted the request for 10s, if not, return error
     let sessionId = generate_random_string(SESSION_LENGTH);
+    {
+        let sessions_state = app_handle.state::<Mutex<Sessions>>();
+        let mut sessions = sessions_state.lock().unwrap();
+        sessions.sessions.insert(sessionId.clone(), Session{
+            accepted: false,
+            userFeedback: false,
+            finished: false,
+            fileIdtoToken: HashMap::new(),
+        });
+        drop(sessions);
+    }
     app_handle.emit("prepare-upload", PrepareUploadRequestAndSessionId{sessionId: sessionId.clone(), prepareUploadRequest: payload.clone() }).unwrap();
 
-    let sessions_state = app_handle.state::<Mutex<Sessions>>();
-    let mut sessions = sessions_state.lock().unwrap();
+    tokio::select! {
+        _ = tokio::time::sleep(Duration::from_secs(10)) => {
+            // Timeout after 10 seconds
+            debug!("Timeout waiting for user to accept the request");
+            return Json({
+                let mut response = HashMap::new();
+                response.insert("error".to_string(), serde_json::to_value("Timeout waiting for user to accept the request").unwrap());
+                response
+            });
+        },
+        res = async {
+           loop {
+                let session = {
+                    let sessions_state = app_handle.state::<Mutex<Sessions>>();
+                    let mut sessions = sessions_state.lock().unwrap();
+                    debug!("handler_prepare_upload: acquired lock on sessions");
+                    let session = sessions.sessions.get(&sessionId).cloned();
+                    drop(sessions); // Explicitly drop the MutexGuard here
+                    session
+                };
 
-    let mut files_tokens = HashMap::new();
-
-    for (fileId, _) in &payload.files.files {
-        let token = format!("token_for_{}", fileId); // Replace it with actual token generation logic
-        files_tokens.insert(fileId.clone(), token);
+                if let Some(session) = session {
+                    if session.userFeedback {
+                            let mut files_tokens = HashMap::new();
+                            if session.accepted {
+                                for (fileId, _) in &payload.files.files {
+                                    let token = format!("token_for_{}", fileId); // Replace it with actual token generation logic
+                                    files_tokens.insert(fileId.clone(), token);
+                                }
+                                {
+                                    let sessions_state = app_handle.state::<Mutex<Sessions>>();
+                                    debug!("handler_prepare_upload: acquiring lock on sessions");
+                                    let mut sessions = sessions_state.lock().unwrap();
+                                    debug!("handler_prepare_upload: acquired lock on sessions");
+                                    sessions.sessions.insert(sessionId.clone(), Session{
+                                        accepted: false,
+                                        userFeedback: true,
+                                        finished: false,
+                                        fileIdtoToken: files_tokens.clone(),
+                                    });
+                                    drop(sessions);
+                                    debug!("handler_prepare_upload: released lock on sessions");
+                                }
+                                return Json({
+                                    let mut response = HashMap::new();
+                                    response.insert("sessionId".to_string(), serde_json::to_value(sessionId.clone()).unwrap());
+                                    response.insert(
+                                        "files".to_string(),
+                                        serde_json::to_value(files_tokens).unwrap(),
+                                    );
+                                    response
+                                })
+                            } else {
+                                {
+                                    let sessions_state = app_handle.state::<Mutex<Sessions>>();
+                                    debug!("handler_prepare_upload: acquiring lock on sessions");
+                                    let mut sessions = sessions_state.lock().unwrap();
+                                    debug!("handler_prepare_upload: acquired lock on sessions");
+                                    sessions.sessions.remove(&sessionId);
+                                    drop(sessions);
+                                    debug!("handler_prepare_upload: released lock on sessions");
+                                }
+                            
+                                return Json({
+                                    let mut response = HashMap::new();
+                                    response.insert("error".to_string(), serde_json::to_value("User rejected the request").unwrap());
+                                    response
+                                });
+                        }
+                    }
+                }
+                debug!("Waiting 500ms for user feedback...");
+                tokio::time::sleep(Duration::from_millis(500)).await;
+            }
+        } => {
+            return res
+        },
     }
 
-    sessions.sessions.insert(sessionId.clone(), files_tokens.clone());
 
-    Json({
-        let mut response = HashMap::new();
-        response.insert("sessionId".to_string(), serde_json::to_value(sessionId.clone()).unwrap());
-        response.insert(
-            "files".to_string(),
-            serde_json::to_value(files_tokens).unwrap(),
-        );
-        // response.insert(
-        //     "files".to_string(),
-        //     serde_json::to_value(files_tokens).unwrap().to_string(),
-        // );
-        response
-    })
 }
 
 async fn handler_upload(
@@ -192,7 +261,7 @@ async fn periodic_announce(my_response: Arc<Message>) -> std::io::Result<()> {
     let udp = create_udp_socket(port)?;
     let addr: std::net::Ipv4Addr = "224.0.0.167".parse().unwrap();
     let mut count = 0;
-    let ANNOUNCE_INTERVAL = 3600;
+    let announce_interval = 600;
     loop {
         debug!("announce sequence {}", count);
         let my_response_new = Message {
@@ -212,13 +281,14 @@ async fn periodic_announce(my_response: Arc<Message>) -> std::io::Result<()> {
         )
         .await
         .expect("cannot send message to socket");
-        tokio::time::sleep(std::time::Duration::from_secs(ANNOUNCE_INTERVAL)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(announce_interval)).await;
         count += 1;
         break
     }
     Ok(())
 }
 
+#[allow(non_snake_case)]
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 struct PrepareUploadRequestAndSessionId {
     sessionId: String,
@@ -252,6 +322,8 @@ enum DeviceType {
     Server,
 }
 
+
+
 #[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
 enum Protocol {
     http,
@@ -269,9 +341,19 @@ struct Files {
 struct Sessions {
     // Use serde_json's custom key deserialization to handle dynamic file IDs
     #[serde(flatten)]
-    sessions: std::collections::HashMap<String, HashMap<String, String>>,
+    sessions: HashMap<String, Session>,
 }
 
+#[allow(non_snake_case)]
+#[derive(serde::Deserialize, serde::Serialize, Debug,Clone, Default)]
+struct Session {
+    accepted: bool,
+    userFeedback: bool,
+    finished: bool,
+    fileIdtoToken: HashMap<String, String>
+}
+
+#[allow(non_snake_case)]
 #[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
 struct UploadFile {
     id: String,
@@ -305,6 +387,8 @@ where
         Ok(None)
     }
 }
+
+#[allow(non_snake_case)]
 #[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
 struct UploadQuery {
     sessionId: String,
@@ -352,13 +436,55 @@ async fn client_test() -> std::io::Result<()> {
     }
     Ok(())
 }
+#[tauri::command]
+#[allow(non_snake_case)]
+fn handle_incoming_request(app_handle: tauri::AppHandle, sessionId: String,accept: bool,) -> Result<String, String> {
+    debug!("handle_incoming_request: entering");
+    let sessions_state = app_handle.state::<Mutex<Sessions>>();
+    debug!("handle_incoming_request: acquiring lock on sessions");
+    let mut sessions = sessions_state.lock().unwrap();
+    debug!("handle_incoming_request: acquired lock on sessions");
+    debug!("sessions cloned (before) {:?}", sessions.clone());
+    let session = sessions.sessions.get(&sessionId).cloned();
+    if let Some(session) = session {
+        if accept {
+            sessions.sessions.insert(sessionId, Session{
+                accepted: true,
+                userFeedback: true,
+                finished: false,
+                fileIdtoToken: session.fileIdtoToken.clone(),
+            });
+        } else {
+            sessions.sessions.insert(sessionId, Session{
+                accepted: false,
+                userFeedback: true,
+                finished: false,
+                fileIdtoToken: HashMap::new(),
+            });
+
+        }
+    }
+    debug!("sessions cloned (after) {:?}", sessions.clone());
+    drop(sessions);
+    // let mut session = session.unwrap();
+    // let mut files_tokens = HashMap::new();
+    // for (fileId, _) in &payload.files.files {
+    //     let token = format!("token_for_{}", fileId); // Replace it with actual token generation logic
+    //     files_tokens.insert(fileId.clone(), token);
+    // }
+    //
+    // sessions.sessions.insert(sessionId.clone(), files_tokens.clone());
+
+    Ok("ok".to_string())
+}
+
 #[tauri::command(rename_all = "snake_case")]
 async fn announce_once(my_response: tauri::State<'_, Message>) -> Result<String, String> {
         let port = 53317;
         let udp = create_udp_socket(port).unwrap();
         let addr: std::net::Ipv4Addr = "224.0.0.167".parse().unwrap();
         let mut count = 0;
-        let ANNOUNCE_INTERVAL = 3600;
+        let announce_interval = 3600;
         loop {
             debug!("announce sequence {}", count);
             let my_response_new = Message {
@@ -378,7 +504,7 @@ async fn announce_once(my_response: tauri::State<'_, Message>) -> Result<String,
             )
                     .await
                     .expect("cannot send message to socket");
-            tokio::time::sleep(std::time::Duration::from_secs(ANNOUNCE_INTERVAL)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(announce_interval)).await;
             count += 1;
             break
         }
@@ -752,11 +878,11 @@ fn print_listening(args: &Args, print_addrs: &[BindAddr]) -> Result<String> {
     Ok(output)
 }
 
-async fn shutdown_signal() {
-    tokio::signal::ctrl_c()
-        .await
-        .expect("Failed to install CTRL+C signal handler")
-}
+// async fn shutdown_signal() {
+//     tokio::signal::ctrl_c()
+//         .await
+//         .expect("Failed to install CTRL+C signal handler")
+// }
 
 #[tauri::command(rename_all = "snake_case")]
 fn get_nic_info(
@@ -798,7 +924,10 @@ fn acquire_permission_android(app: tauri::AppHandle) -> Result<String, String> {
     let api = app.android_fs();
 
     // pick folder to read and write
-    api.acquire_app_manage_external_storage();
+    let res = api.acquire_app_manage_external_storage().unwrap_or_else((|_| {
+        debug!("Permission acquire_app_manage_external_storage not granted");
+        ()
+    }));
     return Ok("done".to_string());
     let selected_folder = api
         .show_manage_dir_dialog(
@@ -830,10 +959,10 @@ fn acquire_permission_android(app: tauri::AppHandle) -> Result<String, String> {
             .take_persistable_uri_permission(&selected_dir_uri)
             .unwrap();
         debug!("res2 {:?}", res2);
-        let persisted_uri_perms = api.get_all_persisted_uri_permissions();
-        for permission in persisted_uri_perms {
-            debug!("Persisted URI: {:?}", permission.collect::<Vec<_>>());
-        }
+        // let persisted_uri_perms = api.get_all_persisted_uri_permissions();
+        // for permission in persisted_uri_perms {
+        //     debug!("Persisted URI: {:?}", permission.collect::<Vec<_>>());
+        // }
         // let file_path: tauri_plugin_fs::FilePath = selected_dir_uri.into();
         // let file_path = PathResolver::file_name(selected_dir_uri);
         for entry in api.read_dir(&selected_dir_uri).unwrap() {
@@ -1025,11 +1154,11 @@ async fn daemon(
     Ok(())
 }
 
-#[derive(Default)]
-struct AppData {
-    addr: &'static str,
-    port: u16,
-}
+// #[derive(Default)]
+// struct AppData {
+//     addr: &'static str,
+//     port: u16,
+// }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -1156,7 +1285,8 @@ pub fn run() {
             toggle_server,
             get_nic_info,
             collect_sys_info,
-            announce_once
+            announce_once,
+            handle_incoming_request
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

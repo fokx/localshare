@@ -30,7 +30,7 @@ tauri-plugin-dialog = "2"
 tauri-plugin-android-fs = { path = "../../tauri-plugin-android-fs", features = ["avoid-issue1"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-axum = { version="0.8.4", features = ["query"] }
+axum = { version="0.8.4", features = ["query", "macros"] }
 tower = { version = "0.5.2", features = ["util"] }
 tower-http = { version = "0.6.1", features = ["fs", "trace"] }
 

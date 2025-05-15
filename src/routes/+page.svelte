@@ -11,7 +11,7 @@
     import {exists, mkdir, readFile, writeFile} from "@tauri-apps/plugin-fs";
     import * as path from '@tauri-apps/api/path';
     import {warn, debug, trace, info, error} from '@tauri-apps/plugin-log';
-    import { listen } from '@tauri-apps/api/event';
+    import {emit, listen} from '@tauri-apps/api/event';
 
     let peers_store;
     let peers = $state([]);
@@ -43,7 +43,7 @@
     }
 
     let incoming_request_exist = $state(false);
-    let incoming_session = $state('');
+    let incoming_session_id = $state('');
     let incoming_request_files = $state([]);
     let incoming_request_peer = $state(null);
     onMount(async () => {
@@ -57,7 +57,7 @@
             console.log('event: prepare-upload', event);
             incoming_request_exist = true;
             let payload = event.payload;
-            incoming_session = payload.sessionId;
+            incoming_session_id = payload.sessionId;
 
             let prepareUploadRequest = payload.prepareUploadRequest;
             incoming_request_peer = prepareUploadRequest.info.alias + " (" + prepareUploadRequest.info.fingerprint.substring(0, 8) + "...)";
@@ -111,7 +111,7 @@
                 {incoming_request_peer} want to send file(s) to you:
             </p>
             <p>
-                Session: {incoming_session}
+                Session: {incoming_session_id}
             </p>
             <ul>
                 {#each incoming_request_files as file}
@@ -119,13 +119,17 @@
                 {/each}
             </ul>
             <ButtonGroup>
-                <Button color="green" onclick={() => {
-                    invoke("accept_incoming_request", {peer: incoming_request_peer});
+                <Button color="green" onclick={async () => {
+                    await invoke("handle_incoming_request", {sessionId: incoming_session_id, accept: true});
+                    // emit('accept-upload', {accept: true});
+                    // emit('accept-upload', {sessionId: incoming_session_id, accept: true});
                     toast.push('Incoming request accepted');
                     incoming_request_exist = false;
                 }}>Accept</Button>
-                <Button color="red" onclick={() => {
-                    invoke("reject_incoming_request", {peer: incoming_request_peer});
+                <Button color="red" onclick={async () => {
+                    await invoke("handle_incoming_request", {sessionId: incoming_session_id, accept: false});
+                    // emit('accept-upload', {accept: false});
+                    // emit('accept-upload', {sessionId: incoming_session_id, accept: false});
                     toast.push('Incoming request rejected');
                     incoming_request_exist = false;
                 }}>Reject</Button>
