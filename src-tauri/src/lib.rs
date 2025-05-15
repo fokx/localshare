@@ -134,7 +134,7 @@ async fn handler_prepare_upload(
             accepted: false,
             userFeedback: false,
             finished: false,
-            fileIdtoToken: HashMap::new(),
+            fileIdtoTokenAndUploadFile: HashMap::new(),
         });
         drop(sessions);
     }
@@ -163,26 +163,32 @@ async fn handler_prepare_upload(
 
                 if let Some(session) = session {
                     if session.userFeedback {
-                            let mut files_tokens = HashMap::new();
-                            if session.accepted {
-                                for (fileId, _) in &payload.files.files {
-                                    files_tokens.insert(fileId.clone(), generate_random_string(FILE_TOKEN_LENGTH));
-                                }
-                                {
-                                    let sessions_state = app_handle.state::<Mutex<Sessions>>();
-                                    debug!("handler_prepare_upload: acquiring lock on sessions");
-                                    let mut sessions = sessions_state.lock().unwrap();
-                                    debug!("handler_prepare_upload: acquired lock on sessions");
-                                    sessions.sessions.insert(sessionId.clone(), Session{
-                                        accepted: false,
-                                        userFeedback: true,
-                                        finished: false,
-                                        fileIdtoToken: files_tokens.clone(),
+                        let mut files_tokens = HashMap::new();
+                        let mut files_tokenAndUploadFiles = HashMap::new();
+                        if session.accepted {
+                            for (fileId, file) in &payload.files.files {
+                            let token = generate_random_string(FILE_TOKEN_LENGTH);
+                                files_tokens.insert(fileId.clone(), token.clone());
+                                files_tokenAndUploadFiles.insert(fileId.clone(), TokenAndUploadFile{
+                                        token: token,
+                                        uploadFile: file.clone(),
                                     });
-                                    drop(sessions);
-                                    debug!("handler_prepare_upload: released lock on sessions");
-                                }
-                                return Json({
+                                };
+                            {
+                                let sessions_state = app_handle.state::<Mutex<Sessions>>();
+                                debug!("handler_prepare_upload: acquiring lock on sessions");
+                                let mut sessions = sessions_state.lock().unwrap();
+                                debug!("handler_prepare_upload: acquired lock on sessions");
+                                sessions.sessions.insert(sessionId.clone(), Session{
+                                    accepted: true,
+                                    userFeedback: true,
+                                    finished: false,
+                                    fileIdtoTokenAndUploadFile: files_tokenAndUploadFiles,
+                                });
+                                drop(sessions);
+                                debug!("handler_prepare_upload: released lock on sessions1");
+                            }
+                            return Json({
                                     let mut response = HashMap::new();
                                     response.insert("sessionId".to_string(), serde_json::to_value(sessionId.clone()).unwrap());
                                     response.insert(
@@ -191,7 +197,8 @@ async fn handler_prepare_upload(
                                     );
                                     response
                                 })
-                            } else {
+                            }
+                             else {
                                 {
                                     let sessions_state = app_handle.state::<Mutex<Sessions>>();
                                     debug!("handler_prepare_upload: acquiring lock on sessions");
@@ -199,7 +206,7 @@ async fn handler_prepare_upload(
                                     debug!("handler_prepare_upload: acquired lock on sessions");
                                     sessions.sessions.remove(&sessionId);
                                     drop(sessions);
-                                    debug!("handler_prepare_upload: released lock on sessions");
+                                    debug!("handler_prepare_upload: released lock on sessions2");
                                 }
 
                                 return Json({
@@ -207,13 +214,13 @@ async fn handler_prepare_upload(
                                     response.insert("error".to_string(), serde_json::to_value("User rejected the request").unwrap());
                                     response
                                 });
+                            }
                         }
                     }
+                    debug!("Waiting 500ms for user feedback...");
+                    tokio::time::sleep(Duration::from_millis(500)).await;
                 }
-                debug!("Waiting 500ms for user feedback...");
-                tokio::time::sleep(Duration::from_millis(500)).await;
-            }
-        } => {
+            } => {
             return res
         },
     }
@@ -229,7 +236,7 @@ async fn handler_upload(
 ) -> Json<Result<(), String>> {
     debug!("axum handler_prepare_upload query_params: {:?}", query_params);
     debug!("handler_upload: entering");
-    let mut filename = ""; 
+    let mut filename = "".to_string();
     {
         let sessions_state = app_handle.state::<Mutex<Sessions>>();
         debug!("handler_upload: acquiring lock on sessions");
@@ -240,10 +247,12 @@ async fn handler_upload(
 
         if let Some(session) = session.clone() {
             if session.accepted
-                    && session.userFeedback        {
-                if let Some(token) = session.fileIdtoToken.get(query_params.fileId.as_str()) {
-                    if token != &query_params.token {
+                    && session.userFeedback {
+                if let Some(fileIdtoTokenAndUploadFile) = session.fileIdtoTokenAndUploadFile.get(query_params.fileId.as_str()) {
+                    if fileIdtoTokenAndUploadFile.token != query_params.token {
                         return Json(Err("Invalid token".to_string()));
+                    } else {
+                        filename = fileIdtoTokenAndUploadFile.uploadFile.fileName.clone();
                     }
                 } else {
                     return Json(Err("Invalid fileId".to_string()));
@@ -251,21 +260,17 @@ async fn handler_upload(
             } else {
                 return Json(Err("Session not accepted or user feedback not received".to_string()));
             }
-            if  query_params.fileId != "fileId"
-                    || query_params.token != "someFileToken"
-            {
-                return Json(Err("Invalid session, fileId or token".to_string()));
-            }
         } else {
             return Json(Err("Session not found".to_string()));
         }
-        debug!("handler_upload: released lock on sessions");
+        debug!("handler_upload: released lock on sessions3");
         drop(sessions);
     }
 
     let res = async {
         println!("{:?}", query_params);
-        let path = format!("/tmp/{:?}", query_params.fileId);
+        let path = format!("/tmp/{}", filename);
+        debug!("saving to path: {}", path);
         // Save binary data to the file
         let body_with_io_error = body.into_data_stream().map_err(io::Error::other);
         let body_reader = StreamReader::new(body_with_io_error);
@@ -379,11 +384,16 @@ struct Session {
     accepted: bool,
     userFeedback: bool,
     finished: bool,
-    fileIdtoToken: HashMap<String, String>
+    fileIdtoTokenAndUploadFile: HashMap<String, TokenAndUploadFile>,
 }
-
 #[allow(non_snake_case)]
-#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Debug,Clone, Default)]
+struct TokenAndUploadFile {
+    token: String,
+    uploadFile: UploadFile,
+}
+#[allow(non_snake_case)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Default)]
 struct UploadFile {
     id: String,
     fileName: String,
@@ -481,14 +491,14 @@ fn handle_incoming_request(app_handle: tauri::AppHandle, sessionId: String,accep
                 accepted: true,
                 userFeedback: true,
                 finished: false,
-                fileIdtoToken: session.fileIdtoToken.clone(),
+                fileIdtoTokenAndUploadFile: session.fileIdtoTokenAndUploadFile.clone(),
             });
         } else {
             sessions.sessions.insert(sessionId, Session{
                 accepted: false,
                 userFeedback: true,
                 finished: false,
-                fileIdtoToken: HashMap::new(),
+                fileIdtoTokenAndUploadFile: HashMap::new(),
             });
 
         }
