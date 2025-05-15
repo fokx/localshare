@@ -68,6 +68,7 @@ use tower_http::{
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 const FINGERPRINT_LENGTH: u16 = 32;
 const SESSION_LENGTH: u16 = 32;
+const FILE_TOKEN_LENGTH: u16 = 32;
 mod common;
 
 use crate::common::generate_random_string;
@@ -165,8 +166,7 @@ async fn handler_prepare_upload(
                             let mut files_tokens = HashMap::new();
                             if session.accepted {
                                 for (fileId, _) in &payload.files.files {
-                                    let token = format!("token_for_{}", fileId); // Replace it with actual token generation logic
-                                    files_tokens.insert(fileId.clone(), token);
+                                    files_tokens.insert(fileId.clone(), generate_random_string(FILE_TOKEN_LENGTH));
                                 }
                                 {
                                     let sessions_state = app_handle.state::<Mutex<Sessions>>();
@@ -201,7 +201,7 @@ async fn handler_prepare_upload(
                                     drop(sessions);
                                     debug!("handler_prepare_upload: released lock on sessions");
                                 }
-                            
+
                                 return Json({
                                     let mut response = HashMap::new();
                                     response.insert("error".to_string(), serde_json::to_value("User rejected the request").unwrap());
@@ -221,19 +221,48 @@ async fn handler_prepare_upload(
 
 }
 
+#[axum::debug_handler]
 async fn handler_upload(
+    State(app_handle): State<tauri::AppHandle>,
     Query(query_params): Query<UploadQuery>,
     body: axum::body::Body,
 ) -> Json<Result<(), String>> {
     debug!("axum handler_prepare_upload query_params: {:?}", query_params);
+    debug!("handler_upload: entering");
+    let mut filename = ""; 
+    {
+        let sessions_state = app_handle.state::<Mutex<Sessions>>();
+        debug!("handler_upload: acquiring lock on sessions");
+        let mut sessions = sessions_state.lock().unwrap();
+        debug!("handler_upload: acquired lock on sessions");
+        debug!("sessions cloned (before) {:?}", sessions.clone());
+        let session = sessions.sessions.get(&query_params.sessionId).cloned();
 
-    // Verify the sessionId, fileId, and token for security
-    // if query_params.sessionId != "mySessionId"
-    //     || query_params.fileId != "fileId"
-    //     || query_params.token != "someFileToken"
-    // {
-    //     return Json(Err("Invalid session, fileId or token".to_string()));
-    // }
+        if let Some(session) = session.clone() {
+            if session.accepted
+                    && session.userFeedback        {
+                if let Some(token) = session.fileIdtoToken.get(query_params.fileId.as_str()) {
+                    if token != &query_params.token {
+                        return Json(Err("Invalid token".to_string()));
+                    }
+                } else {
+                    return Json(Err("Invalid fileId".to_string()));
+                }
+            } else {
+                return Json(Err("Session not accepted or user feedback not received".to_string()));
+            }
+            if  query_params.fileId != "fileId"
+                    || query_params.token != "someFileToken"
+            {
+                return Json(Err("Invalid session, fileId or token".to_string()));
+            }
+        } else {
+            return Json(Err("Session not found".to_string()));
+        }
+        debug!("handler_upload: released lock on sessions");
+        drop(sessions);
+    }
+
     let res = async {
         println!("{:?}", query_params);
         let path = format!("/tmp/{:?}", query_params.fileId);
