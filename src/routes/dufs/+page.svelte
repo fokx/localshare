@@ -345,7 +345,6 @@
         };
     });
     onMount(async () => {
-
         store = await load('settings.json', {autoSave: true});
         const val = await store.get<{
             server_port: number,

@@ -237,7 +237,17 @@ async fn handler_upload(
     debug!("axum handler_prepare_upload query_params: {:?}", query_params);
     debug!("handler_upload: entering");
     let mut filename = "".to_string();
+    let mut savingDir = "".to_string();
     {
+        let settings_store = app_handle.store("settings.json").unwrap();
+        let localsend_setting = settings_store.get("localsend");
+        savingDir = match localsend_setting {
+            Some(localsend_setting) => {
+                let localsend_setting: HashMap<String, String> = serde_json::from_value(localsend_setting).unwrap();
+                localsend_setting.get("savingDir").unwrap_or(&"/tmp".to_string()).trim_end_matches("/").to_string()
+            },
+            None => "/tmp".to_string(),
+        };
         let sessions_state = app_handle.state::<Mutex<Sessions>>();
         debug!("handler_upload: acquiring lock on sessions");
         let mut sessions = sessions_state.lock().unwrap();
@@ -269,7 +279,7 @@ async fn handler_upload(
 
     let res = async {
         println!("{:?}", query_params);
-        let path = format!("/tmp/{}", filename);
+        let path = format!("{}/{}", savingDir, filename);
         debug!("saving to path: {}", path);
         // Save binary data to the file
         let body_with_io_error = body.into_data_stream().map_err(io::Error::other);
@@ -1236,12 +1246,13 @@ pub fn run() {
                         "localsend",
                         serde_json::json!({
                         "fingerprint": _my_fingerprint.clone(),
+                        "savingDir": "/storage/emulated/0/Download".to_string(),
                     }),
                     );
                     _my_fingerprint
                 }
-                Some(_my_fingerprint) => {
-                    _my_fingerprint
+                Some(setting) => {
+                    setting
                         .get("fingerprint")
                         .unwrap()
                         .as_str()

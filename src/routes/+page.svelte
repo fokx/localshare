@@ -13,6 +13,8 @@
     import {warn, debug, trace, info, error} from '@tauri-apps/plugin-log';
     import {emit, listen} from '@tauri-apps/api/event';
 
+    let settings_store;
+    let current_settings;
     let peers_store;
     let peers = $state([]);
     let announce_btn_disable = $state(false);
@@ -47,6 +49,10 @@
     let incoming_request_files = $state([]);
     let incoming_request_peer = $state(null);
     onMount(async () => {
+        settings_store = await load('settings.json', {autoSave: true});
+        current_settings = await settings_store.get('localsend');
+        savingDir = current_settings.savingDir;
+
         peers_store = await load('peers.json');
         await refresh_peers();
         const unlisten_refresh_peers = await listen('refresh-peers', async (event) => {
@@ -98,6 +104,12 @@
         await invoke("announce_once");
     }
 
+    async function reconfigure_localsend() {
+        current_settings.savingDir = savingDir;
+        await settings_store.set('localsend', current_settings);
+        toast.push('Configuration saved');
+    }
+    let savingDir = $state("/storage/emulated/0/");
 
 </script>
 <Heading tag="h2" class="text-primary-700 dark:text-primary-500">
@@ -137,6 +149,18 @@
         {/if}
     </div>
 
+    <form class="mb-4" onsubmit={reconfigure_localsend}>
+        <div class="mb-6">
+            <div>
+                <label class="black dark:bg-black" for="server_port">Saving Directory</label>
+                <Input id="server_port" type="text" placeholder="where to save incoming files"
+                       bind:value={savingDir}/>
+            </div>
+
+        </div>
+
+        <Button class="toggle_button" type="submit">Reconfigure</Button>
+    </form>
 
 
     <Heading tag="h4" class="text-primary-700 dark:text-primary-500">
