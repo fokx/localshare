@@ -69,6 +69,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 const FINGERPRINT_LENGTH: u16 = 32;
 const SESSION_LENGTH: u16 = 32;
 const FILE_TOKEN_LENGTH: u16 = 32;
+const FILE_ID_LENGTH: u16 = 32;
 mod common;
 
 use crate::common::generate_random_string;
@@ -103,8 +104,8 @@ async fn handler_register(
         return;
     }
     // if fingerprint is in keys of the store, return
-    if let Some(sss) = peers_store.get(&peer_fingerprint) {
-        let peer_info: PeerInfo = serde_json::from_value(sss).unwrap();
+    if let Some(peer_value) = peers_store.get(&peer_fingerprint) {
+        let peer_info: PeerInfo = serde_json::from_value(peer_value).unwrap();
         if peer_info.remote_addrs.contains(&remote_addr) {
             debug!("skip already registered fingerprint: {}", peer_fingerprint);
             return;
@@ -339,7 +340,7 @@ async fn periodic_announce(my_response: Arc<Message>) -> std::io::Result<()> {
     let mut count = 0;
     let announce_interval = 600;
     loop {
-        debug!("announce sequence {}", count);
+        debug!("announce  sequence {}", count);
         let my_response_new = Message {
             alias: my_response.alias.clone(),
             version: my_response.version.clone(),
@@ -373,32 +374,9 @@ struct PrepareUploadRequestAndSessionId {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 struct PrepareUploadRequest {
-    info: Info,
+    info: Message,
     files: Files,
 }
-
-#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
-struct Info {
-    alias: String,
-    version: String,                 // protocol version (major.minor)
-    device_model: Option<String>,    // nullable
-    device_type: Option<DeviceType>, // mobile | desktop | web | headless | server, nullable
-    fingerprint: String,             // ignored in HTTPS mode
-    port: u16,
-    protocol: Protocol,
-    download: bool, // if download API (section 5.2, 5.3) is active (optional, default: false)
-}
-
-#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
-enum DeviceType {
-    Mobile,
-    Desktop,
-    Web,
-    Headless,
-    Server,
-}
-
-
 
 #[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
 enum Protocol {
@@ -517,8 +495,82 @@ async fn client_test() -> std::io::Result<()> {
     }
     Ok(())
 }
-#[tauri::command]
+
 #[allow(non_snake_case)]
+#[tauri::command]
+async fn send_file_to_peer(app_handle: tauri::AppHandle, my_response: tauri::State<'_, Message>, peerFingerprint: String, files: Vec<String>,) -> Result<String, String> {
+    debug!("send_file_to_peer");
+    debug!("peer fingerprint: {}", peerFingerprint);
+    debug!("files: {:?}", files);
+    let peers_store = app_handle.store("peers.json").unwrap();
+    let peers_store_clone = peers_store.clone();
+    let peer_fingerprint = peerFingerprint.clone();
+    let mut remote_addrs;
+    let remote_port ;
+    if let Some(peer_value) = peers_store_clone.get(&peer_fingerprint) {
+        let peer_info: PeerInfo = serde_json::from_value(peer_value).unwrap();
+        remote_addrs = peer_info.remote_addrs;
+        remote_port = peer_info.message.port;
+    } else {
+        let msg = format!("peer {} not found in peers store", peer_fingerprint);
+        debug!("{}", msg);
+        return Err(msg.to_string());
+    }
+
+    let client = reqwest::Client::new();
+
+    let mut files_map = HashMap::new();
+    for file in files {
+        let file_id = generate_random_string(FILE_ID_LENGTH);
+        files_map.insert(file_id.clone(), UploadFile {
+            id: file_id,
+            fileName: file.clone(),
+            size: 0,
+            fileType: "application/octet-stream".to_string(),
+            sha256: None,
+            preview: None,
+            metadata: None,
+        });
+    }
+    let request = PrepareUploadRequest {
+        info: Message {
+            alias: my_response.alias.clone(),
+            version: my_response.version.clone(),
+            device_model: my_response.device_model.clone(),
+            device_type: my_response.device_type.clone(),
+            fingerprint: my_response.fingerprint.clone(),
+            port: my_response.port,
+            protocol: my_response.protocol.clone(),
+            download: my_response.download,
+            announce: None
+        },
+        files: Files {
+            files: files_map
+        },
+    };
+    for remote_addr in remote_addrs {
+        let client_clone = client.clone();
+        debug!("remote host and port: {}:{}", remote_addr, remote_port);
+        let res = client_clone
+                .post(format!("http://{}:{}/api/localsend/v2/prepare-upload", remote_addr, remote_port))
+                .json(&request)
+                .send()
+                .await;
+        match res {
+            Ok(response) => {
+                debug!("reqwest response: {:?}", response);
+            }
+            Err(e) => {
+                debug!("reqwest error: {:?}", e);
+            }
+        }
+    }
+
+    Ok("ok".to_string())
+}
+
+#[allow(non_snake_case)]
+#[tauri::command]
 fn handle_incoming_request(app_handle: tauri::AppHandle, sessionId: String,accept: bool,) -> Result<String, String> {
     debug!("handle_incoming_request: entering");
     let sessions_state = app_handle.state::<Mutex<Sessions>>();
@@ -566,7 +618,7 @@ async fn announce_once(my_response: tauri::State<'_, Message>) -> Result<String,
         let addr: std::net::Ipv4Addr = "224.0.0.167".parse().unwrap();
         let mut count = 0;
         let announce_interval = 3600;
-        loop {
+        // loop {
             debug!("announce sequence {}", count);
             let my_response_new = Message {
                 alias: my_response.alias.clone(),
@@ -585,10 +637,11 @@ async fn announce_once(my_response: tauri::State<'_, Message>) -> Result<String,
             )
                     .await
                     .expect("cannot send message to socket");
-            tokio::time::sleep(std::time::Duration::from_secs(announce_interval)).await;
-            count += 1;
-            break
-        }
+            // tokio::time::sleep(std::time::Duration::from_secs(announce_interval)).await;
+            // count += 1;
+            // break
+        // }
+
     return Ok("started".to_string());
 }
 #[tauri::command(rename_all = "snake_case")]
@@ -1176,6 +1229,8 @@ async fn daemon(
     let app_handle_clone = app_handle.clone();
     let peers_store = app_handle_clone.store("peers.json").unwrap();
     peers_store.clear();
+    let client = reqwest::Client::new();
+
     loop {
         let (count, remote_addr) = udp.recv_from(&mut buf).await?;
         let data = buf[..count].to_vec();
@@ -1184,9 +1239,11 @@ async fn daemon(
         let my_fingerprint_clone = my_fingerprint.clone();
         let peers_store_clone = peers_store.clone();
         let app_handle_clone2 = app_handle.clone();
+        let client_clone=  client.clone();
 
         tauri::async_runtime::spawn(async move {
             if let Ok(parsed_msg) = serde_json::from_slice::<Message>(&data) {
+                let remote_port = parsed_msg.port;
                 debug!("daemon received msg: {}", serde_json::to_string(&*response_clone).unwrap());
 
                 let peer_fingerprint = parsed_msg.fingerprint.clone();
@@ -1195,8 +1252,8 @@ async fn daemon(
                     return;
                 }
                 // if fingerprint is in keys of the store, return
-                if let Some(sss) = peers_store_clone.get(&peer_fingerprint) {
-                    let peer_info: PeerInfo = serde_json::from_value(sss).unwrap();
+                if let Some(peer_value) = peers_store_clone.get(&peer_fingerprint) {
+                    let peer_info: PeerInfo = serde_json::from_value(peer_value).unwrap();
                     if peer_info.remote_addrs.contains(&remote_addr) {
                         debug!("skip already registered fingerprint: {}", peer_fingerprint);
                         return;
@@ -1225,6 +1282,19 @@ async fn daemon(
                         )
                         .await
                         .expect("Send error");
+                let res = client_clone
+                        .post(format!("http://{}:{}/api/localsend/v2/register", remote_addr, remote_port))
+                        .json(&*response_clone)
+                        .send()
+                        .await;
+                match res {
+                    Ok(response) => {
+                        debug!("reqwest response: {:?}", response);
+                    }
+                    Err(e) => {
+                        debug!("reqwest error: {:?}", e);
+                    }
+                }
                 app_handle_clone2.emit("refresh-peers", ()).unwrap();
             } else {
                 log::warn!("Failed to parse incoming multicast message");
@@ -1369,7 +1439,8 @@ pub fn run() {
             get_nic_info,
             collect_sys_info,
             announce_once,
-            handle_incoming_request
+            handle_incoming_request,
+            send_file_to_peer,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

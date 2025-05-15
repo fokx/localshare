@@ -4,21 +4,31 @@ use serde::Serialize;
 use socket2::{Domain, Protocol, Socket, Type};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
+use clap::builder::Str;
 
 // LocalSend Protocol v2.1
 // https://github.com/localsend/protocol/blob/main/README.md
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Message {
     pub alias: String,
-    pub version: String,
-    pub device_model: Option<String>,
-    pub device_type: Option<String>,
-    pub fingerprint: String,
+    pub version: String,                 // protocol version (major.minor)
+    pub device_model: Option<String>,    // nullable
+    pub device_type: Option<String>, // mobile | desktop | web | headless | server, nullable
+    pub fingerprint: String,             // ignored in HTTPS mode
     pub port: u16,
     pub protocol: String,
-    pub download: Option<bool>,
+    pub download: Option<bool>, // if download API (section 5.2, 5.3) is active (optional, default: false)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub announce: Option<bool>,
+    pub announce: Option<bool>, 
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+enum DeviceType {
+    Mobile,
+    Desktop,
+    Web,
+    Headless,
+    Server,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
