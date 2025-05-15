@@ -72,7 +72,7 @@ const FILE_TOKEN_LENGTH: u16 = 32;
 mod common;
 
 use crate::common::generate_random_string;
-use axum::extract::Path;
+use axum::extract::{ConnectInfo, Path};
 use common::{create_udp_socket, Message, PeerInfo};
 // use std::io::prelude::*;
 use futures::{Stream, TryStreamExt};
@@ -84,17 +84,49 @@ use serde_json::Value;
 use tokio::{fs::File, io::BufWriter};
 use tokio_util::io::StreamReader;
 async fn handler_register(
-    my_response: Arc<Message>,
+    State(app_handle): State<tauri::AppHandle>,
+    ConnectInfo(remote_addr): ConnectInfo<SocketAddr>,
+    // my_response: Arc<Message>,
     Json(payload): Json<Message>,
 ) -> () {
+    let peers_store = app_handle.store("peers.json").unwrap();
+    let settings_store = app_handle.store("settings.json").unwrap();
+    let localsend_setting = settings_store.get("localsend");
+    let my_fingerprint = localsend_setting.unwrap().get("fingerprint").unwrap().to_string();
 // ) -> Json<Message> {
     // Here you can process the payload as needed
     debug!("axum register_handler received message: {:?}", payload);
-    // TODO: register peer
+    let peer_fingerprint = payload.fingerprint.clone();
+    let my_fingerprint_clone = my_fingerprint.clone();
+    if payload.fingerprint == my_fingerprint_clone {
+        debug!("skip my own fingerprint");
+        return;
+    }
+    // if fingerprint is in keys of the store, return
+    if let Some(sss) = peers_store.get(&peer_fingerprint) {
+        let peer_info: PeerInfo = serde_json::from_value(sss).unwrap();
+        if peer_info.remote_addrs.contains(&remote_addr) {
+            debug!("skip already registered fingerprint: {}", peer_fingerprint);
+            return;
+        } else {
+            debug!("add new remote address: {:?}", remote_addr);
+            let mut peer_info = peer_info;
+            peer_info.add_remote_addr(remote_addr);
+            peers_store.set(peer_fingerprint, serde_json::json!(peer_info));
+        }
+    } else {
+        debug!(
+                "received new multicast message from {:?}: {:?}",
+                        remote_addr, payload
+                    );
+        let peer_info = PeerInfo {
+            message: payload,
+            remote_addrs: vec![remote_addr].into(),
+        };
+        peers_store.set(peer_fingerprint, serde_json::json!(peer_info));
+    }
+    app_handle.emit("refresh-peers", ()).unwrap();
 
-    // Use my_response instead of creating a new response Message
-    // Return the pre-defined response as JSON
-    // Json((*my_response).clone())
     ()
 }
 #[derive(serde::Deserialize, Debug, Clone)]
@@ -1295,12 +1327,13 @@ pub fn run() {
                 let axum_app = Router::new()
                     .route(
                         "/api/localsend/v2/register",
-                        post(move |Json(payload): Json<Message>| {
-                            handler_register(
-                                Arc::clone(&my_response_for_route),
-                                Json::from(payload),
-                            )
-                        }),
+                        post(handler_register),
+                        // post(move |Json(payload): Json<Message>| {
+                        //     handler_register(
+                        //         Arc::clone(&my_response_for_route),
+                        //         Json::from(payload),
+                        //     )
+                        // }),
                     )
                     .route(
                         "/api/localsend/v2/prepare-upload",
@@ -1313,7 +1346,7 @@ pub fn run() {
                 let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
                     .await
                     .unwrap();
-                axum::serve(listener, axum_app).await.unwrap()
+                axum::serve(listener, axum_app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap()
             });
             let app_handle = app.handle().clone();
             let handle_daemon = tauri::async_runtime::spawn(daemon(
