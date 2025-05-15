@@ -4,7 +4,7 @@
     import {openUrl} from "@tauri-apps/plugin-opener";
     import QRCode from '@castlenine/svelte-qrcode';
     import {toast} from '@zerodevx/svelte-toast';
-    import {Button, Hr, P} from 'svelte-5-ui-lib';
+    import {Button, Hr, P} from 'flowbite-svelte';
 
     let props = $props();
     let url = $derived(props.url);

@@ -3,7 +3,7 @@
     // import {enable, isEnabled} from '@tauri-apps/plugin-autostart';
     import {invoke, type PermissionState, PluginListener} from '@tauri-apps/api/core'
     import {toast} from "@zerodevx/svelte-toast";
-    import {A, Card, ButtonGroup, Checkbox, Heading, Input, InputAddon, Button, Listgroup} from 'svelte-5-ui-lib';
+    import {A, Card, ButtonGroup, Checkbox, Heading, Input, InputAddon, Button, Listgroup} from 'flowbite-svelte';
     import {EyeOutline, EyeSlashOutline, GithubSolid} from 'flowbite-svelte-icons';
     import {load} from '@tauri-apps/plugin-store';
     import {onMount} from "svelte";
@@ -208,19 +208,19 @@
         </p>
     {:else}
         {#each peers as p}
-            <Card padding="xs">
-                <div class="flex items-center space-x-4 py-2 rtl:space-x-reverse">
+            <Card class=" flex bg-gray-500  text-black dark:text-white">
+                <div class="flex items-center space-x-4 py-2 rtl:space-x-reverse ">
                     <div class="min-w-0 flex-1">
                         <h5 class="font-bold">
                             {p.message.alias} ( {p.message.fingerprint.substring(0, 8)+"..."} )
                         </h5>
-                        <p class="leading-tight font-normal text-gray-700 dark:text-gray-400">
+                        <p class="leading-tight font-normal">
                             {#each p.remote_addrs as addr}
                                 {addr} <br>
                             {/each}
                         </p>
                     </div>
-                    <div class="inline-flex items-center text-base font-semibold text-gray-900 dark:text-white">
+                    <div class="inline-flex items-center text-base font-semibold">
                         {#if selected_files && selected_files.length > 0}
                             <Button onclick={async () => {
                                 await invoke("send_file_to_peer", {peerFingerprint: p.message.fingerprint, files: selected_files});

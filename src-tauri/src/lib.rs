@@ -419,17 +419,21 @@ struct UploadFile {
     fileName: String,
     size: u64, // bytes
     fileType: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     sha256: Option<String>,   // nullable
+    #[serde(skip_serializing_if = "Option::is_none")]
     preview: Option<Vec<u8>>, // nullable
-    metadata: Option<Metadata>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    metadata: Option<Metadata>,  // nullable
 }
 
 
 #[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
 struct Metadata {
-    #[serde(default, deserialize_with = "deserialize_system_time")]
-    modified: Option<std::time::SystemTime>,
-    accessed: Option<std::time::SystemTime>,
+    #[serde(default, deserialize_with = "deserialize_system_time", skip_serializing_if = "Option::is_none")]
+    modified: Option<std::time::SystemTime>,  // nullable
+    #[serde(default, deserialize_with = "deserialize_system_time", skip_serializing_if = "Option::is_none")]
+    accessed: Option<std::time::SystemTime>,  // nullable
 }
 // Localsend's time is in ISO 8601 format (e.g., "2024-06-06T15:25:34.000Z").
 // SystemTime does not natively support deserialization from such strings.
@@ -525,10 +529,22 @@ async fn send_file_to_peer(app_handle: tauri::AppHandle, my_response: tauri::Sta
         let file_id = generate_random_string(FILE_ID_LENGTH);
         let filename = app_handle.path().file_name(&file.clone()).unwrap();
         debug!("filename: {}", filename);
+        let file_metatdata = std::fs::metadata(file.clone());
+        let filesize: u64 = match file_metatdata {
+            Ok(metadata) => {
+                let size = metadata.len();
+                debug!("file size: {}", size);
+                size
+            }
+            Err(e) => {
+                debug!("error getting file size: {:?}", e);
+                9999
+            }
+        };
         files_map.insert(file_id.clone(), UploadFile {
             id: file_id.clone(),
             fileName: filename,
-            size: 0,
+            size: filesize,
             fileType: "application/octet-stream".to_string(),
             sha256: None,
             preview: None,

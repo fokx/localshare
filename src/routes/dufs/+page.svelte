@@ -4,7 +4,7 @@
     import {invoke, type PermissionState, PluginListener} from '@tauri-apps/api/core'
     import UrlInfo from '../../components/UrlInfo.svelte';
     import {toast} from "@zerodevx/svelte-toast";
-    import {A, Button, ButtonGroup, Checkbox, Heading, Input, InputAddon} from 'svelte-5-ui-lib';
+    import {A, Button, ButtonGroup, Checkbox, Heading, Input, InputAddon} from 'flowbite-svelte';
     import {EyeOutline, EyeSlashOutline, GithubSolid} from 'flowbite-svelte-icons';
     import {load} from '@tauri-apps/plugin-store';
     import {onMount} from "svelte";

@@ -19,7 +19,7 @@ pub struct Message {
     pub protocol: String,
     pub download: Option<bool>, // if download API (section 5.2, 5.3) is active (optional, default: false)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub announce: Option<bool>, 
+    pub announce: Option<bool>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]

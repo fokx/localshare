@@ -14,7 +14,7 @@
         theme: {},            // css var overrides
         classes: []           // user-defined classes
     }
-    import { Skeleton, ImagePlaceholder, BottomNav, BottomNavItem } from 'svelte-5-ui-lib';
+    import { Skeleton, ImagePlaceholder, BottomNav, BottomNavItem } from 'flowbite-svelte';
     import {
         HomeSolid,
         AdjustmentsHorizontalSolid,
