@@ -15,6 +15,10 @@ cp src-tauri/target/release/bundle/appimage/localshare_${VERSION}_amd64.AppImage
 
 ```
 
+rsync /f/tauri-plugin-sharetarget hk:/f/ -av --exclude={"node_modules/*","src-tauri/target/*","src-tauri/gen/android/app/build/*","target/debug/*","target/release/*","android/.tauri/*"}
+rsync /f/plugins-workspace hk:/f/ -av --exclude={"node_modules/*","src-tauri/target/*","src-tauri/gen/android/app/build/*","target/debug/*","target/release/*","android/.tauri/*"}
+rsync /f/tauri-plugin-android-fs hk:/f/ -av --exclude={"node_modules/*","src-tauri/target/*","src-tauri/gen/android/app/build/*","target/debug/*","target/release/*","android/.tauri/*"}
+
 
 ### Note
 
