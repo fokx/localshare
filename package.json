@@ -42,7 +42,10 @@
     "tailwindcss": "^4.1.5",
     "tauri-plugin-sharetarget-api": "0.1.6",
     "tauri-plugin-system-info-api": "^2.0.10",
-    "tauri-plugin-view-api": "^0.0.5"
+    "tauri-plugin-view-api": "^0.0.5",
+    "drizzle-orm": "^0.40.1",
+    "svelte-inspect-value": "^0.5.0"
+
   },
   "devDependencies": {
     "@castlenine/svelte-qrcode": "^2.3.0",
@@ -57,6 +60,7 @@
     "svelte": "^5.27.0",
     "svelte-check": "^4.1.6",
     "typescript": "~5.6.3",
-    "vite": "^6.2.6"
+    "vite": "^6.2.6",
+    "drizzle-kit": "^0.30.5"
   }
 }

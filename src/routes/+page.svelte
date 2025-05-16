@@ -46,13 +46,39 @@
         }
         peers = _peers;
     }
+    import { appConfigDir, join } from "@tauri-apps/api/path";
+    import { openPath } from "@tauri-apps/plugin-opener";
+    import * as schema from "$lib/db/schema";
+    import { db } from "$lib/db/database";
+    import Inspect from "svelte-inspect-value";
 
     let incoming_request_exist = $state(false);
     let incoming_session_id = $state('');
     let incoming_request_files = $state([]);
     let incoming_request_peer = $state(null);
-    let db;
-    let db_result = $state([]);
+    // let db;
+    // let db_result = $state([]);
+    let appConfigPath = $state("");
+    let dbPath = $state("");
+    let nameInput = $state("");
+    let users = $state<
+        { id: number; created_at: string | null; name: string | null }[]
+    >([]);
+    const loadUsers = async () => {
+        db.query.users
+            .findMany()
+            .execute()
+            .then((results) => {
+                console.log("🚀 ~ FindMany response from Drizzle:", results);
+                users = results;
+            });
+    };
+    async function addUser() {
+        await db.insert(schema.users).values({ name: nameInput });
+        nameInput = "";
+        loadUsers();
+    }
+
     onMount(async () => {
         settings_store = await load('settings.json', {autoSave: true});
         current_settings = await settings_store.get('localsend');
@@ -95,30 +121,34 @@
                 return `${name} (${size})`;
             });
         });
-        // ~/.config/io.github.fokx.localshare/mydatabase.db
-        db = await Database.load('sqlite:mydatabase.db');
+        const path = await appConfigDir();
+        appConfigPath = path;
+        dbPath = await join(path, "test.db");
+        loadUsers();
 
-        console.log("sqlite select result", result);
+        // ~/.config/io.github.fokx.localshare/mydatabase.db
+        // db = await Database.load('sqlite:mydatabase.db');
+        // console.log("sqlite select result", result);
         return () => {
             unlisten_refresh_peers();
             unlisten_prepare_upload();
         };
     });
-    async function testsqlite() {
-        let random_id = Math.floor(Math.random() * 1000);
-        let random_name = generateRandomString(16);
-        await db.execute('INSERT INTO tmpusers (id, name) VALUES ($1, $2)', [null, random_name]);
-
-        db_result = await db.select(
-            "SELECT * from tmpusers"
-        );
-    }
-    async function clear_db() {
-        await db.execute('DELETE FROM tmpusers');
-        db_result = await db.select(
-            "SELECT * from tmpusers"
-        );
-    }
+    // async function testsqlite() {
+    //     let random_id = Math.floor(Math.random() * 1000);
+    //     let random_name = generateRandomString(16);
+    //     await db.execute('INSERT INTO tmpusers (id, name) VALUES ($1, $2)', [null, random_name]);
+    //
+    //     db_result = await db.select(
+    //         "SELECT * from tmpusers"
+    //     );
+    // }
+    // async function clear_db() {
+    //     await db.execute('DELETE FROM tmpusers');
+    //     db_result = await db.select(
+    //         "SELECT * from tmpusers"
+    //     );
+    // }
     async function announce_once() {
         // change the button color gradully to gray and then back to blue
         announce_btn_disable = true;
@@ -159,15 +189,67 @@
 <Heading tag="h2" class="text-primary-700 dark:text-primary-500">
     LocalSend ({fingerprint.substring(0, 8)+"..."})
 </Heading>
-<Button onclick={testsqlite}>
-    test sqlite
-</Button>
-<Button onclick={clear_db}>
-    clear db
-</Button>
-{#each db_result as row}
-    <p>{row.id} {row.name}</p>
-{/each}
+<!--<Button onclick={testsqlite}>-->
+<!--    test sqlite-->
+<!--</Button>-->
+<!--<Button onclick={clear_db}>-->
+<!--    clear db-->
+<!--</Button>-->
+<!--{#each db_result as row}-->
+<!--    <p>{row.id} {row.name}</p>-->
+<!--{/each}-->
+
+<main class="container mx-auto flex flex-col gap-4">
+    <div class="flex gap-2">
+        <button
+                class="font-mono text-sm text-blue-400 hover:text-blue-500 hover:underline cursor-pointer text-left"
+                onclick={() => {
+        openPath(appConfigPath)
+          .then(() => {
+            console.log("opened");
+          })
+          .catch((err) => {
+            console.error(err);
+          });
+      }}
+        >
+            {dbPath}
+        </button>
+    </div>
+
+    <form
+            onsubmit={(e) => {
+      e.preventDefault();
+      addUser();
+    }}
+    >
+        <label class="label">
+            <span class="label-text">Name</span>
+            <div class="flex gap-2">
+                <Input
+                        bind:value={nameInput}
+                        class="input"
+                        type="text"
+                        placeholder="Enter a name..."
+                />
+                <Button type="submit" class="btn preset-filled">
+                    Add name to the db
+                </Button>
+            </div>
+        </label>
+    </form>
+    <button
+            type="button"
+            class="btn preset-tonal-error"
+            onclick={async () => {
+      await db.delete(schema.users).execute();
+      loadUsers();
+    }}
+    >
+        Delete All Users
+    </button>
+    <Inspect value={users} />
+</main>
 
 <div>
     <div class="mb-3">

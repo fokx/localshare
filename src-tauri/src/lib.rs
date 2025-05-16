@@ -1450,6 +1450,7 @@ async fn daemon(
 //     addr: &'static str,
 //     port: u16,
 // }
+use tauri_plugin_sql::{Migration, MigrationKind};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -1462,18 +1463,18 @@ pub fn run() {
     let log_level = log::LevelFilter::Info;
     let migrations = vec![
         // Define your migrations here
-        tauri_plugin_sql::Migration {
+        Migration {
             version: 1,
             description: "create_initial_tables",
-            sql: "CREATE TABLE tmpusers (id INTEGER PRIMARY KEY, name TEXT);",
-            kind: tauri_plugin_sql::MigrationKind::Up,
+            sql: include_str!("../migrations/0000_strong_black_bird.sql"),
+            kind: MigrationKind::Up,
         },
     ];
     tauri::Builder::default()
         .plugin(tauri_plugin_os::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
-                .add_migrations("sqlite:mydatabase.db", migrations)
+                .add_migrations("sqlite:test.db", migrations)
                 .build(),
         )
         .plugin(tauri_plugin_log::Builder::new().level(log_level).build())
@@ -1587,6 +1588,11 @@ pub fn run() {
 
             // std::thread::spawn(move || block_on(tcc_main()));
             // tauri::async_runtime::spawn(actix_main());
+            #[cfg(debug_assertions)] // only include this code on debug builds
+            {
+                let window = app.get_webview_window("main").unwrap();
+                window.open_devtools();
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
