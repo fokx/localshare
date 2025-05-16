@@ -244,10 +244,11 @@
     let currentPlatform;
     // when using `"withGlobalTauri": true`, you may use
     // const { enable, isEnabled, disable } = window.__TAURI__.autostart;
+    let listener: PluginListener;
+
     $effect(() => {
         currentPlatform = platform();
         if (currentPlatform == "android") {
-            let listener: PluginListener;
             const setupListener = async () => {
                 listener = await listenForShareEvents(async (intent: ShareEvent) => {
                     if (intent.stream) {
