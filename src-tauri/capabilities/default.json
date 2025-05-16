@@ -37,6 +37,9 @@
     "store:default",
     "sharetarget:default",
     "log:default",
-    "log:default"
+    "log:default",
+    "sql:default",
+    "sql:allow-execute",
+    "os:default"
   ]
 }

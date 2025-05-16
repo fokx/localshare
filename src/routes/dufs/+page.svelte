@@ -11,6 +11,7 @@
     import {listenForShareEvents, type ShareEvent} from 'tauri-plugin-sharetarget-api';
     import {exists, mkdir, readFile, writeFile} from "@tauri-apps/plugin-fs";
     import * as path from '@tauri-apps/api/path';
+    import { platform } from '@tauri-apps/plugin-os';
 
     let show_password = $state(false);
 
@@ -240,44 +241,73 @@
     let store;
     let file = $state<File | null>(null);
     let log_disp = $state("");
+    let currentPlatform;
     // when using `"withGlobalTauri": true`, you may use
     // const { enable, isEnabled, disable } = window.__TAURI__.autostart;
     $effect(() => {
-        let listener: PluginListener;
-        const setupListener = async () => {
-            listener = await listenForShareEvents(async (intent: ShareEvent) => {
-                if (intent.stream) {
-                    const contents = await readFile(intent.stream).catch((error: Error) => {
-                        console.warn('fetching shared content failed:');
-                        throw error;
-                    });
-                    // use date as folder name
-                    const tmp_dir_name = await path.join(await path.cacheDir(), `single_file_share_${(new Date().toISOString())}`);
-                    // console.log(await path.appConfigDir());
-                    // console.log(await path.appDataDir());
-                    // console.log(await path.appLocalDataDir());
-                    // console.log(await path.cacheDir());
-                    // console.log(await path.configDir());
-                    // console.log('1');
-                    // console.log(await path.dataDir());
-                    // console.log(await path.localDataDir());
-                    // console.log(await path.homeDir());
-                    // console.log(await path.pictureDir());
-                    // console.log(await path.resourceDir());
-                    // console.log('2');
-                    // console.log(await path.tempDir());
-                    log_disp += "\n----------------------------------\n" + tmp_dir_name;
-                    const dirExists = await exists(tmp_dir_name);
-                    if (!dirExists) {
-                        // await remove(tmp_dir_name, {
-                        //     recursive: true,
-                        // });
-                        await mkdir(tmp_dir_name);
-                    }
-                    await writeFile(await path.join(tmp_dir_name, intent.name), contents);
-                    // file = new File([contents], intent.name, { type: intent.content_type });
-                    toggle_disable = true;
-                    if (server_running) {
+        currentPlatform = platform();
+        if (currentPlatform == "android") {
+            let listener: PluginListener;
+            const setupListener = async () => {
+                listener = await listenForShareEvents(async (intent: ShareEvent) => {
+                    if (intent.stream) {
+                        const contents = await readFile(intent.stream).catch((error: Error) => {
+                            console.warn('fetching shared content failed:');
+                            throw error;
+                        });
+                        // use date as folder name
+                        const tmp_dir_name = await path.join(await path.cacheDir(), `single_file_share_${(new Date().toISOString())}`);
+                        // console.log(await path.appConfigDir());
+                        // console.log(await path.appDataDir());
+                        // console.log(await path.appLocalDataDir());
+                        // console.log(await path.cacheDir());
+                        // console.log(await path.configDir());
+                        // console.log('1');
+                        // console.log(await path.dataDir());
+                        // console.log(await path.localDataDir());
+                        // console.log(await path.homeDir());
+                        // console.log(await path.pictureDir());
+                        // console.log(await path.resourceDir());
+                        // console.log('2');
+                        // console.log(await path.tempDir());
+                        log_disp += "\n----------------------------------\n" + tmp_dir_name;
+                        const dirExists = await exists(tmp_dir_name);
+                        if (!dirExists) {
+                            // await remove(tmp_dir_name, {
+                            //     recursive: true,
+                            // });
+                            await mkdir(tmp_dir_name);
+                        }
+                        await writeFile(await path.join(tmp_dir_name, intent.name), contents);
+                        // file = new File([contents], intent.name, { type: intent.content_type });
+                        toggle_disable = true;
+                        if (server_running) {
+                            invoke('toggle_server', {
+                                server_port: server_port,
+                                serve_path: tmp_dir_name,
+                                require_auth: require_auth,
+                                auth_user: auth_user,
+                                auth_passwd: auth_passwd, allow_upload: allow_upload
+                            })
+                                .then((res) => {
+                                    console.log('res', res);
+                                    if (res === 'started') {
+                                        server_running = true;
+                                    } else if (res === 'stopped') {
+                                        server_running = false;
+                                    } else {
+                                        console.error('unknown response from server');
+                                    }
+                                })
+                                .catch((e) => console.error(e))
+                                .finally(() => {
+                                    toggle_disable = false;
+
+                                });
+                        }
+                        // sleep 500 ms for server to shut down
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        await get_nic_info();
                         invoke('toggle_server', {
                             server_port: server_port,
                             serve_path: tmp_dir_name,
@@ -298,50 +328,28 @@
                             .catch((e) => console.error(e))
                             .finally(() => {
                                 toggle_disable = false;
-
                             });
+                    } else {
+                        // This intent contains no binary bundle.
+                        log_disp = 'unable to share:\n' + intent.uri;
+                        console.warn('unused share intent', intent.uri);
                     }
-                    // sleep 500 ms for server to shut down
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    await get_nic_info();
-                    invoke('toggle_server', {
-                        server_port: server_port,
-                        serve_path: tmp_dir_name,
-                        require_auth: require_auth,
-                        auth_user: auth_user,
-                        auth_passwd: auth_passwd, allow_upload: allow_upload
-                    })
-                        .then((res) => {
-                            console.log('res', res);
-                            if (res === 'started') {
-                                server_running = true;
-                            } else if (res === 'stopped') {
-                                server_running = false;
-                            } else {
-                                console.error('unknown response from server');
-                            }
-                        })
-                        .catch((e) => console.error(e))
-                        .finally(() => {
-                            toggle_disable = false;
-                        });
-                } else {
-                    // This intent contains no binary bundle.
-                    log_disp = 'unable to share:\n' + intent.uri;
-                    console.warn('unused share intent', intent.uri);
-                }
-                log_disp += "\n----------------------------------\n" + intent.name;
-                log_disp += "\n----------------------------------\n" + intent.stream;
-                log_disp += "\n----------------------------------\n" + intent.content_type;
-                log_disp += "\n----------------------------------\n" + intent.uri;
-            });
-        };
-        setupListener();
+                    log_disp += "\n----------------------------------\n" + intent.name;
+                    log_disp += "\n----------------------------------\n" + intent.stream;
+                    log_disp += "\n----------------------------------\n" + intent.content_type;
+                    log_disp += "\n----------------------------------\n" + intent.uri;
+                });
+            };
+            setupListener();
+        }
         return () => {
             // if a teardown function is provided, it will run
             // a) immediately before the effect re-runs
             // b) when the component is destroyed
-            listener?.unregister();
+            if (currentPlatform == "android") {
+                // remove listener
+                listener?.unregister();
+            }
         };
     });
     onMount(async () => {

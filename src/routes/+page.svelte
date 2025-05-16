@@ -13,6 +13,9 @@
     import {warn, debug, trace, info, error} from '@tauri-apps/plugin-log';
     import {emit, listen} from '@tauri-apps/api/event';
     import { open } from '@tauri-apps/plugin-dialog';
+    import Database from '@tauri-apps/plugin-sql';
+
+    import {generateRandomString} from "$lib";
     let settings_store;
     let current_settings;
     let peers_store;
@@ -48,6 +51,8 @@
     let incoming_session_id = $state('');
     let incoming_request_files = $state([]);
     let incoming_request_peer = $state(null);
+    let db;
+    let db_result = $state([]);
     onMount(async () => {
         settings_store = await load('settings.json', {autoSave: true});
         current_settings = await settings_store.get('localsend');
@@ -90,12 +95,30 @@
                 return `${name} (${size})`;
             });
         });
+        // ~/.config/io.github.fokx.localshare/mydatabase.db
+        db = await Database.load('sqlite:mydatabase.db');
+
+        console.log("sqlite select result", result);
         return () => {
             unlisten_refresh_peers();
             unlisten_prepare_upload();
         };
     });
+    async function testsqlite() {
+        let random_id = Math.floor(Math.random() * 1000);
+        let random_name = generateRandomString(16);
+        await db.execute('INSERT INTO tmpusers (id, name) VALUES ($1, $2)', [null, random_name]);
 
+        db_result = await db.select(
+            "SELECT * from tmpusers"
+        );
+    }
+    async function clear_db() {
+        await db.execute('DELETE FROM tmpusers');
+        db_result = await db.select(
+            "SELECT * from tmpusers"
+        );
+    }
     async function announce_once() {
         // change the button color gradully to gray and then back to blue
         announce_btn_disable = true;
@@ -135,8 +158,16 @@
 </script>
 <Heading tag="h2" class="text-primary-700 dark:text-primary-500">
     LocalSend ({fingerprint.substring(0, 8)+"..."})
-
 </Heading>
+<Button onclick={testsqlite}>
+    test sqlite
+</Button>
+<Button onclick={clear_db}>
+    clear db
+</Button>
+{#each db_result as row}
+    <p>{row.id} {row.name}</p>
+{/each}
 
 <div>
     <div class="mb-3">

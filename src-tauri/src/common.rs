@@ -1,20 +1,20 @@
 // src/common.rs
+use clap::builder::Str;
 use rcgen::{Certificate, KeyPair};
 use serde::Serialize;
 use socket2::{Domain, Protocol, Socket, Type};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
-use clap::builder::Str;
 
 // LocalSend Protocol v2.1
 // https://github.com/localsend/protocol/blob/main/README.md
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Message {
     pub alias: String,
-    pub version: String,                 // protocol version (major.minor)
-    pub device_model: Option<String>,    // nullable
-    pub device_type: Option<String>, // mobile | desktop | web | headless | server, nullable
-    pub fingerprint: String,             // ignored in HTTPS mode
+    pub version: String,              // protocol version (major.minor)
+    pub device_model: Option<String>, // nullable
+    pub device_type: Option<String>,  // mobile | desktop | web | headless | server, nullable
+    pub fingerprint: String,          // ignored in HTTPS mode
     pub port: u16,
     pub protocol: String,
     pub download: Option<bool>, // if download API (section 5.2, 5.3) is active (optional, default: false)

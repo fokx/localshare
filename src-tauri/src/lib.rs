@@ -77,11 +77,10 @@ use axum::extract::{ConnectInfo, Path};
 use common::{create_udp_socket, Message, PeerInfo};
 // use std::io::prelude::*;
 use futures::{Stream, TryStreamExt};
-use std::collections::HashMap;
-use std::io::{self, Error, Write};
-use clap::builder::Str;
 use serde::Deserialize;
 use serde_json::Value;
+use std::collections::HashMap;
+use std::io::{self, Error, Write};
 use tokio::{fs::File, io::BufWriter};
 use tokio_util::io::StreamReader;
 async fn handler_register(
@@ -93,8 +92,12 @@ async fn handler_register(
     let peers_store = app_handle.store("peers.json").unwrap();
     let settings_store = app_handle.store("settings.json").unwrap();
     let localsend_setting = settings_store.get("localsend");
-    let my_fingerprint = localsend_setting.unwrap().get("fingerprint").unwrap().to_string();
-// ) -> Json<Message> {
+    let my_fingerprint = localsend_setting
+        .unwrap()
+        .get("fingerprint")
+        .unwrap()
+        .to_string();
+    // ) -> Json<Message> {
     // Here you can process the payload as needed
     debug!("axum register_handler received message: {:?}", payload);
     let peer_fingerprint = payload.fingerprint.clone();
@@ -117,9 +120,9 @@ async fn handler_register(
         }
     } else {
         debug!(
-                "received new multicast message from {:?}: {:?}",
-                        remote_addr, payload
-                    );
+            "received new multicast message from {:?}: {:?}",
+            remote_addr, payload
+        );
         let peer_info = PeerInfo {
             message: payload,
             remote_addrs: vec![remote_addr].into(),
@@ -138,14 +141,16 @@ struct PrepareUploadParams {
 
 fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
 where
-        D: serde::Deserializer<'de>,
-        T: std::str::FromStr,
-        T::Err: std::fmt::Display,
+    D: serde::Deserializer<'de>,
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
 {
     let opt = Option::<String>::deserialize(de)?;
     match opt.as_deref() {
         None | Some("") => Ok(None),
-        Some(s) => std::str::FromStr::from_str(s).map_err(serde::de::Error::custom).map(Some),
+        Some(s) => std::str::FromStr::from_str(s)
+            .map_err(serde::de::Error::custom)
+            .map(Some),
     }
 }
 
@@ -157,21 +162,35 @@ async fn handler_prepare_upload(
     Json(payload): Json<PrepareUploadRequest>,
 ) -> Json<HashMap<String, JsonValue>> {
     debug!("axum handler_prepare_upload Payload: {:?}", payload);
-    debug!("axum handler_prepare_upload Received request with params: {:?}", params);
+    debug!(
+        "axum handler_prepare_upload Received request with params: {:?}",
+        params
+    );
     // waiting the state of whether user has accepted the request for 10s, if not, return error
     let sessionId = generate_random_string(SESSION_LENGTH);
     {
         let sessions_state = app_handle.state::<Mutex<Sessions>>();
         let mut sessions = sessions_state.lock().unwrap();
-        sessions.sessions.insert(sessionId.clone(), Session{
-            accepted: false,
-            userFeedback: false,
-            finished: false,
-            fileIdtoTokenAndUploadFile: HashMap::new(),
-        });
+        sessions.sessions.insert(
+            sessionId.clone(),
+            Session {
+                accepted: false,
+                userFeedback: false,
+                finished: false,
+                fileIdtoTokenAndUploadFile: HashMap::new(),
+            },
+        );
         drop(sessions);
     }
-    app_handle.emit("prepare-upload", PrepareUploadRequestAndSessionId{sessionId: sessionId.clone(), prepareUploadRequest: payload.clone() }).unwrap();
+    app_handle
+        .emit(
+            "prepare-upload",
+            PrepareUploadRequestAndSessionId {
+                sessionId: sessionId.clone(),
+                prepareUploadRequest: payload.clone(),
+            },
+        )
+        .unwrap();
 
     tokio::select! {
         _ = tokio::time::sleep(Duration::from_secs(10)) => {
@@ -257,8 +276,6 @@ async fn handler_prepare_upload(
             return res
         },
     }
-
-
 }
 
 #[axum::debug_handler]
@@ -267,7 +284,10 @@ async fn handler_upload(
     Query(query_params): Query<UploadQuery>,
     body: axum::body::Body,
 ) -> Json<Result<(), String>> {
-    debug!("axum handler_prepare_upload query_params: {:?}", query_params);
+    debug!(
+        "axum handler_prepare_upload query_params: {:?}",
+        query_params
+    );
     debug!("handler_upload: entering");
     let mut filename = "".to_string();
     let mut savingDir = "".to_string();
@@ -276,9 +296,14 @@ async fn handler_upload(
         let localsend_setting = settings_store.get("localsend");
         savingDir = match localsend_setting {
             Some(localsend_setting) => {
-                let localsend_setting: HashMap<String, String> = serde_json::from_value(localsend_setting).unwrap();
-                localsend_setting.get("savingDir").unwrap_or(&"/tmp".to_string()).trim_end_matches("/").to_string()
-            },
+                let localsend_setting: HashMap<String, String> =
+                    serde_json::from_value(localsend_setting).unwrap();
+                localsend_setting
+                    .get("savingDir")
+                    .unwrap_or(&"/tmp".to_string())
+                    .trim_end_matches("/")
+                    .to_string()
+            }
             None => "/tmp".to_string(),
         };
         let sessions_state = app_handle.state::<Mutex<Sessions>>();
@@ -289,9 +314,11 @@ async fn handler_upload(
         let session = sessions.sessions.get(&query_params.sessionId).cloned();
 
         if let Some(session) = session.clone() {
-            if session.accepted
-                    && session.userFeedback {
-                if let Some(fileIdtoTokenAndUploadFile) = session.fileIdtoTokenAndUploadFile.get(query_params.fileId.as_str()) {
+            if session.accepted && session.userFeedback {
+                if let Some(fileIdtoTokenAndUploadFile) = session
+                    .fileIdtoTokenAndUploadFile
+                    .get(query_params.fileId.as_str())
+                {
                     if fileIdtoTokenAndUploadFile.token != query_params.token {
                         return Json(Err("Invalid token".to_string()));
                     } else {
@@ -301,7 +328,9 @@ async fn handler_upload(
                     return Json(Err("Invalid fileId".to_string()));
                 }
             } else {
-                return Json(Err("Session not accepted or user feedback not received".to_string()));
+                return Json(Err(
+                    "Session not accepted or user feedback not received".to_string()
+                ));
             }
         } else {
             return Json(Err("Session not found".to_string()));
@@ -329,7 +358,7 @@ async fn handler_upload(
         Err(e) => {
             error!("Error saving file: {:?}", e);
             Json(Err(String::from(format!("Error saving file: {:?}", e))))
-        },
+        }
     }
 }
 
@@ -360,7 +389,7 @@ async fn periodic_announce(my_response: Arc<Message>) -> std::io::Result<()> {
         .expect("cannot send message to socket");
         tokio::time::sleep(std::time::Duration::from_secs(announce_interval)).await;
         count += 1;
-        break
+        break;
     }
     Ok(())
 }
@@ -378,20 +407,20 @@ struct PrepareUploadRequest {
     files: Files,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 enum Protocol {
     http,
     https,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 struct Files {
     // Use serde_json's custom key deserialization to handle dynamic file IDs
     #[serde(flatten)]
     files: std::collections::HashMap<String, UploadFile>,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug,Clone, Default)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Default)]
 struct Sessions {
     // Use serde_json's custom key deserialization to handle dynamic file IDs
     #[serde(flatten)]
@@ -399,7 +428,7 @@ struct Sessions {
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Deserialize, serde::Serialize, Debug,Clone, Default)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Default)]
 struct Session {
     accepted: bool,
     userFeedback: bool,
@@ -407,7 +436,7 @@ struct Session {
     fileIdtoTokenAndUploadFile: HashMap<String, TokenAndUploadFile>,
 }
 #[allow(non_snake_case)]
-#[derive(serde::Deserialize, serde::Serialize, Debug,Clone, Default)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Default)]
 struct TokenAndUploadFile {
     token: String,
     uploadFile: UploadFile,
@@ -420,31 +449,40 @@ struct UploadFile {
     size: u64, // bytes
     fileType: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    sha256: Option<String>,   // nullable
+    sha256: Option<String>, // nullable
     #[serde(skip_serializing_if = "Option::is_none")]
     preview: Option<Vec<u8>>, // nullable
     #[serde(skip_serializing_if = "Option::is_none")]
-    metadata: Option<Metadata>,  // nullable
+    metadata: Option<Metadata>, // nullable
 }
 
-
-#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 struct Metadata {
-    #[serde(default, deserialize_with = "deserialize_system_time", skip_serializing_if = "Option::is_none")]
-    modified: Option<std::time::SystemTime>,  // nullable
-    #[serde(default, deserialize_with = "deserialize_system_time", skip_serializing_if = "Option::is_none")]
-    accessed: Option<std::time::SystemTime>,  // nullable
+    #[serde(
+        default,
+        deserialize_with = "deserialize_system_time",
+        skip_serializing_if = "Option::is_none"
+    )]
+    modified: Option<std::time::SystemTime>, // nullable
+    #[serde(
+        default,
+        deserialize_with = "deserialize_system_time",
+        skip_serializing_if = "Option::is_none"
+    )]
+    accessed: Option<std::time::SystemTime>, // nullable
 }
 // Localsend's time is in ISO 8601 format (e.g., "2024-06-06T15:25:34.000Z").
 // SystemTime does not natively support deserialization from such strings.
-fn deserialize_system_time<'de, D>(deserializer: D) -> Result<Option<std::time::SystemTime>, D::Error>
+fn deserialize_system_time<'de, D>(
+    deserializer: D,
+) -> Result<Option<std::time::SystemTime>, D::Error>
 where
-        D: serde::Deserializer<'de>,
+    D: serde::Deserializer<'de>,
 {
     let opt = Option::<String>::deserialize(deserializer)?;
     if let Some(date_str) = opt {
-        let parsed = chrono::DateTime::parse_from_rfc3339(&date_str)
-                .map_err(serde::de::Error::custom)?;
+        let parsed =
+            chrono::DateTime::parse_from_rfc3339(&date_str).map_err(serde::de::Error::custom)?;
         Ok(Some(std::time::SystemTime::from(parsed)))
     } else {
         Ok(None)
@@ -452,7 +490,7 @@ where
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Deserialize, serde::Serialize, Debug,Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 struct UploadQuery {
     sessionId: String,
     fileId: String,
@@ -502,7 +540,12 @@ async fn client_test() -> std::io::Result<()> {
 
 #[allow(non_snake_case)]
 #[tauri::command]
-async fn send_file_to_peer(app_handle: tauri::AppHandle, my_response: tauri::State<'_, Message>, peerFingerprint: String, files: Vec<String>,) -> Result<String, String> {
+async fn send_file_to_peer(
+    app_handle: tauri::AppHandle,
+    my_response: tauri::State<'_, Message>,
+    peerFingerprint: String,
+    files: Vec<String>,
+) -> Result<String, String> {
     debug!("send_file_to_peer");
     debug!("peer fingerprint: {}", peerFingerprint);
     debug!("files: {:?}", files);
@@ -510,7 +553,7 @@ async fn send_file_to_peer(app_handle: tauri::AppHandle, my_response: tauri::Sta
     let peers_store_clone = peers_store.clone();
     let peer_fingerprint = peerFingerprint.clone();
     let mut remote_addrs;
-    let remote_port ;
+    let remote_port;
     if let Some(peer_value) = peers_store_clone.get(&peer_fingerprint) {
         let peer_info: PeerInfo = serde_json::from_value(peer_value).unwrap();
         remote_addrs = peer_info.remote_addrs;
@@ -541,15 +584,18 @@ async fn send_file_to_peer(app_handle: tauri::AppHandle, my_response: tauri::Sta
                 9999
             }
         };
-        files_map.insert(file_id.clone(), UploadFile {
-            id: file_id.clone(),
-            fileName: filename,
-            size: filesize,
-            fileType: "application/octet-stream".to_string(),
-            sha256: None,
-            preview: None,
-            metadata: None,
-        });
+        files_map.insert(
+            file_id.clone(),
+            UploadFile {
+                id: file_id.clone(),
+                fileName: filename,
+                size: filesize,
+                fileType: "application/octet-stream".to_string(),
+                sha256: None,
+                preview: None,
+                metadata: None,
+            },
+        );
         file_id_to_fullpath_map.insert(file_id.clone(), file.clone());
     }
     let request = PrepareUploadRequest {
@@ -562,10 +608,10 @@ async fn send_file_to_peer(app_handle: tauri::AppHandle, my_response: tauri::Sta
             port: my_response.port,
             protocol: my_response.protocol.clone(),
             download: my_response.download,
-            announce: None
+            announce: None,
         },
         files: Files {
-            files: files_map.clone()
+            files: files_map.clone(),
         },
     };
     let mut remote_host = remote_addrs.get(0).unwrap().clone();
@@ -575,10 +621,13 @@ async fn send_file_to_peer(app_handle: tauri::AppHandle, my_response: tauri::Sta
         let client_clone = client.clone();
         debug!("remote host: {}", remote_addr);
         let res = client_clone
-                .post(format!("http://{}/api/localsend/v2/prepare-upload", remote_addr))
-                .json(&request)
-                .send()
-                .await;
+            .post(format!(
+                "http://{}/api/localsend/v2/prepare-upload",
+                remote_addr
+            ))
+            .json(&request)
+            .send()
+            .await;
         match res {
             Ok(response) => {
                 debug!("peer reply to prepare-upload: {:?}", response);
@@ -588,8 +637,12 @@ async fn send_file_to_peer(app_handle: tauri::AppHandle, my_response: tauri::Sta
                 if status.is_success() {
                     let response_text = response.text().await.unwrap();
                     debug!("peer reply to prepare-upload response: {:?}", response_text);
-                    let response_json: HashMap<String, JsonValue> = serde_json::from_str(&response_text).unwrap();
-                    debug!("peer reply to prepare-upload response json: {:?}", response_json);
+                    let response_json: HashMap<String, JsonValue> =
+                        serde_json::from_str(&response_text).unwrap();
+                    debug!(
+                        "peer reply to prepare-upload response json: {:?}",
+                        response_json
+                    );
                     if let Some(sessionId) = response_json.get("sessionId") {
                         let sessionId = sessionId.as_str().unwrap();
                         debug!("peer reply to prepare-upload sessionId: {:?}", sessionId);
@@ -606,12 +659,12 @@ async fn send_file_to_peer(app_handle: tauri::AppHandle, my_response: tauri::Sta
                             // read file body and send
                             let fullpath = file_id_to_fullpath_map.get(fileId).unwrap();
                             let file_binary = tokio::fs::read(fullpath).await.unwrap();
-                            let url = format!("http://{}/api/localsend/v2/upload?sessionId={}&fileId={}&token={}", remote_addr, sessionId, fileId, token);
+                            let url = format!(
+                                "http://{}/api/localsend/v2/upload?sessionId={}&fileId={}&token={}",
+                                remote_addr, sessionId, fileId, token
+                            );
                             debug!("url: {}", url);
-                            let res = client_clone.post(url)
-                            .body(file_binary)
-                            .send()
-                            .await;
+                            let res = client_clone.post(url).body(file_binary).send().await;
                             match res {
                                 Ok(response) => {
                                     debug!("peer reply to upload: {:?}", response);
@@ -625,7 +678,10 @@ async fn send_file_to_peer(app_handle: tauri::AppHandle, my_response: tauri::Sta
                         }
                     }
                 } else {
-                    debug!("peer reply to prepare-upload error: {:?}", response.text().await.unwrap());
+                    debug!(
+                        "peer reply to prepare-upload error: {:?}",
+                        response.text().await.unwrap()
+                    );
                 }
             }
             Err(e) => {
@@ -639,7 +695,11 @@ async fn send_file_to_peer(app_handle: tauri::AppHandle, my_response: tauri::Sta
 
 #[allow(non_snake_case)]
 #[tauri::command]
-fn handle_incoming_request(app_handle: tauri::AppHandle, sessionId: String,accept: bool,) -> Result<String, String> {
+fn handle_incoming_request(
+    app_handle: tauri::AppHandle,
+    sessionId: String,
+    accept: bool,
+) -> Result<String, String> {
     debug!("handle_incoming_request: entering");
     let sessions_state = app_handle.state::<Mutex<Sessions>>();
     debug!("handle_incoming_request: acquiring lock on sessions");
@@ -649,20 +709,25 @@ fn handle_incoming_request(app_handle: tauri::AppHandle, sessionId: String,accep
     let session = sessions.sessions.get(&sessionId).cloned();
     if let Some(session) = session {
         if accept {
-            sessions.sessions.insert(sessionId, Session{
-                accepted: true,
-                userFeedback: true,
-                finished: false,
-                fileIdtoTokenAndUploadFile: session.fileIdtoTokenAndUploadFile.clone(),
-            });
+            sessions.sessions.insert(
+                sessionId,
+                Session {
+                    accepted: true,
+                    userFeedback: true,
+                    finished: false,
+                    fileIdtoTokenAndUploadFile: session.fileIdtoTokenAndUploadFile.clone(),
+                },
+            );
         } else {
-            sessions.sessions.insert(sessionId, Session{
-                accepted: false,
-                userFeedback: true,
-                finished: false,
-                fileIdtoTokenAndUploadFile: HashMap::new(),
-            });
-
+            sessions.sessions.insert(
+                sessionId,
+                Session {
+                    accepted: false,
+                    userFeedback: true,
+                    finished: false,
+                    fileIdtoTokenAndUploadFile: HashMap::new(),
+                },
+            );
         }
     }
     debug!("sessions cloned (after) {:?}", sessions.clone());
@@ -681,34 +746,34 @@ fn handle_incoming_request(app_handle: tauri::AppHandle, sessionId: String,accep
 
 #[tauri::command(rename_all = "snake_case")]
 async fn announce_once(my_response: tauri::State<'_, Message>) -> Result<String, String> {
-        let port = 53317;
-        let udp = create_udp_socket(port).unwrap();
-        let addr: std::net::Ipv4Addr = "224.0.0.167".parse().unwrap();
-        let mut count = 0;
-        let announce_interval = 3600;
-        // loop {
-            debug!("announce sequence {}", count);
-            let my_response_new = Message {
-                alias: my_response.alias.clone(),
-                version: my_response.version.clone(),
-                device_model: my_response.device_model.clone(),
-                device_type: my_response.device_type.clone(),
-                fingerprint: my_response.fingerprint.clone(),
-                port: my_response.port,
-                protocol: my_response.protocol.clone(),
-                download: my_response.download,
-                announce: Some(true),
-            };
-            udp.send_to(
-                &serde_json::to_vec(&my_response_new).expect("Failed to serialize Message"),
-                (addr, port),
-            )
-                    .await
-                    .expect("cannot send message to socket");
-            // tokio::time::sleep(std::time::Duration::from_secs(announce_interval)).await;
-            // count += 1;
-            // break
-        // }
+    let port = 53317;
+    let udp = create_udp_socket(port).unwrap();
+    let addr: std::net::Ipv4Addr = "224.0.0.167".parse().unwrap();
+    let mut count = 0;
+    let announce_interval = 3600;
+    // loop {
+    debug!("announce sequence {}", count);
+    let my_response_new = Message {
+        alias: my_response.alias.clone(),
+        version: my_response.version.clone(),
+        device_model: my_response.device_model.clone(),
+        device_type: my_response.device_type.clone(),
+        fingerprint: my_response.fingerprint.clone(),
+        port: my_response.port,
+        protocol: my_response.protocol.clone(),
+        download: my_response.download,
+        announce: Some(true),
+    };
+    udp.send_to(
+        &serde_json::to_vec(&my_response_new).expect("Failed to serialize Message"),
+        (addr, port),
+    )
+    .await
+    .expect("cannot send message to socket");
+    // tokio::time::sleep(std::time::Duration::from_secs(announce_interval)).await;
+    // count += 1;
+    // break
+    // }
 
     return Ok("started".to_string());
 }
@@ -1126,10 +1191,12 @@ fn acquire_permission_android(app: tauri::AppHandle) -> Result<String, String> {
     let api = app.android_fs();
 
     // pick folder to read and write
-    let res = api.acquire_app_manage_external_storage().unwrap_or_else((|_| {
-        debug!("Permission acquire_app_manage_external_storage not granted");
-        ()
-    }));
+    let res = api.acquire_app_manage_external_storage().unwrap_or_else(
+        (|_| {
+            debug!("Permission acquire_app_manage_external_storage not granted");
+            ()
+        }),
+    );
     return Ok("done".to_string());
     let selected_folder = api
         .show_manage_dir_dialog(
@@ -1307,12 +1374,15 @@ async fn daemon(
         let my_fingerprint_clone = my_fingerprint.clone();
         let peers_store_clone = peers_store.clone();
         let app_handle_clone2 = app_handle.clone();
-        let client_clone=  client.clone();
+        let client_clone = client.clone();
 
         tauri::async_runtime::spawn(async move {
             if let Ok(parsed_msg) = serde_json::from_slice::<Message>(&data) {
                 let remote_port = parsed_msg.port;
-                debug!("daemon received msg: {}", serde_json::to_string(&*response_clone).unwrap());
+                debug!(
+                    "daemon received msg: {}",
+                    serde_json::to_string(&*response_clone).unwrap()
+                );
 
                 let peer_fingerprint = parsed_msg.fingerprint.clone();
                 if parsed_msg.fingerprint == my_fingerprint_clone {
@@ -1343,18 +1413,20 @@ async fn daemon(
                     peers_store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
                 }
                 udp_clone
-                        .send_to(
-                            &serde_json::to_vec(&*response_clone)
-                                    .expect("Failed to serialize Message"),
-                            (addr, port),
-                        )
-                        .await
-                        .expect("Send error");
+                    .send_to(
+                        &serde_json::to_vec(&*response_clone).expect("Failed to serialize Message"),
+                        (addr, port),
+                    )
+                    .await
+                    .expect("Send error");
                 let res = client_clone
-                        .post(format!("http://{}:{}/api/localsend/v2/register", remote_addr, remote_port))
-                        .json(&*response_clone)
-                        .send()
-                        .await;
+                    .post(format!(
+                        "http://{}:{}/api/localsend/v2/register",
+                        remote_addr, remote_port
+                    ))
+                    .json(&*response_clone)
+                    .send()
+                    .await;
                 match res {
                     Ok(response) => {
                         debug!("reqwest response: {:?}", response);
@@ -1388,8 +1460,22 @@ pub fn run() {
     let log_level = log::LevelFilter::Debug;
     #[cfg(not(debug_assertions))]
     let log_level = log::LevelFilter::Info;
+    let migrations = vec![
+        // Define your migrations here
+        tauri_plugin_sql::Migration {
+            version: 1,
+            description: "create_initial_tables",
+            sql: "CREATE TABLE tmpusers (id INTEGER PRIMARY KEY, name TEXT);",
+            kind: tauri_plugin_sql::MigrationKind::Up,
+        },
+    ];
     tauri::Builder::default()
-        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(tauri_plugin_os::init())
+        .plugin(
+            tauri_plugin_sql::Builder::default()
+                .add_migrations("sqlite:mydatabase.db", migrations)
+                .build(),
+        )
         .plugin(tauri_plugin_log::Builder::new().level(log_level).build())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -1415,20 +1501,18 @@ pub fn run() {
                     settings_store.set(
                         "localsend",
                         serde_json::json!({
-                        "fingerprint": _my_fingerprint.clone(),
-                        "savingDir": "/storage/emulated/0/Download".to_string(),
-                    }),
+                            "fingerprint": _my_fingerprint.clone(),
+                            "savingDir": "/storage/emulated/0/Download".to_string(),
+                        }),
                     );
                     _my_fingerprint
                 }
-                Some(setting) => {
-                    setting
-                        .get("fingerprint")
-                        .unwrap()
-                        .as_str()
-                        .unwrap()
-                        .to_string()
-                }
+                Some(setting) => setting
+                    .get("fingerprint")
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    .to_string(),
             };
             warn!("my fingerprint : {}", my_fingerprint);
             let port = 53317;
@@ -1459,7 +1543,8 @@ pub fn run() {
             let my_response_for_announce = Arc::clone(&my_response);
             let my_response_for_daemon = Arc::clone(&my_response);
 
-            let handle_announce = tauri::async_runtime::spawn(periodic_announce(my_response_for_announce));
+            let handle_announce =
+                tauri::async_runtime::spawn(periodic_announce(my_response_for_announce));
             let app_handle_axum = app.handle().clone();
             let handle_axum_server = tauri::async_runtime::spawn(async move {
                 let axum_app = Router::new()
@@ -1484,7 +1569,12 @@ pub fn run() {
                 let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
                     .await
                     .unwrap();
-                axum::serve(listener, axum_app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap()
+                axum::serve(
+                    listener,
+                    axum_app.into_make_service_with_connect_info::<SocketAddr>(),
+                )
+                .await
+                .unwrap()
             });
             let app_handle = app.handle().clone();
             let handle_daemon = tauri::async_runtime::spawn(daemon(
