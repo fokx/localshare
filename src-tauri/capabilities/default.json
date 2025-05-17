@@ -14,8 +14,16 @@
       "identifier": "fs:scope",
       "allow": [
         {
+          "path": "$APPDATA"
+        },
+        {
+          "path": "$APPDATA/**"
+        },
+        { "path": "$HOME/**" },
+        {
           "path": "/**"
-        }
+        },
+        { "path": "$HOME/.config/**" }
       ]
     },
     "fs:read-all",
@@ -23,6 +31,7 @@
     "fs:write-files",
     "fs:allow-mkdir",
     "fs:allow-remove",
+    "fs:allow-copy-file",
     "android-fs:default",
     "clipboard-manager:allow-write-text",
     "opener:default",

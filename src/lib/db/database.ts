@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/sqlite-proxy";
-import Database from "@tauri-apps/plugin-sql";
+import Database from "plugin-sql";
 import * as schema from "./schema";
 
 /**
@@ -15,7 +15,9 @@ export type SelectQueryResult = {
 // export const sqlite = await Database.load("sqlite:test.db");
 
 export async function getDb() {
-  return await Database.load("sqlite:test.db");
+  return await Database.load("sqlite:test.db", {
+      sqlite: {pragmas: {"key": "encryption_key"}}
+  });
 }
 
 /**

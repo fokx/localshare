@@ -258,19 +258,6 @@
                         });
                         // use date as folder name
                         const tmp_dir_name = await path.join(await path.cacheDir(), `single_file_share_${(new Date().toISOString())}`);
-                        // console.log(await path.appConfigDir());
-                        // console.log(await path.appDataDir());
-                        // console.log(await path.appLocalDataDir());
-                        // console.log(await path.cacheDir());
-                        // console.log(await path.configDir());
-                        // console.log('1');
-                        // console.log(await path.dataDir());
-                        // console.log(await path.localDataDir());
-                        // console.log(await path.homeDir());
-                        // console.log(await path.pictureDir());
-                        // console.log(await path.resourceDir());
-                        // console.log('2');
-                        // console.log(await path.tempDir());
                         log_disp += "\n----------------------------------\n" + tmp_dir_name;
                         const dirExists = await exists(tmp_dir_name);
                         if (!dirExists) {

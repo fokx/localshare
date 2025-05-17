@@ -5,20 +5,20 @@
     import {toast} from "@zerodevx/svelte-toast";
     import {A, Card, ButtonGroup, Checkbox, Heading, Input, InputAddon, Button, Listgroup} from 'flowbite-svelte';
     import {EyeOutline, EyeSlashOutline, GithubSolid} from 'flowbite-svelte-icons';
-    import {load} from '@tauri-apps/plugin-store';
+    import {load, type Store} from '@tauri-apps/plugin-store';
     import {onMount} from "svelte";
     import {listenForShareEvents, type ShareEvent} from 'tauri-plugin-sharetarget-api';
-    import {exists, mkdir, readFile, writeFile} from "@tauri-apps/plugin-fs";
+    import {exists, mkdir, readFile, writeFile, copyFile} from "@tauri-apps/plugin-fs";
     import * as path from '@tauri-apps/api/path';
     import {warn, debug, trace, info, error} from '@tauri-apps/plugin-log';
     import {emit, listen} from '@tauri-apps/api/event';
     import { open } from '@tauri-apps/plugin-dialog';
-    import Database from '@tauri-apps/plugin-sql';
+    import Database from 'plugin-sql';
 
     import {generateRandomString} from "$lib";
-    let settings_store;
+    let settings_store: Store<any>;
     let current_settings;
-    let peers_store;
+    let peers_store: Store<any>;
     let peers = $state([]);
     let announce_btn_disable = $state(false);
     async function refresh_peers() {
@@ -46,7 +46,7 @@
         }
         peers = _peers;
     }
-    import { appConfigDir, join } from "@tauri-apps/api/path";
+    import { appConfigDir, join, appDataDir } from "@tauri-apps/api/path";
     import { openPath } from "@tauri-apps/plugin-opener";
     import * as schema from "$lib/db/schema";
     import { db } from "$lib/db/database";
@@ -73,10 +73,30 @@
                 users = results;
             });
     };
+    let display_paths = $state("");
     async function addUser() {
         await db.insert(schema.users).values({ name: nameInput });
         nameInput = "";
         loadUsers();
+
+        // const appDataDirPath = await appDataDir();
+        // let targetPath = await join(appDataDirPath, "test2.db");
+        // display_paths = "";
+        // display_paths += "\n" + (await path.appConfigDir());
+        // display_paths += "\n" + (await path.appDataDir());
+        // display_paths += "\n" + (await path.appLocalDataDir());
+        // display_paths += "\n" + (await path.cacheDir());
+        // display_paths += "\n" + (await path.configDir());
+        // display_paths += "\n" + ('1');
+        // display_paths += "\n" + (await path.dataDir());
+        // display_paths += "\n" + (await path.localDataDir());
+        // display_paths += "\n" + (await path.homeDir());
+        // display_paths += "\n" + ('2');
+        // display_paths += "\n" + (await path.pictureDir());
+        // display_paths += "\n" + (await path.resourceDir());
+        // display_paths += "\n" + (await path.tempDir());
+        // console.log(targetPath);
+        // await copyFile(dbPath, await join(await path.cacheDir(), "test2.db"));
     }
 
     onMount(async () => {
@@ -198,7 +218,7 @@
 <!--{#each db_result as row}-->
 <!--    <p>{row.id} {row.name}</p>-->
 <!--{/each}-->
-
+{display_paths}
 <main class="container mx-auto flex flex-col gap-4">
     <div class="flex gap-2">
         <button
