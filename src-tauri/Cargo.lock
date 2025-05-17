@@ -2757,8 +2757,6 @@ version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e99fb7a497b1e3339bc746195567ed8d3e24945ecd636e3619d20b9de9e9149"
 dependencies = [
- "cc",
- "openssl-sys",
  "pkg-config",
  "vcpkg",
 ]
@@ -2783,7 +2781,7 @@ checksum = "241eaef5fd12c88705a01fc1066c48c4b36e0dd4377dcdc7ec3942cea7a69956"
 
 [[package]]
 name = "localshare"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "alphanumeric-sort",
  "anyhow",
@@ -3445,28 +3443,6 @@ dependencies = [
  "is-wsl",
  "libc",
  "pathdiff",
-]
-
-[[package]]
-name = "openssl-src"
-version = "300.5.0+3.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8ce546f549326b0e6052b649198487d91320875da901e7bd11a06d1ee3f9c2f"
-dependencies = [
- "cc",
-]
-
-[[package]]
-name = "openssl-sys"
-version = "0.9.108"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e145e1651e858e820e4860f7b9c5e169bc1d8ce1c86043be79fa7b7634821847"
-dependencies = [
- "cc",
- "libc",
- "openssl-src",
- "pkg-config",
- "vcpkg",
 ]
 
 [[package]]
@@ -5047,18 +5023,14 @@ dependencies = [
  "memchr",
  "once_cell",
  "percent-encoding",
- "rustls",
  "serde",
  "serde_json",
  "sha2",
  "smallvec",
  "thiserror 2.0.12",
  "time",
- "tokio",
- "tokio-stream",
  "tracing",
  "url",
- "webpki-roots 0.26.11",
 ]
 
 [[package]]
@@ -5096,7 +5068,6 @@ dependencies = [
  "sqlx-sqlite",
  "syn 2.0.101",
  "tempfile",
- "tokio",
  "url",
 ]
 
@@ -5716,10 +5687,11 @@ dependencies = [
 [[package]]
 name = "tauri-plugin-sql"
 version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6ccca89ded6bd2ff49fdad9a5b34bcd624aa223fdfddbab83c85706ee3a4948"
 dependencies = [
  "futures-core",
  "indexmap 2.9.0",
- "libsqlite3-sys",
  "log",
  "serde",
  "serde_json",
@@ -6054,17 +6026,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e727b36a1a0e8b74c376ac2211e40c2c8af09fb4013c60d910495810f008e9b"
 dependencies = [
  "rustls",
- "tokio",
-]
-
-[[package]]
-name = "tokio-stream"
-version = "0.1.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eca58d7bba4a75707817a2c44174253f9236b2d5fbd055602e9d5c07c139a047"
-dependencies = [
- "futures-core",
- "pin-project-lite",
  "tokio",
 ]
 

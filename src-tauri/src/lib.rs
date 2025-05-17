@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate log;
-use futures::StreamExt;
-use log::{debug, error, info, trace, warn};
 use sysinfo::{Disks, System};
 use tauri::path::PathResolver;
 use tauri::{Emitter, Listener, Manager};
@@ -9,72 +7,29 @@ use tauri_plugin_android_fs::{
     AndroidFs, AndroidFsExt, FileUri, InitialLocation, PersistableAccessMode, PrivateDir,
 };
 use tauri_plugin_sql::{Migration, MigrationKind};
-
-// use tokio::task::JoinHandle;
-// use tauri::async_runtime::TokioJoinHandle;
-use tauri_plugin_log::{Target, TargetKind};
-use tauri_plugin_store::{JsonValue, StoreExt};
+use tauri_plugin_store::StoreExt;
 use tokio;
 use tokio::sync::oneshot;
 
-mod common;
-mod localsend;
 mod commands;
+mod common;
 mod dufs;
+mod localsend;
 
-use anyhow::{anyhow, Context, Result};
-use clap_complete::Shell;
-use futures_util::future::join_all;
-
-use hyper::{body::Incoming, service::service_fn};
-use hyper_util::{
-    rt::{TokioExecutor, TokioIo},
-    server::conn::auto::Builder,
-};
-use std::net::{IpAddr, TcpListener as StdTcpListener};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
-};
-use std::time::Duration;
-use tokio::time::timeout;
-use tokio::{net::TcpListener, task::JoinHandle};
+use std::sync::{Arc, Mutex};
 #[cfg(feature = "tls")]
 use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 
 use axum::{
-    extract::{Query, Request, State},
-    handler::HandlerWithoutStateExt,
-    http::StatusCode,
     routing::{get, post},
-    Json, Router,
+    Router,
+};
+use common::{generate_random_string, Message, Sessions, FINGERPRINT_LENGTH};
+// use std::io::prelude::*;
+use localsend::{
+    daemon, handler_prepare_upload, handler_register, handler_upload, periodic_announce,
 };
 use std::net::SocketAddr;
-use tower::ServiceExt;
-use tower_http::{
-    services::{ServeDir, ServeFile},
-    trace::TraceLayer,
-};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-
-use axum::extract::{ConnectInfo, Path};
-use common::{generate_random_string, create_udp_socket, Message, PeerInfo, Sessions, FINGERPRINT_LENGTH};
-use localsend::{
-    periodic_announce,
-    handler_register,
-    handler_prepare_upload,
-    handler_upload,
-    daemon
-};
-// use std::io::prelude::*;
-use futures::{Stream, TryStreamExt};
-use serde::Deserialize;
-use serde_json::Value;
-use std::collections::HashMap;
-use std::io::{self, Error, Write};
-use tokio::{fs::File, io::BufWriter};
-use tokio_util::io::StreamReader;
 #[tokio::test]
 async fn client_test() -> std::io::Result<()> {
     // cargo test -- --nocapture
@@ -101,7 +56,7 @@ async fn client_test() -> std::io::Result<()> {
     // POST to "/api/localsend/v2/register"
     let client = reqwest::Client::new();
     let res = client
-        .post(format!("http://127.0.0.1:53317/api/localsend/v2/register"))
+        .post("http://127.0.0.1:53317/api/localsend/v2/register")
         .json(&*my_response_clone)
         .send()
         .await;
@@ -181,8 +136,7 @@ pub fn run() {
             };
             warn!("my fingerprint : {}", my_fingerprint);
             let port = 53317;
-
-            let my_response = Arc::new(Message {
+            let message = Message {
                 alias: my_fingerprint[0..6].to_string(),
                 version: "2.1".to_string(),
                 device_model: None,
@@ -192,37 +146,19 @@ pub fn run() {
                 protocol: "http".to_string(),
                 download: Some(true),
                 announce: None,
-            });
-            app.manage(Message {
-                alias: my_fingerprint[0..6].to_string(),
-                version: "2.1".to_string(),
-                device_model: None,
-                device_type: None,
-                fingerprint: my_fingerprint.clone(),
-                port,
-                protocol: "http".to_string(),
-                download: Some(true),
-                announce: None,
-            });
+            };
+            let my_response = Arc::new(message.clone());
+            app.manage(message);
             let my_response_for_route = Arc::clone(&my_response);
             let my_response_for_announce = Arc::clone(&my_response);
             let my_response_for_daemon = Arc::clone(&my_response);
 
-            let handle_announce =
+            let _handle_announce =
                 tauri::async_runtime::spawn(periodic_announce(my_response_for_announce));
             let app_handle_axum = app.handle().clone();
-            let handle_axum_server = tauri::async_runtime::spawn(async move {
+            let _handle_axum_server = tauri::async_runtime::spawn(async move {
                 let axum_app = Router::new()
-                    .route(
-                        "/api/localsend/v2/register",
-                        post(handler_register),
-                        // post(move |Json(payload): Json<Message>| {
-                        //     handler_register(
-                        //         Arc::clone(&my_response_for_route),
-                        //         Json::from(payload),
-                        //     )
-                        // }),
-                    )
+                    .route("/api/localsend/v2/register", post(handler_register))
                     .route(
                         "/api/localsend/v2/prepare-upload",
                         post(handler_prepare_upload),
@@ -242,13 +178,13 @@ pub fn run() {
                 .unwrap()
             });
             let app_handle = app.handle().clone();
-            let handle_daemon = tauri::async_runtime::spawn(daemon(
+            let _handle_daemon = tauri::async_runtime::spawn(daemon(
                 app_handle,
                 port,
                 my_response_for_daemon,
                 my_fingerprint.clone(),
             ));
-            // let res = join!(handle_announce, handle_axum_server, handle_daemon);
+            // let res = join!(_handle_announce, _handle_axum_server, _handle_daemon);
 
             // std::thread::spawn(move || block_on(tcc_main()));
             // tauri::async_runtime::spawn(actix_main());

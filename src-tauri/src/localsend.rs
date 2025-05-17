@@ -1,17 +1,20 @@
+use crate::common::{
+    create_udp_socket, generate_random_string, Message, PeerInfo, PrepareUploadParams,
+    PrepareUploadRequest, PrepareUploadRequestAndSessionId, Session, Sessions, TokenAndUploadFile,
+    UploadQuery, FILE_TOKEN_LENGTH, SESSION_LENGTH,
+};
+use axum::extract::{ConnectInfo, Query, State};
+use axum::Json;
+use futures_util::TryStreamExt;
 use std::collections::HashMap;
 use std::io;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use axum::extract::{ConnectInfo, Query, State};
-use axum::Json;
-use futures_util::TryStreamExt;
 use tauri::{Emitter, Manager};
 use tauri_plugin_store::{JsonValue, StoreExt};
 use tokio::fs::File;
 use tokio::io::BufWriter;
 use tokio_util::io::StreamReader;
-use crate::common::{create_udp_socket, generate_random_string, Message, PeerInfo, PrepareUploadParams, TokenAndUploadFile, FILE_TOKEN_LENGTH};
-use crate::common::{PrepareUploadRequest, PrepareUploadRequestAndSessionId, Session, Sessions, UploadQuery, SESSION_LENGTH};
 
 pub async fn handler_register(
     State(app_handle): State<tauri::AppHandle>,
@@ -23,10 +26,10 @@ pub async fn handler_register(
     let settings_store = app_handle.store("settings.json").unwrap();
     let localsend_setting = settings_store.get("localsend");
     let my_fingerprint = localsend_setting
-            .unwrap()
-            .get("fingerprint")
-            .unwrap()
-            .to_string();
+        .unwrap()
+        .get("fingerprint")
+        .unwrap()
+        .to_string();
     // ) -> Json<Message> {
     // Here you can process the payload as needed
     debug!("axum register_handler received message: {:?}", payload);
@@ -64,7 +67,7 @@ pub async fn handler_register(
     ()
 }
 
-#[axum::debug_handler]
+// #[axum::debug_handler]
 #[allow(non_snake_case)]
 pub async fn handler_prepare_upload(
     State(app_handle): State<tauri::AppHandle>,
@@ -93,14 +96,14 @@ pub async fn handler_prepare_upload(
         drop(sessions);
     }
     app_handle
-            .emit(
-                "prepare-upload",
-                PrepareUploadRequestAndSessionId {
-                    sessionId: sessionId.clone(),
-                    prepareUploadRequest: payload.clone(),
-                },
-            )
-            .unwrap();
+        .emit(
+            "prepare-upload",
+            PrepareUploadRequestAndSessionId {
+                sessionId: sessionId.clone(),
+                prepareUploadRequest: payload.clone(),
+            },
+        )
+        .unwrap();
 
     tokio::select! {
         _ = tokio::time::sleep(tokio::time::Duration::from_secs(10)) => {
@@ -116,7 +119,7 @@ pub async fn handler_prepare_upload(
            loop {
                 let session = {
                     let sessions_state = app_handle.state::<Mutex<Sessions>>();
-                    let mut sessions = sessions_state.lock().unwrap();
+                    let sessions = sessions_state.lock().unwrap();
                     debug!("handler_prepare_upload: acquired lock on sessions");
                     let session = sessions.sessions.get(&sessionId).cloned();
                     drop(sessions); // Explicitly drop the MutexGuard here
@@ -188,7 +191,8 @@ pub async fn handler_prepare_upload(
     }
 }
 
-#[axum::debug_handler]
+// #[axum::debug_handler]
+#[allow(non_snake_case)]
 pub async fn handler_upload(
     State(app_handle): State<tauri::AppHandle>,
     Query(query_params): Query<UploadQuery>,
@@ -199,40 +203,40 @@ pub async fn handler_upload(
         query_params
     );
     debug!("handler_upload: entering");
-    let mut filename = "".to_string();
-    let mut savingDir = "".to_string();
+    let mut filename: String;
+    let mut savingDir: String;
     {
         let settings_store = app_handle.store("settings.json").unwrap();
         let localsend_setting = settings_store.get("localsend");
         savingDir = match localsend_setting {
             Some(localsend_setting) => {
                 let localsend_setting: HashMap<String, String> =
-                        serde_json::from_value(localsend_setting).unwrap();
+                    serde_json::from_value(localsend_setting).unwrap();
                 localsend_setting
-                        .get("savingDir")
-                        .unwrap_or(&"/tmp".to_string())
-                        .trim_end_matches("/")
-                        .to_string()
+                    .get("savingDir")
+                    .unwrap_or(&"/tmp".to_string())
+                    .trim_end_matches("/")
+                    .to_string()
             }
             None => "/tmp".to_string(),
         };
         let sessions_state = app_handle.state::<Mutex<Sessions>>();
         debug!("handler_upload: acquiring lock on sessions");
-        let mut sessions = sessions_state.lock().unwrap();
+        let sessions = sessions_state.lock().unwrap();
         debug!("handler_upload: acquired lock on sessions");
         debug!("sessions cloned (before) {:?}", sessions.clone());
         let session = sessions.sessions.get(&query_params.sessionId).cloned();
 
         if let Some(session) = session.clone() {
             if session.accepted && session.userFeedback {
-                if let Some(fileIdtoTokenAndUploadFile) = session
-                        .fileIdtoTokenAndUploadFile
-                        .get(query_params.fileId.as_str())
+                if let Some(fileId_to_tokenAndUploadFile) = session
+                    .fileIdtoTokenAndUploadFile
+                    .get(query_params.fileId.as_str())
                 {
-                    if fileIdtoTokenAndUploadFile.token != query_params.token {
+                    if fileId_to_tokenAndUploadFile.token != query_params.token {
                         return Json(Err("Invalid token".to_string()));
                     } else {
-                        filename = fileIdtoTokenAndUploadFile.uploadFile.fileName.clone();
+                        filename = fileId_to_tokenAndUploadFile.uploadFile.fileName.clone();
                     }
                 } else {
                     return Json(Err("Invalid fileId".to_string()));
@@ -262,7 +266,7 @@ pub async fn handler_upload(
         tokio::io::copy(&mut body_reader, &mut file).await.unwrap();
         Ok::<_, io::Error>(())
     }
-            .await;
+    .await;
     match res {
         Ok(_) => Json(Ok(())),
         Err(e) => {
@@ -295,8 +299,8 @@ pub async fn periodic_announce(my_response: Arc<Message>) -> std::io::Result<()>
             &serde_json::to_vec(&my_response_new).expect("Failed to serialize Message"),
             (addr, port),
         )
-                .await
-                .expect("cannot send message to socket");
+        .await
+        .expect("cannot send message to socket");
         tokio::time::sleep(std::time::Duration::from_secs(announce_interval)).await;
         count += 1;
         break;
@@ -316,7 +320,10 @@ pub async fn daemon(
     let app_handle_clone = app_handle.clone();
     let peers_store = app_handle_clone.store("peers.json").unwrap();
     peers_store.clear();
-    let client = reqwest::Client::builder().danger_accept_invalid_certs(true).build().unwrap();
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
 
     loop {
         let (count, remote_addr) = udp.recv_from(&mut buf).await?;
@@ -366,20 +373,20 @@ pub async fn daemon(
                     peers_store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
                 }
                 udp_clone
-                        .send_to(
-                            &serde_json::to_vec(&*response_clone).expect("Failed to serialize Message"),
-                            (addr, port),
-                        )
-                        .await
-                        .expect("Send error");
+                    .send_to(
+                        &serde_json::to_vec(&*response_clone).expect("Failed to serialize Message"),
+                        (addr, port),
+                    )
+                    .await
+                    .expect("Send error");
                 let res = client_clone
-                        .post(format!(
-                            "{}://{}:{}/api/localsend/v2/register",
-                            peer_protocol, remote_addr, remote_port
-                        ))
-                        .json(&*response_clone)
-                        .send()
-                        .await;
+                    .post(format!(
+                        "{}://{}:{}/api/localsend/v2/register",
+                        peer_protocol, remote_addr, remote_port
+                    ))
+                    .json(&*response_clone)
+                    .send()
+                    .await;
                 match res {
                     Ok(response) => {
                         debug!("reqwest response: {:?}", response);
@@ -395,5 +402,5 @@ pub async fn daemon(
         });
     }
 
-    Ok(())
+    // Ok(())
 }

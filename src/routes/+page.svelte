@@ -53,7 +53,7 @@
     import Inspect from "svelte-inspect-value";
 
     let incoming_request_exist = $state(false);
-    let incoming_session_id = $state('');
+    let incoming_sessionId = $state('');
     let incoming_request_files = $state([]);
     let incoming_request_peer = $state(null);
     // let db;
@@ -65,6 +65,7 @@
         { id: number; created_at: string | null; name: string | null }[]
     >([]);
     const loadUsers = async () => {
+        return
         db.query.users
             .findMany()
             .execute()
@@ -115,7 +116,7 @@
             console.log('event: prepare-upload', event);
             incoming_request_exist = true;
             let payload = event.payload;
-            incoming_session_id = payload.sessionId;
+            incoming_sessionId = payload.sessionId;
 
             let prepareUploadRequest = payload.prepareUploadRequest;
             incoming_request_peer = prepareUploadRequest.info.alias + " (" + prepareUploadRequest.info.fingerprint.substring(0, 8) + "...)";
@@ -279,7 +280,7 @@
                 {incoming_request_peer} want to send file(s) to you:
             </p>
             <p>
-                Session: {incoming_session_id}
+                Session: {incoming_sessionId}
             </p>
             <ul>
                 {#each incoming_request_files as file}
@@ -288,16 +289,18 @@
             </ul>
             <ButtonGroup>
                 <Button color="green" onclick={async () => {
-                    await invoke("handle_incoming_request", {sessionId: incoming_session_id, accept: true});
+                    await reconfigure_localsend();
+                    await invoke("handle_incoming_request", {sessionId: incoming_sessionId, accept: true});
                     // emit('accept-upload', {accept: true});
-                    // emit('accept-upload', {sessionId: incoming_session_id, accept: true});
+                    // emit('accept-upload', {sessionId: incoming_sessionId, accept: true});
                     toast.push('Incoming request accepted');
                     incoming_request_exist = false;
                 }}>Accept</Button>
                 <Button color="red" onclick={async () => {
-                    await invoke("handle_incoming_request", {sessionId: incoming_session_id, accept: false});
+                    await reconfigure_localsend();
+                    await invoke("handle_incoming_request", {sessionId: incoming_sessionId, accept: false});
                     // emit('accept-upload', {accept: false});
-                    // emit('accept-upload', {sessionId: incoming_session_id, accept: false});
+                    // emit('accept-upload', {sessionId: incoming_sessionId, accept: false});
                     toast.push('Incoming request rejected');
                     incoming_request_exist = false;
                 }}>Reject</Button>
@@ -357,7 +360,7 @@
                     <div class="inline-flex items-center text-base font-semibold">
                         {#if selected_files && selected_files.length > 0}
                             <Button onclick={async () => {
-                                await invoke("send_file_to_peer", {peerFingerprint: p.message.fingerprint, files: selected_files});
+                                await invoke("send_file_to_peer", {peer_fingerprint: p.message.fingerprint, files: selected_files});
                                 toast.push('File(s) sharing reqeust sent');
                             }}>Send</Button>
                         {/if}
@@ -366,8 +369,12 @@
             </Card>
         {/each}
     {/if}
+    <hr>
+    <p>
+        Note: on Android, you can only send one file at a time, and have to acquire permission before first use:
+    </p>
     <Button class="ms-2" onclick={acquire_permission_android}>
-        Acquire permission on Android
+        Acquire Permission
     </Button>
 </div>
 

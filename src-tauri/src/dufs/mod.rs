@@ -7,45 +7,34 @@ mod logger;
 mod server;
 mod utils;
 
-pub use args::Args;
 use crate::dufs::args::{build_cli, print_completions};
 use crate::dufs::server::Server;
 #[cfg(feature = "tls")]
 use crate::dufs::utils::{load_certs, load_private_key};
+pub use args::Args;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 pub use args::BindAddr;
 use clap_complete::Shell;
-use futures_util::future::join_all;
 
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::{
     rt::{TokioExecutor, TokioIo},
     server::conn::auto::Builder,
 };
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener as StdTcpListener};
+use std::net::{IpAddr, SocketAddr, TcpListener as StdTcpListener};
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
+    atomic::AtomicBool,
+    Arc,
 };
 use std::time::Duration;
-use tokio::time::timeout;
+use tokio::sync::oneshot;
 use tokio::{net::TcpListener, task::JoinHandle};
 #[cfg(feature = "tls")]
 use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
-use tokio::sync::oneshot;
 
 use crate::dufs::auth::AccessControl;
-use axum::{
-    extract::{Query, Request, State},
-    handler::HandlerWithoutStateExt,
-    http::StatusCode,
-    routing::{get, post},
-    Json, Router,
-};
-use hyper::service::Service;
-use rcgen::{Certificate, KeyPair};
-use socket2::{Domain, Protocol, Socket, Type};
+use axum::extract::Request;
 
 pub async fn main(
     shutdown_rx: oneshot::Receiver<()>,
@@ -157,7 +146,7 @@ fn serve(args: Args, running: Arc<AtomicBool>) -> Result<Vec<JoinHandle<()>>> {
         match bind_addr {
             BindAddr::IpAddr(ip) => {
                 let listener = create_listener(SocketAddr::new(*ip, port))
-                        .with_context(|| format!("Failed to bind `{ip}:{port}`"))?;
+                    .with_context(|| format!("Failed to bind `{ip}:{port}`"))?;
 
                 match &tls_config {
                     #[cfg(feature = "tls")]
@@ -165,8 +154,8 @@ fn serve(args: Args, running: Arc<AtomicBool>) -> Result<Vec<JoinHandle<()>>> {
                         let certs = load_certs(cert_file)?;
                         let key = load_private_key(key_file)?;
                         let mut config = ServerConfig::builder()
-                                .with_no_client_auth()
-                                .with_single_cert(certs, key)?;
+                            .with_no_client_auth()
+                            .with_single_cert(certs, key)?;
                         config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
                         let config = Arc::new(config);
                         let tls_accepter = TlsAcceptor::from(config);
@@ -178,10 +167,10 @@ fn serve(args: Args, running: Arc<AtomicBool>) -> Result<Vec<JoinHandle<()>>> {
                                     continue;
                                 };
                                 let Some(stream) =
-                                        timeout(handshake_timeout, tls_accepter.accept(stream))
-                                                .await
-                                                .ok()
-                                                .and_then(|v| v.ok())
+                                    timeout(handshake_timeout, tls_accepter.accept(stream))
+                                        .await
+                                        .ok()
+                                        .and_then(|v| v.ok())
                                 else {
                                     continue;
                                 };
@@ -220,18 +209,18 @@ fn serve(args: Args, running: Arc<AtomicBool>) -> Result<Vec<JoinHandle<()>>> {
             #[cfg(unix)]
             BindAddr::SocketPath(path) => {
                 let socket_path = if path.starts_with("@")
-                        && cfg!(any(target_os = "linux", target_os = "android"))
+                    && cfg!(any(target_os = "linux", target_os = "android"))
                 {
                     let mut path_buf = path.as_bytes().to_vec();
                     path_buf[0] = b'\0';
                     unsafe { std::ffi::OsStr::from_encoded_bytes_unchecked(&path_buf) }
-                            .to_os_string()
+                        .to_os_string()
                 } else {
                     let _ = std::fs::remove_file(path);
                     path.into()
                 };
                 let listener = tokio::net::UnixListener::bind(socket_path)
-                        .with_context(|| format!("Failed to bind `{}`", path))?;
+                    .with_context(|| format!("Failed to bind `{}`", path))?;
                 let handle = tokio::spawn(async move {
                     loop {
                         let Ok((stream, _addr)) = listener.accept().await else {
@@ -249,17 +238,16 @@ fn serve(args: Args, running: Arc<AtomicBool>) -> Result<Vec<JoinHandle<()>>> {
     Ok(handles)
 }
 
-
 async fn handle_stream<T>(handle: Arc<Server>, stream: TokioIo<T>, addr: Option<SocketAddr>)
 where
-        T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+    T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
     let hyper_service =
-            service_fn(move |request: Request<Incoming>| handle.clone().call(request, addr));
+        service_fn(move |request: Request<Incoming>| handle.clone().call(request, addr));
 
     match Builder::new(TokioExecutor::new())
-            .serve_connection_with_upgrades(stream, hyper_service)
-            .await
+        .serve_connection_with_upgrades(stream, hyper_service)
+        .await
     {
         Ok(()) => {}
         Err(_err) => {
@@ -327,7 +315,7 @@ pub fn check_addrs(args: &Args) -> anyhow::Result<(Vec<BindAddr>, Vec<BindAddr>)
 fn interface_addrs() -> anyhow::Result<(Vec<BindAddr>, Vec<BindAddr>)> {
     let (mut ipv4_addrs, mut ipv6_addrs) = (vec![], vec![]);
     let ifaces =
-            if_addrs::get_if_addrs().with_context(|| "Failed to get local interface addresses")?;
+        if_addrs::get_if_addrs().with_context(|| "Failed to get local interface addresses")?;
     for iface in ifaces.into_iter() {
         let ip = iface.ip();
         if ip.is_ipv4() {
@@ -343,33 +331,33 @@ fn interface_addrs() -> anyhow::Result<(Vec<BindAddr>, Vec<BindAddr>)> {
 fn print_listening(args: &Args, print_addrs: &[BindAddr]) -> anyhow::Result<String> {
     let mut output = String::new();
     let urls = print_addrs
-            .iter()
-            .map(|bind_addr| match bind_addr {
-                BindAddr::IpAddr(addr) => {
-                    let addr = match addr {
-                        IpAddr::V4(_) => format!("{}:{}", addr, args.port),
-                        IpAddr::V6(_) => format!("[{}]:{}", addr, args.port),
-                    };
-                    let protocol = if args.tls_cert.is_some() {
-                        "https"
-                    } else {
-                        "http"
-                    };
-                    format!("{}://{}{}", protocol, addr, args.uri_prefix)
-                }
-                #[cfg(unix)]
-                BindAddr::SocketPath(path) => path.to_string(),
-            })
-            .collect::<Vec<_>>();
+        .iter()
+        .map(|bind_addr| match bind_addr {
+            BindAddr::IpAddr(addr) => {
+                let addr = match addr {
+                    IpAddr::V4(_) => format!("{}:{}", addr, args.port),
+                    IpAddr::V6(_) => format!("[{}]:{}", addr, args.port),
+                };
+                let protocol = if args.tls_cert.is_some() {
+                    "https"
+                } else {
+                    "http"
+                };
+                format!("{}://{}{}", protocol, addr, args.uri_prefix)
+            }
+            #[cfg(unix)]
+            BindAddr::SocketPath(path) => path.to_string(),
+        })
+        .collect::<Vec<_>>();
 
     if urls.len() == 1 {
         output.push_str(&format!("Listening on {}", urls[0]))
     } else {
         let info = urls
-                .iter()
-                .map(|v| format!("  {v}"))
-                .collect::<Vec<String>>()
-                .join("\n");
+            .iter()
+            .map(|v| format!("  {v}"))
+            .collect::<Vec<String>>()
+            .join("\n");
         output.push_str(&format!("Listening on:\n{info}\n"))
     }
 
@@ -378,6 +366,6 @@ fn print_listening(args: &Args, print_addrs: &[BindAddr]) -> anyhow::Result<Stri
 
 async fn shutdown_signal() {
     tokio::signal::ctrl_c()
-            .await
-            .expect("Failed to install CTRL+C signal handler")
+        .await
+        .expect("Failed to install CTRL+C signal handler")
 }

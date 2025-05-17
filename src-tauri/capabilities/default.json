@@ -14,9 +14,6 @@
       "identifier": "fs:scope",
       "allow": [
         {
-          "path": "$APPDATA"
-        },
-        {
           "path": "$APPDATA/**"
         },
         { "path": "$HOME/**" },

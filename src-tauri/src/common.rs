@@ -1,23 +1,18 @@
-use std::collections::HashMap;
-// src/common.rs
-use clap::builder::Str;
 use rcgen::{Certificate, KeyPair};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use socket2::{Domain, Socket, Type};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::collections::HashMap;
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
-use anyhow::Context;
-use tokio::net::TcpListener;
-use serde::Deserialize;
 
 pub(crate) const FINGERPRINT_LENGTH: u16 = 32;
 pub(crate) const SESSION_LENGTH: u16 = 32;
 pub(crate) const FILE_TOKEN_LENGTH: u16 = 32;
-pub(crate) const FILE_ID_LENGTH: u16 = 32;
+pub(crate) const FILEID_LENGTH: u16 = 32;
 
 // LocalSend Protocol v2.1
 // https://github.com/localsend/protocol/blob/main/README.md
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Message {
     pub alias: String,
     pub version: String,              // protocol version (major.minor)
@@ -31,7 +26,7 @@ pub struct Message {
     pub announce: Option<bool>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 enum DeviceType {
     Mobile,
     Desktop,
@@ -40,7 +35,7 @@ enum DeviceType {
     Server,
 }
 
-#[derive(serde::Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct PrepareUploadParams {
     #[serde(default, deserialize_with = "empty_string_as_none")]
     pin: Option<String>,
@@ -61,7 +56,7 @@ where
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PeerInfo {
     pub message: Message,
     pub remote_addrs: std::collections::VecDeque<SocketAddr>,
@@ -79,32 +74,33 @@ impl PeerInfo {
 
 
 #[allow(non_snake_case)]
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PrepareUploadRequestAndSessionId {
     pub sessionId: String,
     pub prepareUploadRequest: PrepareUploadRequest,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PrepareUploadRequest {
     pub info: Message,
     pub files: Files,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+#[allow(non_camel_case_types)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 enum Protocol {
     http,
     https,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Files {
     // Use serde_json's custom key deserialization to handle dynamic file IDs
     #[serde(flatten)]
     pub files: std::collections::HashMap<String, UploadFile>,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct Sessions {
     // Use serde_json's custom key deserialization to handle dynamic file IDs
     #[serde(flatten)]
@@ -112,7 +108,7 @@ pub struct Sessions {
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct Session {
     pub accepted: bool,
     pub userFeedback: bool,
@@ -120,13 +116,13 @@ pub struct Session {
     pub fileIdtoTokenAndUploadFile: HashMap<String, TokenAndUploadFile>,
 }
 #[allow(non_snake_case)]
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct TokenAndUploadFile {
     pub token: String,
     pub  uploadFile: UploadFile,
 }
 #[allow(non_snake_case)]
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct UploadFile {
     pub id: String,
     pub fileName: String,
@@ -140,7 +136,7 @@ pub struct UploadFile {
     pub metadata: Option<Metadata>, // nullable
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Metadata {
     #[serde(
         default,
@@ -174,7 +170,7 @@ where
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct UploadQuery {
     pub sessionId: String,
     pub fileId: String,
