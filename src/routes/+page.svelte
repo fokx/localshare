@@ -218,8 +218,9 @@
 <!--{#each db_result as row}-->
 <!--    <p>{row.id} {row.name}</p>-->
 <!--{/each}-->
-{display_paths}
-<main class="container mx-auto flex flex-col gap-4">
+<main class="container mx-auto flex flex-col gap-4 hidden">
+    {display_paths}
+
     <div class="flex gap-2">
         <button
                 class="font-mono text-sm text-blue-400 hover:text-blue-500 hover:underline cursor-pointer text-left"

@@ -554,18 +554,27 @@ async fn send_file_to_peer(
     let peer_fingerprint = peerFingerprint.clone();
     let mut remote_addrs;
     let remote_port;
+    let remote_protocol;
     if let Some(peer_value) = peers_store_clone.get(&peer_fingerprint) {
         let peer_info: PeerInfo = serde_json::from_value(peer_value).unwrap();
         remote_addrs = peer_info.remote_addrs;
         remote_port = peer_info.message.port;
+        remote_protocol = peer_info.message.protocol.clone();
+        warn!("remote remote_protocol: {}", remote_protocol.clone());
     } else {
         let msg = format!("peer {} not found in peers store", peer_fingerprint);
         debug!("{}", msg);
         return Err(msg.to_string());
     }
 
-    let client = reqwest::Client::new();
-
+    let client = if remote_protocol.as_str() == "https" {
+        reqwest::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .build()
+            .unwrap()
+    } else {
+        reqwest::Client::new()
+    };
     let mut files_map = HashMap::new();
     let mut file_id_to_fullpath_map = HashMap::new();
     for file in files {
@@ -622,8 +631,8 @@ async fn send_file_to_peer(
         debug!("remote host: {}", remote_addr);
         let res = client_clone
             .post(format!(
-                "http://{}/api/localsend/v2/prepare-upload",
-                remote_addr
+                "{}://{}/api/localsend/v2/prepare-upload",
+                remote_protocol, remote_addr
             ))
             .json(&request)
             .send()
@@ -660,8 +669,8 @@ async fn send_file_to_peer(
                             let fullpath = file_id_to_fullpath_map.get(fileId).unwrap();
                             let file_binary = tokio::fs::read(fullpath).await.unwrap();
                             let url = format!(
-                                "http://{}/api/localsend/v2/upload?sessionId={}&fileId={}&token={}",
-                                remote_addr, sessionId, fileId, token
+                                "{}://{}/api/localsend/v2/upload?sessionId={}&fileId={}&token={}",
+                                remote_protocol, remote_addr, sessionId, fileId, token
                             );
                             debug!("url: {}", url);
                             let res = client_clone.post(url).body(file_binary).send().await;
@@ -1364,7 +1373,7 @@ async fn daemon(
     let app_handle_clone = app_handle.clone();
     let peers_store = app_handle_clone.store("peers.json").unwrap();
     peers_store.clear();
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder().danger_accept_invalid_certs(true).build().unwrap();
 
     loop {
         let (count, remote_addr) = udp.recv_from(&mut buf).await?;
@@ -1385,6 +1394,7 @@ async fn daemon(
                 );
 
                 let peer_fingerprint = parsed_msg.fingerprint.clone();
+                let peer_protocol = parsed_msg.protocol.clone();
                 if parsed_msg.fingerprint == my_fingerprint_clone {
                     debug!("skip my own fingerprint");
                     return;
@@ -1421,8 +1431,8 @@ async fn daemon(
                     .expect("Send error");
                 let res = client_clone
                     .post(format!(
-                        "http://{}:{}/api/localsend/v2/register",
-                        remote_addr, remote_port
+                        "{}://{}:{}/api/localsend/v2/register",
+                        peer_protocol, remote_addr, remote_port
                     ))
                     .json(&*response_clone)
                     .send()
