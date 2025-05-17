@@ -1,12 +1,12 @@
 #![allow(clippy::too_many_arguments)]
 
-use crate::auth::{www_authenticate, AccessPaths, AccessPerm};
-use crate::http_utils::{body_full, IncomingStream, LengthLimitedStream};
-use crate::utils::{
+use crate::dufs::auth::{www_authenticate, AccessPaths, AccessPerm};
+use crate::dufs::http_utils::{body_full, IncomingStream, LengthLimitedStream};
+use crate::dufs::utils::{
     decode_uri, encode_uri, get_file_mtime_and_mode, get_file_name, glob, parse_range,
     try_get_file_name,
 };
-use crate::Args;
+use crate::dufs::Args;
 
 use anyhow::{anyhow, Result};
 use async_zip::{tokio::write::ZipFileWriter, Compression, ZipDateTime, ZipEntryBuilder};
@@ -54,10 +54,10 @@ use xml::escape::escape_str_pcdata;
 pub type Request = hyper::Request<Incoming>;
 pub type Response = hyper::Response<BoxBody<Bytes, anyhow::Error>>;
 
-const INDEX_HTML: &str = include_str!("../assets/index.html");
-const INDEX_CSS: &str = include_str!("../assets/index.css");
-const INDEX_JS: &str = include_str!("../assets/index.js");
-const FAVICON_ICO: &[u8] = include_bytes!("../assets/favicon.ico");
+const INDEX_HTML: &str = include_str!("../../assets/index.html");
+const INDEX_CSS: &str = include_str!("../../assets/index.css");
+const INDEX_JS: &str = include_str!("../../assets/index.js");
+const FAVICON_ICO: &[u8] = include_bytes!("../../assets/favicon.ico");
 const INDEX_NAME: &str = "index.html";
 const BUF_SIZE: usize = 65536;
 const EDITABLE_TEXT_MAX_SIZE: u64 = 4194304; // 4M

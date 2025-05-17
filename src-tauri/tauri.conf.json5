@@ -15,6 +15,9 @@
         "title": "localshare",
         "width": 800,
         "height": 800,
+// //      https://v2.tauri.app/reference/config/#windowconfig
+//        "proxyUrl": "socks5://127.0.0.1:4801",
+//        "url": "http://127.0.0.1:4802"
       }
     ],
     "security": {
@@ -33,7 +36,10 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+//    "externalBin": [
+//      "binaries/binapp"
+//    ]
   },
 //  "plugins": {
 //    "sql": {

@@ -1,10 +1,19 @@
+use std::collections::HashMap;
 // src/common.rs
 use clap::builder::Str;
 use rcgen::{Certificate, KeyPair};
 use serde::Serialize;
-use socket2::{Domain, Protocol, Socket, Type};
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use socket2::{Domain, Socket, Type};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
+use anyhow::Context;
+use tokio::net::TcpListener;
+use serde::Deserialize;
+
+pub(crate) const FINGERPRINT_LENGTH: u16 = 32;
+pub(crate) const SESSION_LENGTH: u16 = 32;
+pub(crate) const FILE_TOKEN_LENGTH: u16 = 32;
+pub(crate) const FILE_ID_LENGTH: u16 = 32;
 
 // LocalSend Protocol v2.1
 // https://github.com/localsend/protocol/blob/main/README.md
@@ -31,6 +40,27 @@ enum DeviceType {
     Server,
 }
 
+#[derive(serde::Deserialize, Debug, Clone)]
+pub struct PrepareUploadParams {
+    #[serde(default, deserialize_with = "empty_string_as_none")]
+    pin: Option<String>,
+}
+
+fn empty_string_as_none<'de, D, T>(de: D) -> anyhow::Result<Option<T>, D::Error>
+where
+        D: serde::Deserializer<'de>,
+        T: std::str::FromStr,
+        T::Err: std::fmt::Display,
+{
+    let opt = Option::<String>::deserialize(de)?;
+    match opt.as_deref() {
+        None | Some("") => Ok(None),
+        Some(s) => std::str::FromStr::from_str(s)
+                .map_err(serde::de::Error::custom)
+                .map(Some),
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct PeerInfo {
     pub message: Message,
@@ -45,8 +75,115 @@ impl PeerInfo {
         self.remote_addrs.push_back(addr);
     }
 }
+
+
+
+#[allow(non_snake_case)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct PrepareUploadRequestAndSessionId {
+    pub sessionId: String,
+    pub prepareUploadRequest: PrepareUploadRequest,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct PrepareUploadRequest {
+    pub info: Message,
+    pub files: Files,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+enum Protocol {
+    http,
+    https,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+pub struct Files {
+    // Use serde_json's custom key deserialization to handle dynamic file IDs
+    #[serde(flatten)]
+    pub files: std::collections::HashMap<String, UploadFile>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Default)]
+pub struct Sessions {
+    // Use serde_json's custom key deserialization to handle dynamic file IDs
+    #[serde(flatten)]
+    pub sessions: HashMap<String, Session>,
+}
+
+#[allow(non_snake_case)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Default)]
+pub struct Session {
+    pub accepted: bool,
+    pub userFeedback: bool,
+    pub finished: bool,
+    pub fileIdtoTokenAndUploadFile: HashMap<String, TokenAndUploadFile>,
+}
+#[allow(non_snake_case)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Default)]
+pub struct TokenAndUploadFile {
+    pub token: String,
+    pub  uploadFile: UploadFile,
+}
+#[allow(non_snake_case)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Default)]
+pub struct UploadFile {
+    pub id: String,
+    pub fileName: String,
+    pub size: u64, // bytes
+    pub fileType: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub  sha256: Option<String>, // nullable
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preview: Option<Vec<u8>>, // nullable
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>, // nullable
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+pub struct Metadata {
+    #[serde(
+        default,
+        deserialize_with = "deserialize_system_time",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub modified: Option<std::time::SystemTime>, // nullable
+    #[serde(
+        default,
+        deserialize_with = "deserialize_system_time",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub accessed: Option<std::time::SystemTime>, // nullable
+}
+// Localsend's time is in ISO 8601 format (e.g., "2024-06-06T15:25:34.000Z").
+// SystemTime does not natively support deserialization from such strings.
+fn deserialize_system_time<'de, D>(
+    deserializer: D,
+) -> anyhow::Result<Option<std::time::SystemTime>, D::Error>
+where
+        D: serde::Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+    if let Some(date_str) = opt {
+        let parsed =
+                chrono::DateTime::parse_from_rfc3339(&date_str).map_err(serde::de::Error::custom)?;
+        Ok(Some(std::time::SystemTime::from(parsed)))
+    } else {
+        Ok(None)
+    }
+}
+
+#[allow(non_snake_case)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+pub struct UploadQuery {
+    pub sessionId: String,
+    pub fileId: String,
+    pub token: String,
+}
+
+
 pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket>> {
-    let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
+    let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(socket2::Protocol::UDP))?;
     socket.set_reuse_address(true)?;
     socket.set_nonblocking(true)?;
     let addr = "224.0.0.167".parse().unwrap();

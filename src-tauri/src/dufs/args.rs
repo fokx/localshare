@@ -9,9 +9,9 @@ use std::env;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 
-use crate::auth::AccessControl;
-use crate::http_logger::HttpLogger;
-use crate::utils::encode_uri;
+use crate::dufs::auth::AccessControl;
+use crate::dufs::http_logger::HttpLogger;
+use crate::dufs::utils::encode_uri;
 
 pub fn build_cli() -> Command {
     let app = Command::new(env!("CARGO_CRATE_NAME"))

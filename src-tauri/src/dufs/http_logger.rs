@@ -1,6 +1,6 @@
 use std::{collections::HashMap, str::FromStr};
 
-use crate::{auth::get_auth_user, server::Request};
+use crate::dufs::{auth::get_auth_user, server::Request};
 
 pub const DEFAULT_LOG_FORMAT: &str = r#"$remote_addr "$request" $status"#;
 
