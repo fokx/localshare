@@ -40,6 +40,9 @@
 //    "externalBin": [
 //      "binaries/binapp"
 //    ]
+    "resources": [
+      "../res/**/*"
+    ]
   },
 //  "plugins": {
 //    "sql": {

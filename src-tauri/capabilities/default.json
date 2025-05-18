@@ -29,6 +29,8 @@
     "fs:allow-mkdir",
     "fs:allow-remove",
     "fs:allow-copy-file",
+    "fs:allow-resource-read-recursive",
+    "fs:allow-resource-write-recursive",
     "android-fs:default",
     "clipboard-manager:allow-write-text",
     "opener:default",

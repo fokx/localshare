@@ -9,6 +9,7 @@
       <excludeFolder url="file://$MODULE_DIR$/src-tauri/target" />
       <excludeFolder url="file://$MODULE_DIR$/.svelte-kit" />
       <excludeFolder url="file://$MODULE_DIR$/.vscode" />
+      <excludeFolder url="file://$MODULE_DIR$/res" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

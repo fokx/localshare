@@ -17,7 +17,11 @@
     "tauri-build-apk-debug": "tauri android build --apk --target aarch64 --debug",
     "tauri-build-apk-all": "tauri android build --apk",
     "tauri-build": "tauri build",
-    "tauri-build-win": "pnpm tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc"
+    "tauri-build-win": "pnpm tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc",
+    "db:push": "drizzle-kit push",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "json2db": "tsx src/lib/db/json2db.ts"
   },
   "license": "MIT",
   "dependencies": {
@@ -52,12 +56,14 @@
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@tauri-apps/cli": "^2.5.0",
     "@zerodevx/svelte-toast": "^0.9.6",
+    "better-sqlite3": "^11.10.0",
     "drizzle-kit": "^0.30.6",
     "flowbite": "^3.1.2",
     "flowbite-svelte": "^1.2.3",
     "flowbite-svelte-icons": "^2.1.1",
     "svelte": "^5.30.1",
     "svelte-check": "^4.2.1",
+    "tsx": "^4.19.3",
     "typescript": "~5.6.3",
     "vite": "^6.3.5"
   }
