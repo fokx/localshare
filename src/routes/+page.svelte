@@ -185,6 +185,7 @@
         toast.push('Configuration saved');
     }
     let selected_files = $state([]);
+    let selected_files_names = $state([]);
     async function select_files() {
         const files = await open({
             multiple: true,
@@ -195,6 +196,14 @@
         }
         console.log(files);
         selected_files = files;
+        selected_files_names = files.map((file) => {
+            try{
+                let tmp = file.substring(file.lastIndexOf('/') + 1);
+                return decodeURIComponent(tmp)
+            } catch (e) {
+                return file;
+            }
+        });
     }
     let savingDir = $state("/storage/emulated/0/");
     let fingerprint = $state("");
@@ -328,7 +337,7 @@
             </Heading>
         {/if}
         <div>
-            <Listgroup items={selected_files} liClass="w-full"/>
+            <Listgroup items={(selected_files_names)} liClass="w-full"/>
         </div>
 
     </div>
