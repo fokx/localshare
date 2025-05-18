@@ -226,6 +226,8 @@ pub async fn send_file_to_peer(
                             };
                         }
                     }
+                    // when transfer to one address succeeds, won't try another address
+                    break
                 } else {
                     debug!(
                         "peer reply to prepare-upload error: {:?}",
