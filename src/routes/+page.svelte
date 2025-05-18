@@ -371,7 +371,7 @@
     {/if}
     <hr>
     <p>
-        Note: on Android, you can only send one file at a time, and have to acquire permission before first use:
+        On Android, you have to acquire permission before first use:
     </p>
     <Button class="ms-2" onclick={acquire_permission_android}>
         Acquire Permission

@@ -6,13 +6,15 @@ use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use std::collections::HashMap;
 use std::io::Read;
 use std::net::{IpAddr, SocketAddr};
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use sysinfo::{Disks, System};
 use tauri::Manager;
 use tauri_plugin_android_fs::{AndroidFsExt, PersistableAccessMode};
-use tauri_plugin_fs::FsExt;
+use tauri_plugin_fs::{FsExt, OpenOptions};
 use tauri_plugin_store::{JsonValue, StoreExt};
 use tokio::sync::oneshot;
+use url::Url;
 
 #[tauri::command(rename_all = "snake_case")]
 pub fn get_nic_info(
@@ -92,17 +94,32 @@ pub async fn send_file_to_peer(
         let fileId = generate_random_string(FILEID_LENGTH);
         let filename = app_handle.path().file_name(&file.clone()).unwrap();
         debug!("filename: {}", filename);
-        let file_metatdata = std::fs::metadata(file.clone());
-        let filesize: u64 = match file_metatdata {
-            Ok(metadata) => {
-                let size = metadata.len();
-                debug!("file size: {}", size);
-                size
-            }
-            Err(e) => {
-                debug!("error getting file size: {:?}", e);
-                9999
-            }
+        let filesize = if cfg!(target_os = "android") {
+            let fs_api = app_handle.fs();
+            // The Tauri FS plugin doesn't support read metadata from Rust side,
+            // temporarily mitigate this by read the file, which is inefficient
+            // let path = tauri_plugin_fs::FilePath::Url(Url::from_str(file.as_str()).unwrap());
+            // let options = OpenOptions::default();
+            // let file = fs_api.open(path, options).unwrap(); // called `Result::unwrap()` on an `Err` value: Custom { kind: Other, error: "failed to open file: Bad mode: " }
+            // let metadata = file.metadata().unwrap();
+            // let size = metadata.len();
+            let path = tauri_plugin_fs::FilePath::Url(Url::from_str(&*file).unwrap());
+            let mut file = fs_api.read(path).unwrap();
+            file.len() as u64
+        } else {
+            let file_metatdata = std::fs::metadata(file.clone());
+            let filesize: u64 = match file_metatdata {
+                Ok(metadata) => {
+                    let size = metadata.len();
+                    debug!("file size: {}", size);
+                    size
+                }
+                Err(e) => {
+                    debug!("error getting file size: {:?}", e);
+                    9999
+                }
+            };
+            filesize
         };
         files_map.insert(
             fileId.clone(),
@@ -180,22 +197,12 @@ pub async fn send_file_to_peer(
                             let fullpath = fileId_to_fullpath_map.get(fileId).unwrap();
                             warn!("fullpath: {:?}", fullpath);
                             let file_binary = if cfg!(target_os = "android") {
-                                warn!("1");
-                                let android_fs_api = app_handle.android_fs();
-                                warn!("2");
-                                let filepath = tauri_plugin_android_fs::FileUri::from_str(fullpath).unwrap();
-                                warn!("3");
-                                let mut f: std::fs::File = android_fs_api.open_file(
-                                    &filepath,
-                                    tauri_plugin_android_fs::FileAccessMode::Read
-                                ).unwrap();
-                                warn!("4");
-                                let mut buffer = Vec::new();
-                                warn!("5");
-                                // read the whole file
-                                f.read_to_end(&mut buffer).unwrap();
-                                warn!("6");
-                                buffer
+                                let fs_api = app_handle.fs();
+                                // let android_fs_api = app_handle.android_fs();
+                                // let options = OpenOptions::default();
+                                let path = tauri_plugin_fs::FilePath::Url(Url::from_str(fullpath).unwrap());
+                                let mut file = fs_api.read(path).unwrap();
+                                file
 
                             } else {
                                 warn!("read using std::fs");

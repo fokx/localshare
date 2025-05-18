@@ -1,6 +1,6 @@
 [package]
 name = "localshare"
-version = "0.4.0"
+version = "0.5.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -91,6 +91,7 @@ thiserror = "2.0.12"
 tauri-plugin-sql = "2.2"
 #tauri-plugin-sql = { path = "../../plugins-workspace/plugins/sql", features = ["sqlite"] }
 tauri-plugin-os = "2"
+url = "2.5.4"
 
 # Feature "bundled-sqlcipher" of libsqlite3 make android build fail
 #libsqlite3-sys = { version = "0.30", features = ["bundled-sqlcipher"] }
