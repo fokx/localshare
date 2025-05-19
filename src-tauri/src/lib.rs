@@ -1,3 +1,4 @@
+use std::io::Write;
 use tauri_plugin_fs::FsExt;
 #[macro_use]
 extern crate log;
@@ -97,7 +98,7 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
-                .add_migrations("sqlite:test.db", migrations)
+                // .add_migrations("sqlite:xap.db", migrations)
                 .build(),
         )
         .plugin(tauri_plugin_log::Builder::new().level(log_level).build())
@@ -112,29 +113,32 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sharetarget::init())
         .setup(|app| {
-            // app.manage(Mutex::new(AppData {
-            //     addr: "224.0.0.167",
-            //     port: 53317,
-            // }));
+            let db_src = app.path().resolve("res/xap.db", tauri::path::BaseDirectory::Resource)?;
+            let db_dst = app.path().resolve("test.db", tauri::path::BaseDirectory::AppConfig)?;
 
-            let resource_path = app.path().parse("$RESOURCE/res/likes.json")?;
-            let resource_path2 = app.path().resolve("res/likes.json", tauri::path::BaseDirectory::Resource)?;
-
-
-            warn!("readfile: resource_path {:?}", resource_path);
-            warn!("readfile: resource_path2 {:?}", resource_path2);
-            let path = tauri_plugin_fs::FilePath::Path(resource_path.clone());
-            let path2 = tauri_plugin_fs::FilePath::Path(resource_path2);
-            let options = tauri_plugin_fs::OpenOptions::new();
-            // this works on desktop
-            // let file2 = std::fs::File::open(&resource_path).unwrap();
-
-            let file2 = app.fs().read(path).unwrap();
-            // let file2 = app.fs().open(path2, options).unwrap();
-
-            // let path = tauri_plugin_fs::FilePath::Url(Url::from_str(&*file).unwrap());
-            // let mut file = fs_api.read(path).unwrap();
-            warn!("readfile: {:?}", file2);
+            warn!("readfile: src {:?}", db_src.clone());
+            warn!("readfile: dst {:?}", db_dst.clone());
+            if cfg!(target_os = "android") {
+                // this SQL copy logic currently does not work on Android, patched it in sql plugin rust code
+                // warn!("readfile 1");
+                // let src_path = tauri_plugin_fs::FilePath::Path(db_src.clone());
+                // warn!("readfile 2: {:?}", src_path);
+                // let db_file_content = app.fs().read(src_path).unwrap();
+                // warn!("readfile 4");
+                // let mut file_opened = std::fs::OpenOptions::new().write(true).open(db_dst.as_path()).unwrap();
+                // warn!("copying bundled sqlite");
+                // file_opened.write_all(&db_file_content);
+                // warn!("done");
+            } else {
+                // let db_file_content = std::fs::File::open(&db_src).unwrap();
+                if !std::path::Path::new(&db_dst.clone()).exists() {
+                    warn!("copy bundled sqlite");
+                    std::fs::copy(db_src.as_path(), db_dst.as_path()).unwrap();
+                    warn!("done");
+                } else {
+                    warn!("skip existing")
+                }
+            }
 
             let settings_store = app.store("settings.json").unwrap();
             let localsend_setting = settings_store.get("localsend");

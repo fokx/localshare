@@ -31,9 +31,12 @@
     "fs:allow-copy-file",
     "fs:allow-resource-read-recursive",
     "fs:allow-resource-write-recursive",
+    "fs:allow-appconfig-read-recursive",
+    "fs:allow-appconfig-write-recursive",
     "android-fs:default",
     "clipboard-manager:allow-write-text",
     "opener:default",
+    "opener:allow-open-path",
     {
       "identifier": "opener:allow-open-url",
       "allow": [

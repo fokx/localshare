@@ -18,7 +18,8 @@
     import {
         HomeSolid,
         AdjustmentsHorizontalSolid,
-        ShareNodesSolid
+        ShareNodesSolid,
+        GlobeSolid,
     } from 'flowbite-svelte-icons';
     import { page } from '$app/state';
 
@@ -36,12 +37,15 @@
     </div>
 </main>
 <div class="">
-    <BottomNav {activeUrl} position="absolute" innerClass="grid-cols-2">
-        <BottomNavItem btnName="LocalSend" href="/">
+    <BottomNav {activeUrl} position="absolute" innerClass="grid-cols-3">
+        <BottomNavItem btnName="LocalSend" href="/localsend">
             <ShareNodesSolid />
         </BottomNavItem>
-        <BottomNavItem btnName="Dufs" href="/dufs">
+        <BottomNavItem btnName="Home" href="/">
             <HomeSolid />
+        </BottomNavItem>
+        <BottomNavItem btnName="Dufs" href="/dufs">
+            <GlobeSolid />
         </BottomNavItem>
     </BottomNav>
     <SvelteToast {options} />

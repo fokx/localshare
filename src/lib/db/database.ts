@@ -12,14 +12,16 @@ export type SelectQueryResult = {
 /**
  * Loads the sqlite database via the Tauri Proxy.
  */
-// export const sqlite = await Database.load("sqlite:test.db");
+// export const sqlite = await Database.load("sqlite:xap.db");
 
 export async function getDb() {
-    return await Database.load("sqlite:test.db",
-        // {
-        //     sqlite: {pragmas: {"key": "encryption_key"}}
-        // }
-    );
+    return await Database.load("sqlite:xap.db", {
+        sqlite: { pragmas: {
+            "journal_mode": "WAL",
+            "foreign_keys": "ON",
+            // "key": "encryption_key"
+        } }
+    });
 }
 
 /**

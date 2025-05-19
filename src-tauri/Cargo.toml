@@ -98,8 +98,8 @@ reqwest= { version = "0.12.15", default-features = false,features = ["charset", 
 rcgen = "0.13.2"
 tauri-plugin-log = "2"
 thiserror = "2.0.12"
-tauri-plugin-sql = "2.2"
-#tauri-plugin-sql = { path = "../../plugins-workspace/plugins/sql", features = ["sqlite"] }
+#tauri-plugin-sql = "2.2"
+tauri-plugin-sql = { path = "../../plugins-workspace/plugins/sql", features = ["sqlite"] }
 tauri-plugin-os = "2"
 url = "2.5.4"
 
