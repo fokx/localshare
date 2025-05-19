@@ -4,23 +4,86 @@ import Database from 'better-sqlite3';
 import {drizzle} from 'drizzle-orm/better-sqlite3';
 // import { drizzle } from "drizzle-orm/sqlite-proxy";
 import * as schema from './schema';
-import {eq} from "drizzle-orm";
-
+import {eq} from 'drizzle-orm';
+import path from 'path';
 const client = new Database("../../../sqlite:test.db");
 
 export const db = drizzle(client, {schema});
+
+async function import_sth(filename: string, table, fields_convert_date: Array<string>) {
+    console.log(`importing ${filename} to "${table}";`);
+    let filePath = path.join('../../../res/', filename);
+    await fs.readFile(filePath, 'utf8').then(async (data) => {
+        const items = JSON.parse(data);
+        const batchSize = 2000;
+        const length = items.length;
+        let batch = [];
+        // Process date fields for all items at once
+        // items.forEach((item) => {
+        //     fields_convert_date.forEach((field) => {
+        //         item[field] = new Date(item[field]);
+        //
+        //     });
+        //     // item.created_at = new Date(item.created_at);
+        //     // item.updated_at = new Date(item.updated_at);
+        //     // item.silenced_till = new Date(item.silenced_till);
+        // });
+        const updatedItems = items.map(item => {
+            return {
+                ...item,
+                ...Object.fromEntries(
+                    fields_convert_date.map(field => [field, new Date(item[field])])
+                )
+            };
+        });
+
+        // db.transaction((trx) => {
+            for (let i = 0; i < length; i++) {
+                const item = updatedItems[i];
+                batch.push(item);
+
+                if (batch.length === batchSize || i === length - 1) {
+                    await db.insert(table).values(batch);//.onConflictDoUpdate({ target: schema.users.id, set: item });
+                    batch = [];
+                }
+            }
+        // });
+
+        // db.insert(schema.users)
+        //     .values(items)
+        //     .run();
+    })
+}
+
 function import_users() {
     let filePath = '../../../res/users.json';
-    fs.readFile(filePath, 'utf8').then(async (data) => {
+    fs.readFile(filePath, 'utf8').then((data) => {
         const items = JSON.parse(data);
+        const batchSize = 2000; // Adjust batch size as needed
+        const length = items.length;
+        let batch = [];
+        // Process date fields for all items at once
         items.forEach((item) => {
             item.created_at = new Date(item.created_at);
             item.updated_at = new Date(item.updated_at);
             item.silenced_till = new Date(item.silenced_till);
         });
-        for (const item of items) {
-            await db.insert(schema.users).values(item).onConflictDoUpdate({target: schema.users.id, set: item});
-        }
+
+        db.transaction((trx) => {
+            for (let i = 0; i < length; i++) {
+                const item = items[i];
+                batch.push(item);
+
+                if (batch.length === batchSize || i === length - 1) {
+                    trx.insert(schema.users).values(batch);//.onConflictDoUpdate({ target: schema.users.id, set: item });
+                    batch = [];
+                }
+            }
+        });
+
+        // db.insert(schema.users)
+        //     .values(items)
+        //     .run();
     });
 }
 
@@ -30,8 +93,8 @@ function import_topics() {
         const items = JSON.parse(data);
         items.forEach((item) => {
             item.created_at = new Date(item.created_at);
-            item.last_posted_at = new Date(item.last_posted_at);
             item.updated_at = new Date(item.updated_at);
+            item.last_posted_at = new Date(item.last_posted_at);
             // item.tags = null;
         });
         for (const item of items) {
@@ -145,8 +208,11 @@ function import_likes() {
 }
 
 // because of foreign key constraints, the data import order is:
-
-import_users()
-import_topics()
-import_posts()
-import_likes()
+await import_sth('users.json', schema.users, ['created_at', 'updated_at', 'silenced_till']);
+await import_sth('topics.json', schema.topics, ['created_at', 'updated_at', 'last_posted_at']);
+await import_sth('posts.json', schema.posts, ['created_at', 'updated_at']);
+await import_sth('likes.json', schema.likes, ['created_at']);
+// import_users()
+// import_topics()
+// import_posts()
+// import_likes()
