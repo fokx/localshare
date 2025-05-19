@@ -13,6 +13,6 @@ src-tauri/binaries/*
 src-tauri/target/*
 src-tauri/gen/*
 src-tauri/gen/schemas/*
-/res/*
+src-tauri/res/*
 /*.db
 /tmp.json

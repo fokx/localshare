@@ -41,7 +41,9 @@
 //      "binaries/binapp"
 //    ]
     "resources": [
-      "../res/**/*"
+      // https://v2.tauri.app/develop/resources/
+      // relative to src-tauri/
+      "res/**/*"
     ]
   },
 //  "plugins": {

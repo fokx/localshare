@@ -1,3 +1,4 @@
+use tauri_plugin_fs::FsExt;
 #[macro_use]
 extern crate log;
 use sysinfo::{Disks, System};
@@ -30,6 +31,9 @@ use localsend::{
     daemon, handler_prepare_upload, handler_register, handler_upload, periodic_announce,
 };
 use std::net::SocketAddr;
+use std::str::FromStr;
+use url::Url;
+
 #[tokio::test]
 async fn client_test() -> std::io::Result<()> {
     // cargo test -- --nocapture
@@ -112,6 +116,26 @@ pub fn run() {
             //     addr: "224.0.0.167",
             //     port: 53317,
             // }));
+
+            let resource_path = app.path().parse("$RESOURCE/res/likes.json")?;
+            let resource_path2 = app.path().resolve("res/likes.json", tauri::path::BaseDirectory::Resource)?;
+
+
+            warn!("readfile: resource_path {:?}", resource_path);
+            warn!("readfile: resource_path2 {:?}", resource_path2);
+            let path = tauri_plugin_fs::FilePath::Path(resource_path.clone());
+            let path2 = tauri_plugin_fs::FilePath::Path(resource_path2);
+            let options = tauri_plugin_fs::OpenOptions::new();
+            // this works on desktop
+            // let file2 = std::fs::File::open(&resource_path).unwrap();
+
+            let file2 = app.fs().read(path).unwrap();
+            // let file2 = app.fs().open(path2, options).unwrap();
+
+            // let path = tauri_plugin_fs::FilePath::Url(Url::from_str(&*file).unwrap());
+            // let mut file = fs_api.read(path).unwrap();
+            warn!("readfile: {:?}", file2);
+
             let settings_store = app.store("settings.json").unwrap();
             let localsend_setting = settings_store.get("localsend");
             let my_fingerprint = match localsend_setting {
