@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { appConfigDir, join, resourceDir } from "@tauri-apps/api/path";
+    import { appConfigDir, join, resourceDir, appLocalDataDir, appCacheDir, documentDir } from "@tauri-apps/api/path";
     import { onMount } from "svelte";
     import { openPath } from "@tauri-apps/plugin-opener";
     import { writeText } from "@tauri-apps/plugin-clipboard-manager";
@@ -15,7 +15,7 @@
     >([]);
 
     onMount(async () => {
-        const path = await resourceDir();
+        const path = await documentDir();
         appConfigPath = path;
         dbPath = await join(path, "xap.db");
         loadUsers();

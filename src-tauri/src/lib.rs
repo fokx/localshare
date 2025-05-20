@@ -113,31 +113,69 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sharetarget::init())
         .setup(|app| {
+            warn!("readfile11");
+            let db_dst = app.path().resolve("", tauri::path::BaseDirectory::Document)?;
+            if ! std::fs::exists(db_dst.clone()).unwrap() {
+                std::fs::create_dir(db_dst).unwrap();
+            }
+            warn!("readfile1.1");
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Audio).unwrap());
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Config).unwrap());
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Data).unwrap());
+            warn!("2");
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::LocalData).unwrap());
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Document).unwrap());
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Download).unwrap());
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Picture).unwrap());
+            warn!("3");
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Resource).unwrap());
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppConfig).unwrap());
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppData).unwrap());
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLocalData).unwrap());
+            warn!("4");
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppCache).unwrap());
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLog).unwrap());
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Home).unwrap());
+            warn!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
             let db_src = app.path().resolve("res/xap.db", tauri::path::BaseDirectory::Resource)?;
-            let db_dst = app.path().resolve("test.db", tauri::path::BaseDirectory::AppConfig)?;
-
+            let db_dst = app.path().resolve("xap.db", tauri::path::BaseDirectory::Document)?;
             warn!("readfile: src {:?}", db_src.clone());
             warn!("readfile: dst {:?}", db_dst.clone());
             if cfg!(target_os = "android") {
                 // this SQL copy logic currently does not work on Android, patched it in sql plugin rust code
-                // warn!("readfile 1");
-                // let src_path = tauri_plugin_fs::FilePath::Path(db_src.clone());
-                // warn!("readfile 2: {:?}", src_path);
-                // let db_file_content = app.fs().read(src_path).unwrap();
-                // warn!("readfile 4");
+                warn!("readfile 1");
+                let scope = app.fs_scope();
+                let android_fs_api = app.android_fs();
+                scope.allow_directory(app.path().resolve("", tauri::path::BaseDirectory::Document).unwrap(), false);
+                // scope.allow_directory("/path/to/directory", false);
+                // dbg!(scope.allowed());
+                // warn!("{:?}", scope.allowed());
+                let src_path = tauri_plugin_fs::FilePath::Path(db_src.clone());
+                warn!("readfile 2: {:?}", src_path);
+                let db_file_content = app.fs().read(src_path).unwrap();
+                // warn!("readfile 4: {:?}", db_file_content.clone());
+                warn!("{:?}", db_dst.as_path());
+                // let file = tauri_plugin_fs::OpenOptions::new().write(true).open(db_dst.as_path());
+                let p =  tauri_plugin_fs::FilePath::Path(db_dst);
+                let uri: FileUri = p.into();
+                let mut file: std::fs::File = android_fs_api.open_file(&uri, tauri_plugin_android_fs::FileAccessMode::WriteTruncate)
+                        .unwrap();
+                warn!("writeall");
+                // let file: std::fs::File = api.open_file(&uri, FileAccessMode::WriteTruncate)?;
                 // let mut file_opened = std::fs::OpenOptions::new().write(true).open(db_dst.as_path()).unwrap();
                 // warn!("copying bundled sqlite");
-                // file_opened.write_all(&db_file_content);
-                // warn!("done");
+                file.write_all(&db_file_content);
+                warn!("done");
             } else {
                 // let db_file_content = std::fs::File::open(&db_src).unwrap();
                 if !std::path::Path::new(&db_dst.clone()).exists() {
                     warn!("copy bundled sqlite");
-                    std::fs::copy(db_src.as_path(), db_dst.as_path()).unwrap();
-                    warn!("done");
                 } else {
-                    warn!("skip existing")
+                    warn!("overrite existing")
                 }
+                std::fs::copy(db_src.as_path(), db_dst.as_path()).unwrap();
+                warn!("done");
             }
 
             let settings_store = app.store("settings.json").unwrap();

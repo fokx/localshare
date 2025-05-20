@@ -6,13 +6,13 @@ import {drizzle} from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
 import {eq} from 'drizzle-orm';
 import path from 'path';
-const client = new Database("../../../sqlite:xap.db");
+const client = new Database("../../../src-tauri/res/xap.db");
 
 export const db = drizzle(client, {schema});
 
 async function import_sth(filename: string, table, fields_convert_date: Array<string>) {
     console.log(`importing ${filename} to "${table}";`);
-    let filePath = path.join('../../../res/', filename);
+    let filePath = path.join('../../../src-tauri/res/', filename);
     await fs.readFile(filePath, 'utf8').then(async (data) => {
         const items = JSON.parse(data);
         const batchSize = 2000;
