@@ -20,6 +20,7 @@
 //        "url": "http://127.0.0.1:4802"
       }
     ],
+    "withGlobalTauri": true,
     "security": {
       "csp": null
     }

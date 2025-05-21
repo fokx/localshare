@@ -6,37 +6,48 @@
     import * as schema from "$lib/db/schema";
     import { db } from "$lib/db/database";
     import Inspect from "svelte-inspect-value";
+    import { Card } from "flowbite-svelte";
+    import {process_cooked} from "$lib";
+    import {eq} from "drizzle-orm";
+    import {users} from "$lib/db/schema";
+    import {goto} from "$app/navigation";
 
     let appConfigPath = $state("");
     let dbPath = $state("");
     let nameInput = $state("");
-    let users = $state<
-        { id: number; created_at: string | null; name: string | null }[]
+    let topics = $state<
+        { id: number; created_at: string | null; raw: string | null }[]
     >([]);
-
     onMount(async () => {
         const path = await documentDir();
         appConfigPath = path;
         dbPath = await join(path, "xap.db");
-        loadUsers();
+        loadTopics();
     });
 
-    const loadUsers = async () => {
-        db.query.users
+    const loadTopics = async () => {
+        db.query.topics
             .findMany({
-                limit: 20,
+                limit: 50,
             })
             .execute()
             .then((results) => {
                 console.log("🚀 ~ FindMany response from Drizzle:", results);
-                users = results;
+                topics = results;
             });
     };
 
-    async function addUser() {
-        await db.insert(schema.users).values({ name: nameInput });
+    async function addTopic() {
+        await db.insert(schema.topics).values({ name: nameInput });
         nameInput = "";
-        loadUsers();
+        loadTopics();
+    }
+    async function getUserName(user_id: number) {
+        let user = await db.query.users.findFirst({
+            where: eq(users.id, user_id)
+        });
+        console.log(user);
+        return user;
     }
 </script>
 
@@ -70,7 +81,7 @@
     <form
             onsubmit={(e) => {
       e.preventDefault();
-      addUser();
+      addTopic();
     }}
     >
         <label class="label">
@@ -88,15 +99,33 @@
             </div>
         </label>
     </form>
-    <button
-            type="button"
-            class="btn preset-tonal-error"
-            onclick={async () => {
-      await db.delete(schema.users).execute();
-      loadUsers();
-    }}
-    >
-        Delete All Users
-    </button>
-    <Inspect value={users} />
+    Topic Browser
+    {#if topics}
+        {#each topics as topic}
+            <div class="flex-grow justify-center dotted-ul prose dark:prose-invert">
+                <Card class="max-w-3xl mb-2" onclick={()=>{window.current_topic_id=topic.id; goto("/topic"); console.log(window.current_topic_id)}}>
+                    {#if topic.title}
+                        <div class="flex justify-center">
+                            <h5 class="me-6 mb-2 text-2xl font-bold tracking-tight">{topic.title}</h5>
+                            in {topic.category_name}
+                            &nbsp;
+                            {#await getUserName(topic.user_id) then user}
+                                <p>by {user.username}</p>
+                            {/await}
+                        </div>
+                    {/if}
+                    <div class="flex justify-between items-center mb-2">
+
+                        <h6 class="me-4 mt-4 text-md font-bold tracking-tight">
+                            last posted: {(topic.last_posted_at)}
+                        </h6>
+
+                    </div>
+                    <div class="primary-links">
+                        {@html process_cooked(topic.excerpt)}
+                    </div>
+                </Card>
+            </div>
+            {/each}
+        {/if}
 </main>
