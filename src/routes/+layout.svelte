@@ -30,26 +30,27 @@
     });
 </script>
 
+
 <main
     class="container">
     <div id="mainContent" class="mt-[1vh]">
         {@render children()}
     </div>
 </main>
-<div class="">
-    <BottomNav {activeUrl} position="absolute" innerClass="grid-cols-3">
-        <BottomNavItem btnName="LocalSend" href="/localsend">
-            <ShareNodesSolid />
-        </BottomNavItem>
-        <BottomNavItem btnName="Home" href="/">
-            <HomeSolid />
-        </BottomNavItem>
-        <BottomNavItem btnName="Dufs" href="/dufs">
-            <GlobeSolid />
-        </BottomNavItem>
-    </BottomNav>
-    <SvelteToast {options} />
-</div>
+
+<BottomNav {activeUrl} position="absolute" innerClass="grid-cols-3">
+    <BottomNavItem btnName="LocalSend" href="/localsend">
+        <ShareNodesSolid />
+    </BottomNavItem>
+    <BottomNavItem btnName="Home" href="/">
+        <HomeSolid />
+    </BottomNavItem>
+    <BottomNavItem btnName="Dufs" href="/dufs">
+        <GlobeSolid />
+    </BottomNavItem>
+</BottomNav>
+
+<SvelteToast {options} />
 
 
 <style>

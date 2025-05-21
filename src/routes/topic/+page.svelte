@@ -6,15 +6,25 @@
     import * as schema from "$lib/db/schema";
     import { db } from "$lib/db/database";
     import Inspect from "svelte-inspect-value";
-    import { Card, Spinner } from "flowbite-svelte";
-    import {process_cooked} from "$lib";
+    import {Card, Heading, Spinner} from "flowbite-svelte";
+    import {display_time, process_cooked} from "$lib";
     import {eq} from "drizzle-orm";
-    import {users, posts} from "$lib/db/schema";
+    import {users, topics, posts} from "$lib/db/schema";
     import {goto} from "$app/navigation";
     let topic_posts = $state([]);
+    let topic = $state(null);
 
     async function load_topic_posts(topic_id) {
         console.log("finding topic with id", topic_id);
+        db.query.topics
+            .findFirst({
+                where: eq(topics.id, topic_id)
+            })
+            .execute()
+            .then((result) => {
+                topic = result;
+            });
+
         await db.query.posts
             .findMany({
                 limit: 100,
@@ -31,23 +41,29 @@
 </script>
 
 <main class="container mx-auto flex flex-col gap-4">
-    Topic {window.current_topic_id}
     {#await load_topic_posts(window.current_topic_id)}
         Loading...
         <Spinner class="me-3" size="4" color="teal" />
-    {:then topic_posts}
-        {#if !topic_posts}
-            <p style="color: red">Topic not found or empty</p>
-        {/if}
+    {:then value}
+        <!--{#if !value}-->
+<!--            <p style="color: red">Topic not found or empty</p>-->
+<!--        {/if}-->
     {:catch error}
         <p style="color: red">Topic cannot be loaded with {error.message}</p>
     {/await}
 
+    <Heading tag="h5" class="text-primary-700 dark:text-primary-500">
+        {#if topic}
+            {topic.title}
+        {:else}
+            Topic {window.current_topic_id}
+        {/if}
+    </Heading>
     {#if topic_posts && topic_posts.length > 0}
         {#each topic_posts as post}
             {#if post}
                 <div class="flex-grow justify-center primary-links dotted-ul prose dark:prose-invert">
-                    <Card class="max-w-3xl" >
+                    <Card class="max-w-3xl bg-gray-500" >
                         {#if post.title}
                             <div class="flex justify-center">
                                 <h5 class="mb-2 text-2xl font-bold tracking-tight">{post.title}</h5>
@@ -56,9 +72,9 @@
                         <div class="flex justify-between items-center mb-2">
                             <h6 class="mt-4 text-md font-bold tracking-tight">
                                 {#if (post.updated_at - post.created_at) > 5 * 60 * 1000}
-                                    <div>updated at: {(post.updated_at)}</div>
+                                    <div>updated at: {display_time(post.updated_at)}</div>
                                 {:else}
-                                    <div>created at: {(post.created_at)}</div>
+                                    <div>created at: {display_time(post.created_at)}</div>
                                 {/if}
                             </h6>
                         </div>

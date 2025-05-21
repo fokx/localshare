@@ -1,3 +1,5 @@
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 export function generateRandomString(length: number) {
     let result = '';
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -47,3 +49,7 @@ export function process_cooked(cooked: string) {
     // return html;
 }
 
+export function display_time(d) {
+    dayjs.extend(relativeTime);
+    return dayjs(dayjs(d)).fromNow();
+}
