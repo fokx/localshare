@@ -8,7 +8,7 @@ pnpm tauri-build-apk; pnpm tauri-build-win; pnpm tauri-build;
 cd /f/localshare/
 rm -r /tmp/localshare
 mkdir /tmp/localshare
-VERSION=0.5.1
+VERSION=0.5.3
 cp src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk  /tmp/localshare/io.github.fokx.localshare-${VERSION}.apk
 cp src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/localshare_${VERSION}_x64-setup.exe  /tmp/localshare/
 cp src-tauri/target/release/bundle/appimage/localshare_${VERSION}_amd64.AppImage /tmp/localshare/
@@ -61,4 +61,4 @@ The proxy client will prefer IPv6 on the server. Make sure IPv6 works on the ser
 
     "svelte": "https://pkg.pr.new/svelte@async",
     "flowbite-svelte": "^1.4.3",
-link:../flowbite-svelte
+    "flowbite-svelte": "link:../flowbite-svelte",
