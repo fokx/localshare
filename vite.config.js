@@ -30,7 +30,7 @@ export default defineConfig(async () => ({
             ignored: ["**/src-tauri/**"],
         },
         fs: {
-            allow: ['../plugins-workspace/**']
+            allow: ['../plugins-workspace/plugins/sql/dist-js/**']
         }
     },
 }));

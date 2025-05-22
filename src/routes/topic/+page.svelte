@@ -7,7 +7,7 @@
     import { db } from "$lib/db/database";
     import Inspect from "svelte-inspect-value";
     import {Avatar, Card, Heading, Spinner, PaginationNav, Pagination, PaginationItem} from "flowbite-svelte";
-    import {display_time, process_cooked} from "$lib";
+    import {dbb, display_time, process_cooked} from "$lib";
     import {count, eq} from "drizzle-orm";
     import {users, topics, posts} from "$lib/db/schema";
     import {goto} from "$app/navigation";
@@ -17,6 +17,7 @@
     let current_topic_posts = $state([]);
     let current_topic = $state(null);
     let currentPage = $state(1);
+
     let totalPages = $state(9999);
     const NUM_POSTS_PER_PAGE = 30;
     let postsCount = $state();
@@ -26,10 +27,14 @@
     let isDesktop = $state(false);
 
     function handlePageChange(page: number) {
+        dbb.browse_history.update(window.current_topic_id, {
+            topic_id: window.current_topic_id,
+            page_number: page,
+        })
         currentPage = page;
         console.log("window.current_topic_id", window.current_topic_id);
         console.log("Page changed to:", page);
-        load_topic_posts(window.current_topic_id, (page-1)*NUM_POSTS_PER_PAGE)
+        load_topic_posts(window.current_topic_id)
         window.scrollTo({left: 0, top: 0, behavior: 'smooth'});
     }
 
@@ -55,7 +60,19 @@
             }
         }
     });
-    async function load_topic_posts(topic_id:number, offset:number) {
+    async function load_topic_posts(topic_id:number) {
+        let tmp = await dbb.browse_history.get({topic_id: topic_id});
+        if (tmp) {
+            currentPage = tmp.page_number;
+            console.log("get currentPage from dexie", currentPage);
+        } else {
+            currentPage = 1;
+            await dbb.browse_history.add({
+                topic_id: window.current_topic_id,
+                page_number: 1,
+            })
+        }
+        let offset = (currentPage-1)*NUM_POSTS_PER_PAGE;
         console.log("finding topic with id", topic_id);
         db.query.topics
             .findFirst({
@@ -85,7 +102,7 @@
 </script>
 
 <!--<main class="container mx-auto flex flex-col gap-4">-->
-{#await load_topic_posts(window.current_topic_id, 0)}
+{#await load_topic_posts(window.current_topic_id)}
     Loading...
     <Spinner class="me-3" size="4" color="teal" />
 {:then value}

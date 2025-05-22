@@ -1,6 +1,15 @@
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import {db} from "$lib/db/database";
+import Dexie from 'dexie';
+
+export const dbb = new Dexie('xap');
+
+dbb.version(1).stores({
+    browse_history: '&topic_id',
+});
+
+
 export function generateRandomString(length: number) {
     let result = '';
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

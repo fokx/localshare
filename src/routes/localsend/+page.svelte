@@ -50,7 +50,6 @@
     let incoming_sessionId = $state('');
     let incoming_request_files = $state([]);
     let incoming_request_peer = $state(null);
-
     onMount(async () => {
         settings_store = await load('settings.json', {autoSave: true});
         current_settings = await settings_store.get('localsend');

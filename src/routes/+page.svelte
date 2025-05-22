@@ -23,6 +23,9 @@
     >([]);
 
     let currentPage = $state(1);
+    if (window.currentTopicPage) {
+        currentPage = window.currentTopicPage;
+    }
     let totalPages = $state(9999);
     const NUM_TOPICS_PER_PAGE = 20;
     let topicsCount = $state();
@@ -35,9 +38,11 @@
         const path = await documentDir();
         appConfigPath = path;
         dbPath = await join(path, "xap.db");
-        loadTopics(0);
+        loadTopics();
     });
-    async function loadTopics(offset: number) {
+    async function loadTopics() {
+        let offset = (currentPage-1)*NUM_TOPICS_PER_PAGE;
+        console.log('loading topics with offset ',offset);
         db.query.topics
             .findMany({
                 limit: NUM_TOPICS_PER_PAGE,
@@ -53,12 +58,14 @@
 
     function handlePageChange(page: number) {
         currentPage = page;
-        loadTopics((page-1)*NUM_TOPICS_PER_PAGE);
+        loadTopics();
         window.scrollTo({left: 0, top: 0, behavior: 'smooth'});
+        window.currentTopicPage = page;
         console.log("Page changed to:", page);
     }
 
-    onMount(()=>{
+    onMount(()=> {
+
         currentPlatform = platform();
         if (currentPlatform==="android"||currentPlatform==="ios"){
             visiblePagesTop=4;
