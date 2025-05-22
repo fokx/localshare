@@ -31,14 +31,15 @@
 </script>
 
 
-<main
-    class="container">
-    <div id="mainContent" class="mt-[1vh]">
+<!--<main-->
+<!--    class="container">-->
+<!--    <div id="mainContent" class="mt-[1vh]">-->
         {@render children()}
-    </div>
-</main>
+<!--    </div>-->
+<!--</main>-->
 
-<BottomNav {activeUrl} position="absolute" innerClass="grid-cols-3">
+<BottomNav {activeUrl} position="fixed" innerClass="grid-cols-3">
+<!--<BottomNav {activeUrl} position="absolute" innerClass="grid-cols-3">-->
     <BottomNavItem btnName="LocalSend" href="/localsend">
         <ShareNodesSolid />
     </BottomNavItem>
@@ -52,16 +53,15 @@
 
 <SvelteToast {options} />
 
-
 <style>
-    .container {
-        /*margin: 0;*/
-        /*padding-top: 10vh;*/
-        display: flex;
-        /*flex-direction: column;*/
-        justify-content: center;
-        text-align: center;
-    }
+    /*.container {*/
+    /*    !*margin: 0;*!*/
+    /*    !*padding-top: 10vh;*!*/
+    /*    display: flex;*/
+    /*    !*flex-direction: column;*!*/
+    /*    justify-content: center;*/
+    /*    text-align: center;*/
+    /*}*/
      :root {
          font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
          /*font-size: 16px;*/

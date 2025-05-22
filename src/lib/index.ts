@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import {db} from "$lib/db/database";
 export function generateRandomString(length: number) {
     let result = '';
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -52,4 +53,12 @@ export function process_cooked(cooked: string) {
 export function display_time(d) {
     dayjs.extend(relativeTime);
     return dayjs(dayjs(d)).fromNow();
+}
+
+export async function getUserById(user_id: number) {
+    let user = await db.query.users.findFirst({
+        where: {id: user_id}
+    });
+    console.log(user);
+    return user;
 }

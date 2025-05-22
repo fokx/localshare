@@ -11,6 +11,7 @@
     import {eq} from "drizzle-orm";
     import {users} from "$lib/db/schema";
     import {goto} from "$app/navigation";
+    import {getUserById} from "$lib";
 
     let appConfigPath = $state("");
     let dbPath = $state("");
@@ -41,13 +42,7 @@
         nameInput = "";
         loadTopics();
     }
-    async function getUserName(user_id: number) {
-        let user = await db.query.users.findFirst({
-            where: {id: user_id}
-        });
-        console.log(user);
-        return user;
-    }
+
 </script>
 
 <main class="container mx-auto flex flex-col gap-4">
@@ -110,7 +105,7 @@
                             <h5 class="me-6 mb-2 text-2xl font-bold tracking-tight">{topic.title}</h5>
                             in {topic.category_name}
                             &nbsp;
-                            {#await getUserName(topic.user_id) then user}
+                            {#await getUserById(topic.user_id) then user}
                                 <p>by {user.username}</p>
                             {/await}
                         </div>

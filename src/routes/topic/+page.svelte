@@ -11,9 +11,9 @@
     import {eq} from "drizzle-orm";
     import {users, topics, posts} from "$lib/db/schema";
     import {goto} from "$app/navigation";
+    import {getUserById} from "$lib";
     let topic_posts = $state([]);
     let topic = $state(null);
-
     async function load_topic_posts(topic_id) {
         console.log("finding topic with id", topic_id);
         db.query.topics
@@ -42,7 +42,7 @@
 
 </script>
 
-<main class="container mx-auto flex flex-col gap-4">
+<!--<main class="container mx-auto flex flex-col gap-4">-->
     {#await load_topic_posts(window.current_topic_id)}
         Loading...
         <Spinner class="me-3" size="4" color="teal" />
@@ -73,11 +73,18 @@
                         {/if}
                         <div class="flex justify-between items-center mb-2">
                             <h6 class="mt-4 text-md font-bold tracking-tight">
-                                {#if (post.updated_at - post.created_at) > 5 * 60 * 1000}
-                                    <div>updated at: {display_time(post.updated_at)}</div>
-                                {:else}
-                                    <div>created at: {display_time(post.created_at)}</div>
-                                {/if}
+                                <div>
+                                    {#if (post.updated_at - post.created_at) > 5 * 60 * 1000}
+                                        updated at: {display_time(post.updated_at)}
+                                    {:else}
+                                        created at: {display_time(post.created_at)}
+                                    {/if}
+                                    &nbsp;
+                                    {#await getUserById(post.user_id) then user}
+                                        by {user.username}
+                                    {/await}
+                                </div>
+
                             </h6>
                         </div>
                         {#if post.cooked}
@@ -86,7 +93,7 @@
                             {@html process_cooked(post.excerpt + '<br>......')}
                         {/if}
                         <div class="flex justify-end items-center">
-                            <a class="text-blue-800 dark:text-blue-500 text-xl mr-2" href={`/p/${post.id}`}># {post.post_number}</a>
+                            <span class="text-blue-800 dark:text-blue-500 text-xl mr-2"># {post.post_number}</span>
                             <button
                                     class="block"
                                     onclick={() => {}}
@@ -103,4 +110,4 @@
         {/each}
     {/if}
 
-</main>
+<!--</main>-->
