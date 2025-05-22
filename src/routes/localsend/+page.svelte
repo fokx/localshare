@@ -150,7 +150,6 @@
     LocalSend ({fingerprint.substring(0, 8)+"..."})
 </Heading>
 
-<div>
     <div class="mb-3">
         {#if incoming_request_exist}
             <p>
@@ -222,7 +221,7 @@
         </p>
     {:else}
         {#each peers as p}
-            <Card class=" flex bg-gray-500  text-black dark:text-white">
+            <Card class="max-w-[vw] p-6 ms-0.5 me-0.5 dark:text-gray-200">
                 <div class="flex items-center space-x-4 py-2 rtl:space-x-reverse ">
                     <div class="min-w-0 flex-1">
                         <h5 class="font-bold">
@@ -246,13 +245,18 @@
             </Card>
         {/each}
     {/if}
+
+
+<div>
     <hr>
     <p>
         On Android, you have to acquire permission before first use:
+        <Button class="ms-2" onclick={acquire_permission_android}>
+            Acquire Permission
+        </Button>
     </p>
-    <Button class="ms-2" onclick={acquire_permission_android}>
-        Acquire Permission
-    </Button>
+
 </div>
+
 
 

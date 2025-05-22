@@ -45,7 +45,7 @@
 
 </script>
 
-<main class="container mx-auto flex flex-col gap-4">
+<div class="container mx-auto flex flex-col gap-4">
 <!--    <div class="flex gap-2">-->
 <!--        <button-->
 <!--                class="font-mono text-sm text-blue-400 hover:text-blue-500 hover:underline cursor-pointer text-left"-->
@@ -96,10 +96,11 @@
     <Heading tag="h5" class="text-primary-700 dark:text-primary-500">
         Topic Browser
     </Heading>
+
     {#if topics}
         {#each topics as topic}
-            <div class="flex-grow justify-center dotted-ul prose dark:prose-invert">
-                <Card class="max-w-3xl mb-2 bg-gray-500" onclick={()=>{window.current_topic_id=topic.id; goto("/topic"); console.log(window.current_topic_id)}}>
+            <div class="flex justify-center dotted-ul prose dark:prose-invert">
+                <Card class="max-w-[vw] p-6 ms-0.5 me-0.5" contentClass="dark:bg-gray-500" onclick={()=>{window.current_topic_id=topic.id; goto("/topic"); console.log(window.current_topic_id)}}>
                     {#if topic.title}
                         <div class="flex justify-center">
                             <h5 class="me-6 mb-2 text-2xl font-bold tracking-tight">{topic.title}</h5>
@@ -124,4 +125,4 @@
             </div>
             {/each}
         {/if}
-</main>
+</div>

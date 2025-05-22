@@ -101,7 +101,9 @@ pub fn run() {
                 // .add_migrations("sqlite:xap.db", migrations)
                 .build(),
         )
-        .plugin(tauri_plugin_log::Builder::new().level(log_level).build())
+        .plugin(tauri_plugin_log::Builder::new().level(log_level)
+                .level_for("sqlx::query", log::LevelFilter::Info)
+                .build())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(server_handle.clone())

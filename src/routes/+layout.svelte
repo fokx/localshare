@@ -3,6 +3,8 @@
     import { SvelteToast } from '@zerodevx/svelte-toast';
     let { children } = $props();
 
+    import { DarkMode } from "flowbite-svelte";
+
     const options = {
         duration: 1000,       // duration of progress bar tween to the `next` value
         initial: 1,           // initial progress bar value
@@ -14,6 +16,7 @@
         theme: {},            // css var overrides
         classes: []           // user-defined classes
     }
+    let a;
     import { Skeleton, ImagePlaceholder, BottomNav, BottomNavItem } from 'flowbite-svelte';
     import {
         HomeSolid,
@@ -30,60 +33,27 @@
     });
 </script>
 
-
-<!--<main-->
+<!--<container-->
 <!--    class="container">-->
-<!--    <div id="mainContent" class="mt-[1vh]">-->
-        {@render children()}
-<!--    </div>-->
-<!--</main>-->
-
-<BottomNav {activeUrl} position="fixed" innerClass="grid-cols-3">
-<!--<BottomNav {activeUrl} position="absolute" innerClass="grid-cols-3">-->
-    <BottomNavItem btnName="LocalSend" href="/localsend">
-        <ShareNodesSolid />
-    </BottomNavItem>
-    <BottomNavItem btnName="Home" href="/">
-        <HomeSolid />
-    </BottomNavItem>
-    <BottomNavItem btnName="Dufs" href="/dufs">
-        <GlobeSolid />
-    </BottomNavItem>
-</BottomNav>
-
-<SvelteToast {options} />
-
-<style>
-    /*.container {*/
-    /*    !*margin: 0;*!*/
-    /*    !*padding-top: 10vh;*!*/
-    /*    display: flex;*/
-    /*    !*flex-direction: column;*!*/
-    /*    justify-content: center;*/
-    /*    text-align: center;*/
-    /*}*/
-     :root {
-         font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-         /*font-size: 16px;*/
-         /*line-height: 24px;*/
-         /*font-weight: 400;*/
-
-         color: #0f0f0f;
-         background-color: #f6f6f6;
-
-         /*font-synthesis: none;*/
-         /*text-rendering: optimizeLegibility;*/
-         /*-webkit-font-smoothing: antialiased;*/
-         /*-moz-osx-font-smoothing: grayscale;*/
-         /*-webkit-text-size-adjust: 100%;*/
-     }
-
-    @media (prefers-color-scheme: dark) {
-        :root {
-            color: #f6f6f6;
-            background-color: #2f2f2f;
-        }
-    }
-
-
-</style>
+<div id="mainContent" class="dark:bg-gray-700 dark:text-gray-200">
+    <div class="container mx-auto flex flex-col gap-2 overflow-y-scroll min-h-screen">
+    {@render children()}
+    </div>
+    <!--</container>-->
+    <BottomNav {activeUrl} position="sticky" outerClass="bg-white bg:bg-dark-800" innerClass="grid-cols-4">
+        <!--<BottomNav {activeUrl} position="absolute" innerClass="grid-cols-3">-->
+        <BottomNavItem btnName="LocalSend" href="/localsend">
+            <ShareNodesSolid />
+        </BottomNavItem>
+        <BottomNavItem btnName="Home" href="/">
+            <HomeSolid />
+        </BottomNavItem>
+        <BottomNavItem btnName="Dufs" href="/dufs">
+            <GlobeSolid />
+        </BottomNavItem>
+        <BottomNavItem btnName="Darkmode">
+            <DarkMode></DarkMode>
+        </BottomNavItem>
+    </BottomNav>
+    <SvelteToast {options} />
+</div>

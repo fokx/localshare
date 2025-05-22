@@ -480,10 +480,12 @@
         <GithubSolid class="ms-2 h-6 w-6 me-1"/>
         source code
     </A>
+    <div>
+        <p>log_disp</p>
+        <p>{log_disp}</p>
+        <p>{file}</p>
+    </div>
 
-    <p>log_disp</p>
-    <p>{log_disp}</p>
-    <p>{file}</p>
 </div>
 
 

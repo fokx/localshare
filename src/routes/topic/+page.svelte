@@ -65,7 +65,7 @@
         {#each topic_posts as post}
             {#if post}
                 <div class="flex-grow justify-center primary-links dotted-ul prose dark:prose-invert">
-                    <Card class="max-w-3xl bg-gray-500" >
+                    <Card class="max-w-[vw] p-6 ms-0.5 me-0.5 dark:text-gray-200" >
                         {#if post.title}
                             <div class="flex justify-center">
                                 <h5 class="mb-2 text-2xl font-bold tracking-tight">{post.title}</h5>
