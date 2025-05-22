@@ -59,6 +59,6 @@ export async function getUserById(user_id: number) {
     let user = await db.query.users.findFirst({
         where: {id: user_id}
     });
-    console.log(user);
+    // console.log(user);
     return user;
 }

@@ -61,3 +61,4 @@ The proxy client will prefer IPv6 on the server. Make sure IPv6 works on the ser
 
     "svelte": "https://pkg.pr.new/svelte@async",
     "flowbite-svelte": "^1.4.3",
+link:../flowbite-svelte

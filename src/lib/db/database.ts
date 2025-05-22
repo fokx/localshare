@@ -59,7 +59,7 @@ export const db = drizzle<typeof schema>(
         return {rows: results};
     },
     // Pass the schema to the drizzle instance
-    {relations: relations, logger: true}
+    {relations: relations, logger: false}
 );
 
 /**
