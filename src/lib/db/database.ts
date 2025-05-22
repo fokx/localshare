@@ -1,6 +1,7 @@
 import {drizzle} from "drizzle-orm/sqlite-proxy";
 import Database from "plugin-sql";
 import * as schema from "./schema";
+import {relations} from "./relations";
 
 /**
  * Represents the result of a SELECT query.
@@ -58,7 +59,7 @@ export const db = drizzle<typeof schema>(
         return {rows: results};
     },
     // Pass the schema to the drizzle instance
-    {schema: schema, logger: true}
+    {relations: relations, logger: true}
 );
 
 /**

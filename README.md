@@ -57,3 +57,6 @@ https://developer.android.com/develop/ui/views/theming/darktheme
 ## Troubleshooting
 ### the proxy client cannot connect to the Internet
 The proxy client will prefer IPv6 on the server. Make sure IPv6 works on the server, or disable IPv6.
+
+
+    "svelte": "https://pkg.pr.new/svelte@async",

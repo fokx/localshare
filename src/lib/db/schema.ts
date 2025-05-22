@@ -1,5 +1,5 @@
-import {eq, sql} from "drizzle-orm";
-import {index, integer, sqliteTable, sqliteView, text, uniqueIndex} from 'drizzle-orm/sqlite-core';
+import {sql} from "drizzle-orm";
+import {index, integer, sqliteTable, text, uniqueIndex} from 'drizzle-orm/sqlite-core';
 
 const common_timestamps = {
     created_at: integer('created_at', {mode: 'timestamp'}).default(sql`(current_timestamp)`),
@@ -17,9 +17,10 @@ export const users = sqliteTable('users', {
     trust_level: integer('trust_level'),
     avatar_template: text('avatar_template'),
     title: text('title'),
-    groups: text('groups', { mode: 'json' })
+    groups: text('groups', {mode: 'json'})
         .$type<string[]>()
-        .default(sql`(json_array())`),
+        .default(sql`(json_array()
+                     )`),
     locale: text('locale'),
     silenced_till: integer('silenced_till', {mode: 'timestamp'}),
     staged: integer('staged', {mode: 'boolean'}),
@@ -41,11 +42,12 @@ export const topics = sqliteTable('topics', {
     views: integer('views'),
     posts_count: integer('posts_count'),
     like_count: integer('like_count'),
-    user_id: integer('user_id').references(() => users.id),
-    last_post_user_id: integer('last_post_user_id').references(() => users.id),
-    tags: text('tags', { mode: 'json' })
+    user_id: integer('user_id'), //.references(() => users.id),
+    last_post_user_id: integer('last_post_user_id'), //.references(() => users.id),
+    tags: text('tags', {mode: 'json'})
         .$type<string[]>()
-        .default(sql`(json_array())`),
+        .default(sql`(json_array()
+                     )`),
 });
 
 function generateRandomString(length: number) {
@@ -69,13 +71,13 @@ export const posts = sqliteTable('posts', {
     raw: text('raw'),
     cooked: text('cooked'),
     post_number: integer('post_number'),
-    topic_id: integer('topic_id').references(() => topics.id),
-    user_id: integer('user_id').references(() => users.id),
+    topic_id: integer('topic_id'),//.references(() => topics.id),
+    user_id: integer('user_id'),//.references(() => users.id),
     // username: text('username').notNull(),
     created_at: integer('created_at', {mode: 'timestamp'}),
     updated_at: integer('updated_at', {mode: 'timestamp'}),
     reply_to_post_number: integer('reply_to_post_number'),
-    reply_to_user_id: integer('reply_to_user_id').references(() => users.id),
+    reply_to_user_id: integer('reply_to_user_id'),//.references(() => users.id),
     reply_count: integer('reply_count'),
     like_count: integer('like_count'),
     word_count: integer('word_count'),
@@ -88,8 +90,8 @@ export const posts = sqliteTable('posts', {
 ]);
 
 export const likes = sqliteTable('likes', {
-    post_id: integer('post_id').references(() => posts.id),
-    user_id: integer('user_id').references(() => users.id),
+    post_id: integer('post_id'),//.references(() => posts.id),
+    user_id: integer('user_id'),//.references(() => users.id),
     created_at: integer('created_at', {mode: 'timestamp'}).notNull()
 }, (table) => [
     uniqueIndex("idxLikes").on(table.post_id, table.user_id)
@@ -97,9 +99,7 @@ export const likes = sqliteTable('likes', {
 
 export const sessions = sqliteTable('session', {
     id: text('id').primaryKey(),
-    user_id: integer('user_id')
-        .notNull()
-        .references(() => users.id),
+    user_id: integer('user_id').notNull(),//  .references(() => users.id),
     expires_at: integer('expires_at', {mode: 'timestamp'}).notNull()
 });
 

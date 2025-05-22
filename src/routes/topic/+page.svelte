@@ -18,7 +18,9 @@
         console.log("finding topic with id", topic_id);
         db.query.topics
             .findFirst({
-                where: eq(topics.id, topic_id)
+                where: {
+                    id: topic_id
+                }
             })
             .execute()
             .then((result) => {
@@ -28,7 +30,7 @@
         await db.query.posts
             .findMany({
                 limit: 100,
-                where: eq(posts.topic_id, topic_id),
+                where: {topic_id: topic_id},
             })
             .execute()
             .then((results) => {

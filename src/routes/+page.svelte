@@ -24,7 +24,6 @@
         dbPath = await join(path, "xap.db");
         loadTopics();
     });
-
     const loadTopics = async () => {
         db.query.topics
             .findMany({
@@ -44,7 +43,7 @@
     }
     async function getUserName(user_id: number) {
         let user = await db.query.users.findFirst({
-            where: eq(users.id, user_id)
+            where: {id: user_id}
         });
         console.log(user);
         return user;

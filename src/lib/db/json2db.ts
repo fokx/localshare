@@ -4,11 +4,12 @@ import Database from 'better-sqlite3';
 import {drizzle} from 'drizzle-orm/better-sqlite3';
 // import { drizzle } from "drizzle-orm/sqlite-proxy";
 import * as schema from './schema';
+import {relations} from './relations';
 import {eq} from 'drizzle-orm';
 import path from 'path';
 const client = new Database("../../../src-tauri/res/xap.db");
 
-export const db = drizzle(client, {schema});
+export const db = drizzle(client, {relations});
 
 async function import_sth(filename: string, table, fields_convert_date: Array<string>) {
     console.log(`importing ${filename} to "${table}";`);
