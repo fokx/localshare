@@ -1,3 +1,4 @@
+use crate::assets::AppState;
 use crate::common::{
     create_udp_socket, generate_random_string, Message, PeerInfo, PrepareUploadParams,
     PrepareUploadRequest, PrepareUploadRequestAndSessionId, Session, Sessions, TokenAndUploadFile,
@@ -17,11 +18,12 @@ use tokio::io::BufWriter;
 use tokio_util::io::StreamReader;
 
 pub async fn handler_register(
-    State(app_handle): State<tauri::AppHandle>,
+    State(state): State<Arc<AppState>>,
     ConnectInfo(remote_addr): ConnectInfo<SocketAddr>,
     // my_response: Arc<Message>,
     Json(payload): Json<Message>,
 ) -> () {
+    let app_handle = state.app_handle.clone();
     let peers_store = app_handle.store("peers.json").unwrap();
     let settings_store = app_handle.store("settings.json").unwrap();
     let localsend_setting = settings_store.get("localsend");
@@ -70,7 +72,7 @@ pub async fn handler_register(
 // #[axum::debug_handler]
 #[allow(non_snake_case)]
 pub async fn handler_prepare_upload(
-    State(app_handle): State<tauri::AppHandle>,
+    State(state): State<Arc<AppState>>,
     Query(params): Query<PrepareUploadParams>,
     Json(payload): Json<PrepareUploadRequest>,
 ) -> Json<HashMap<String, JsonValue>> {
@@ -79,6 +81,7 @@ pub async fn handler_prepare_upload(
         "axum handler_prepare_upload Received request with params: {:?}",
         params
     );
+    let app_handle = state.app_handle.clone();
     // waiting the state of whether user has accepted the request for 10s, if not, return error
     let sessionId = generate_random_string(SESSION_LENGTH);
     {
@@ -194,7 +197,7 @@ pub async fn handler_prepare_upload(
 // #[axum::debug_handler]
 #[allow(non_snake_case)]
 pub async fn handler_upload(
-    State(app_handle): State<tauri::AppHandle>,
+    State(state): State<Arc<AppState>>,
     Query(query_params): Query<UploadQuery>,
     body: axum::body::Body,
 ) -> Json<anyhow::Result<(), String>> {
@@ -205,6 +208,7 @@ pub async fn handler_upload(
     debug!("handler_upload: entering");
     let mut filename: String;
     let mut savingDir: String;
+    let app_handle = state.app_handle.clone();
     {
         let settings_store = app_handle.store("settings.json").unwrap();
         let localsend_setting = settings_store.get("localsend");

@@ -32,7 +32,7 @@ use common::{generate_random_string, Message, Sessions, FINGERPRINT_LENGTH};
 use localsend::{
     daemon, handler_prepare_upload, handler_register, handler_upload, periodic_announce,
 };
-use assets::{proxy_uploads};
+use assets::{proxy_uploads, AppState};
 use std::net::SocketAddr;
 use std::str::FromStr;
 use url::Url;
@@ -226,6 +226,10 @@ pub fn run() {
             let _handle_announce =
                 tauri::async_runtime::spawn(periodic_announce(my_response_for_announce));
             let app_handle_axum = app.handle().clone();
+            let axum_app_state = Arc::new(AppState {
+                app_handle: app_handle_axum,
+                client: reqwest::Client::new(),
+            });
             let _handle_axum_server = tauri::async_runtime::spawn(async move {
                 let axum_app = Router::new()
                     .route("/uploads/{*path}", get(proxy_uploads))
@@ -236,7 +240,7 @@ pub fn run() {
                     )
                     .route("/api/localsend/v2/upload", post(handler_upload))
                     .route("/", get(|| async { "This is an axum server" }))
-                    .with_state(app_handle_axum);
+                        .with_state(axum_app_state);
 
                 let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
                     .await
