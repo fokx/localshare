@@ -11,17 +11,13 @@
     import {eq} from "drizzle-orm";
     import {users} from "$lib/db/schema";
     import {goto} from "$app/navigation";
-    import {getUserById} from "$lib";
+    import {getUserById, emoji} from "$lib";
     import { count, sql } from 'drizzle-orm';
     import { ArrowLeftOutline, ArrowRightOutline, CaretRightSolid, CaretLeftSolid } from "flowbite-svelte-icons";
     import { platform } from '@tauri-apps/plugin-os';
-    let appConfigPath = $state("");
-    let dbPath = $state("");
-    let nameInput = $state("");
     let current_topics = $state<
         { id: number; created_at: string | null; raw: string | null }[]
     >([]);
-
     let currentPage = $state(1);
     if (window.currentTopicPage) {
         currentPage = window.currentTopicPage;
@@ -34,12 +30,6 @@
     let visiblePagesBottom = $state(7);
     let isDesktop = $state(false);
 
-    onMount(async () => {
-        const path = await documentDir();
-        appConfigPath = path;
-        dbPath = await join(path, "xap.db");
-        loadTopics();
-    });
     async function loadTopics() {
         let offset = (currentPage-1)*NUM_TOPICS_PER_PAGE;
         console.log('loading topics with offset ',offset);
@@ -54,6 +44,8 @@
                 // console.log("🚀 ~ FindMany response from Drizzle:", results);
                 current_topics = results;
             });
+        console.log("window.currentTopicPageScrollY", window.currentTopicPageScrollY);
+
     }
 
     function handlePageChange(page: number) {
@@ -63,9 +55,13 @@
         window.currentTopicPage = page;
         console.log("Page changed to:", page);
     }
+    import { tick } from 'svelte';
+    let scrollHandler;
 
     onMount(()=> {
-
+        const container = document.querySelector("#container");
+        console.log("component mounted")
+        loadTopics();
         currentPlatform = platform();
         if (currentPlatform==="android"||currentPlatform==="ios"){
             visiblePagesTop=4;
@@ -75,7 +71,27 @@
             visiblePagesTop=8;
             visiblePagesBottom=15;
         }
+        scrollHandler = () => {
+            console.log("Window scroll:", window.scrollY);
+            if (window.scrollY > 100) {
+                window.currentTopicPageScrollY = window.scrollY;
+            }
+        };
+        setTimeout(() => {
+            if (window.currentTopicPageScrollY !== undefined) {
+                console.log("Scrolling after delay to:", window.currentTopicPageScrollY);
+                window.scrollTo(0, window.currentTopicPageScrollY);
+            }
+        }, 50);
+
+        window.addEventListener("scroll", scrollHandler);
+        return () => {
+            // window.currentTopicPageScrollY = window.scrollY;
+            window.removeEventListener("scroll", scrollHandler);
+            console.log("component destroyed", window.currentTopicPageScrollY);
+        };
     });
+
     $effect(async ()=>{
         let tmp = await db.select({ count: count() }).from(schema.topics);
         if (tmp){
@@ -88,7 +104,7 @@
     });
 </script>
 
-<div class="container mx-auto flex flex-col gap-2">
+
     <div class="flex justify-center">
        <span class="me-4"> <strong>Topic Browser</strong></span>
         {#if totalPages>1}
@@ -111,7 +127,7 @@
                 <Card class="max-w-[vw] p-6 ms-0.5 me-0.5" contentClass="dark:bg-gray-500" onclick={()=>{window.current_topic_id=topic.id; goto("/topic"); console.log(window.current_topic_id)}}>
                     {#if topic.title}
                         <div class="flex justify-center">
-                            <h5 class="me-6 mb-2 text-2xl font-bold tracking-tight">{topic.title}</h5>
+                            <h5 class="me-6 mb-2 text-2xl font-bold tracking-tight">{emoji.replace_colons(topic.title)}</h5>
                             in {topic.category_name}
                             &nbsp;
                             {#await getUserById(topic.user_id) then user}
@@ -133,7 +149,7 @@
             </div>
             {/each}
     {/if}
-</div>
+
 {#if totalPages > 1}
     <div class="flex justify-center">
         <PaginationNav visiblePages={Math.min(visiblePagesBottom, totalPages)} class="sticky" {currentPage} {totalPages} onPageChange={handlePageChange} />

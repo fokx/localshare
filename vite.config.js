@@ -30,7 +30,10 @@ export default defineConfig(async () => ({
             ignored: ["**/src-tauri/**"],
         },
         fs: {
-            allow: ['../plugins-workspace/plugins/sql/dist-js/**']
+            allow: [
+                '../plugins-workspace/plugins/sql/dist-js/**',
+                '../flowbite-svelte/dist/**',
+            ]
         }
     },
 }));

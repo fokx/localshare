@@ -65,6 +65,9 @@ importers:
       drizzle-orm:
         specifier: 1.0.0-beta.1-c0277c0
         version: 1.0.0-beta.1-c0277c0(better-sqlite3@11.10.0)(gel@2.1.0)
+      emoji-js:
+        specifier: ^3.8.1
+        version: 3.8.1
       flowbite-svelte:
         specifier: link:../flowbite-svelte
         version: link:../flowbite-svelte
@@ -1016,6 +1019,12 @@ packages:
         optional: true
       sqlite3:
         optional: true
+
+  emoji-datasource@15.0.1:
+    resolution: {integrity: sha512-aF5Q6LCKXzJzpG4K0ETiItuzz0xLYxNexR9qWw45/shuuEDWZkOIbeGHA23uopOSYA/LmeZIXIFsySCx+YKg2g==}
+
+  emoji-js@3.8.1:
+    resolution: {integrity: sha512-yyXMnZLXgqQHAhEm2DKK4Nrca+jbLQfNOP2mLcNTS6XxzzbQLDFHAguPQrtJS4Udot0Pvomwmh1ckQzhrePhKw==}
 
   end-of-stream@1.4.4:
     resolution: {integrity: sha512-+uw1inIHVPQoaVuHzRyXd21icM+cnt4CzD5rW+NC1wjOUSTOs+Te7FOv7AhN7vS9x/oIyhLP5PR1H+phQAHu5Q==}
@@ -2091,6 +2100,12 @@ snapshots:
     optionalDependencies:
       better-sqlite3: 11.10.0
       gel: 2.1.0
+
+  emoji-datasource@15.0.1: {}
+
+  emoji-js@3.8.1:
+    dependencies:
+      emoji-datasource: 15.0.1
 
   end-of-stream@1.4.4:
     dependencies:

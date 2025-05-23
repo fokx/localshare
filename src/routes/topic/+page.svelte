@@ -11,7 +11,7 @@
     import {count, eq} from "drizzle-orm";
     import {users, topics, posts} from "$lib/db/schema";
     import {goto} from "$app/navigation";
-    import {getUserById} from "$lib";
+    import {getUserById, emoji} from "$lib";
     import {ArrowLeftOutline, ArrowRightOutline, CaretLeftSolid, CaretRightSolid} from "flowbite-svelte-icons";
     import {platform} from "@tauri-apps/plugin-os";
     let current_topic_posts = $state([]);
@@ -116,7 +116,7 @@
 <div class="flex justify-between items-center">
     <Heading tag="h5" class="text-primary-700 dark:text-primary-500 mx-auto">
         {#if current_topic}
-            {current_topic.title}
+            {emoji.replace_colons(current_topic.title)}
         {:else}
             Topic {window.current_topic_id}
         {/if}
