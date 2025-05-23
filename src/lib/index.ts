@@ -40,14 +40,17 @@ export function process_cooked(cooked: string): string | string[] {
     if (cooked === undefined || cooked === null || cooked === '' ) {
         return '';
     }
-    // if (cooked.includes("/uploads/")) {
-    //     const urlPattern = /https?:\/\/[^\s<>"']*?\/uploads\/[^\s<>"']*/g;
-        // const matches = cooked.match(urlPattern);
-        // if (matches) {
+    if (cooked.includes("/uploads/")) {
+        const urlPattern = /https?:\/\/[^\s<>"']*?\/uploads\/[^\s<>"']*/g;
+        const matches = cooked.match(urlPattern);
+        if (matches) {
+            matches.forEach(match => {
+                cooked = cooked.replace(match, match.replace(/https?:\/\/[^/]+\/uploads\//, 'http://127.0.0.1:53317/uploads/'));
+            });
             // console.log(matches);
             // console.log(cooked);
-        // }
-    // }
+        }
+    }
     cooked = emoji.replace_colons(cooked);
     cooked = cooked.replaceAll(`<span class="chcklst-box checked fa fa-square-check-o fa-fw">`,html_checked_square+`<span class="chcklst-box checked">`);
     cooked = cooked.replaceAll(`<span class="chcklst-box fa fa-square-o fa-fw">`,html_unchecked_square+`<span class="chcklst-box unchecked">`);

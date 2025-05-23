@@ -17,6 +17,7 @@ mod commands;
 mod common;
 mod dufs;
 mod localsend;
+mod assets;
 
 use std::sync::{Arc, Mutex};
 #[cfg(feature = "tls")]
@@ -31,6 +32,7 @@ use common::{generate_random_string, Message, Sessions, FINGERPRINT_LENGTH};
 use localsend::{
     daemon, handler_prepare_upload, handler_register, handler_upload, periodic_announce,
 };
+use assets::{proxy_uploads};
 use std::net::SocketAddr;
 use std::str::FromStr;
 use url::Url;
@@ -226,6 +228,7 @@ pub fn run() {
             let app_handle_axum = app.handle().clone();
             let _handle_axum_server = tauri::async_runtime::spawn(async move {
                 let axum_app = Router::new()
+                    .route("/uploads/{*path}", get(proxy_uploads))
                     .route("/api/localsend/v2/register", post(handler_register))
                     .route(
                         "/api/localsend/v2/prepare-upload",
