@@ -35,7 +35,7 @@
 
 <!--<container-->
 <!--    class="container">-->
-<div class="dark:bg-gray-700 dark:text-gray-200">
+<div class="bg-gray-50 text-gray-950 dark:bg-gray-700 dark:text-gray-200">
     <div class="mx-auto flex flex-col gap-2 overflow-y-scroll min-h-screen">
     {@render children()}
     </div>

@@ -36,10 +36,18 @@ const html_unchecked_square = `<svg xmlns="http://www.w3.org/2000/svg" width="16
   <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/>
 </svg>`;
 
-export function process_cooked(cooked: string) {
+export function process_cooked(cooked: string): string | string[] {
     if (cooked === undefined || cooked === null || cooked === '' ) {
         return '';
     }
+    // if (cooked.includes("/uploads/")) {
+    //     const urlPattern = /https?:\/\/[^\s<>"']*?\/uploads\/[^\s<>"']*/g;
+        // const matches = cooked.match(urlPattern);
+        // if (matches) {
+            // console.log(matches);
+            // console.log(cooked);
+        // }
+    // }
     cooked = emoji.replace_colons(cooked);
     cooked = cooked.replaceAll(`<span class="chcklst-box checked fa fa-square-check-o fa-fw">`,html_checked_square+`<span class="chcklst-box checked">`);
     cooked = cooked.replaceAll(`<span class="chcklst-box fa fa-square-o fa-fw">`,html_unchecked_square+`<span class="chcklst-box unchecked">`);

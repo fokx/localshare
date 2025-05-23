@@ -77,12 +77,7 @@
                 window.currentTopicPageScrollY = window.scrollY;
             }
         };
-        setTimeout(() => {
-            if (window.currentTopicPageScrollY !== undefined) {
-                console.log("Scrolling after delay to:", window.currentTopicPageScrollY);
-                window.scrollTo(0, window.currentTopicPageScrollY);
-            }
-        }, 50);
+
 
         window.addEventListener("scroll", scrollHandler);
         return () => {
@@ -90,6 +85,19 @@
             window.removeEventListener("scroll", scrollHandler);
             console.log("component destroyed", window.currentTopicPageScrollY);
         };
+    });
+
+    $effect.pre(() => {
+        console.log('the component is about to update');
+        tick().then(() => {
+            setTimeout(() => {
+                if (window.currentTopicPageScrollY !== undefined) {
+                    console.log("Scrolling after delay to:", window.currentTopicPageScrollY);
+                    window.scrollTo(0, window.currentTopicPageScrollY);
+                }
+            }, 50);
+            console.log('the component just updated');
+        });
     });
 
     $effect(async ()=>{

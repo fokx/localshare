@@ -69,4 +69,11 @@
 }
 }
 
+/* discourse lightbox*/
+.d-icon-discourse-expand {
+    display: none;
+}
 
+.d-icon-far-image {
+    display: none;
+}

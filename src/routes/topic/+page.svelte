@@ -12,7 +12,7 @@
     import {users, topics, posts} from "$lib/db/schema";
     import {goto} from "$app/navigation";
     import {getUserById, emoji} from "$lib";
-    import {ArrowLeftOutline, ArrowRightOutline, CaretLeftSolid, CaretRightSolid} from "flowbite-svelte-icons";
+    import {ArrowLeftOutline, ArrowRightOutline, CaretLeftSolid,CaretUpSolid,CaretDownSolid, CaretRightSolid} from "flowbite-svelte-icons";
     import {platform} from "@tauri-apps/plugin-os";
     let current_topic_posts = $state([]);
     let current_topic = $state(null);
@@ -133,8 +133,13 @@
             {/snippet}
         </PaginationNav>
     {/if}
-    <Avatar class="w-10 h-10" onclick={()=>{history.back();}}><CaretLeftSolid/></Avatar>
-</div>
+    <div class="flex">
+        <Avatar class="w-10 h-10 mr-2" onclick={()=>{history.back();}}>
+            <CaretLeftSolid/>
+        </Avatar>
+        <Avatar class="w-10 h-10" onclick={()=>{window.scrollTo({left: 0, top: document.body.scrollHeight, behavior: 'smooth'});}}><CaretDownSolid/></Avatar>
+    </div>
+    </div>
 
 {#if current_topic_posts && current_topic_posts.length > 0}
     {#each current_topic_posts as post}
@@ -185,8 +190,17 @@
     {/each}
 {/if}
 {#if totalPages>1}
-    <div class="flex justify-center">
-        <PaginationNav visiblePages={Math.min(visiblePagesBottom, totalPages)} class="sticky" {currentPage} {totalPages} onPageChange={handlePageChange} />
+    <div class="flex justify-between items-center">
+        <div class="mx-auto">
+            <PaginationNav visiblePages={Math.min(visiblePagesBottom, totalPages)} class="sticky" {currentPage} {totalPages} onPageChange={handlePageChange} />
+        </div>
+        <div class="flex">
+            <Avatar class="w-10 h-10 mr-2" onclick={()=>{history.back();}}>
+                <CaretLeftSolid/>
+            </Avatar>
+            <Avatar class="w-10 h-10" onclick={()=>{window.scrollTo({left: 0, top: 0, behavior: 'smooth'});}}><CaretUpSolid/></Avatar>
+        </div>
     </div>
+
 {/if}
 <!--</main>-->

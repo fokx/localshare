@@ -31,8 +31,8 @@ export default defineConfig(async () => ({
         },
         fs: {
             allow: [
-                '../plugins-workspace/plugins/sql/dist-js/**',
-                '../flowbite-svelte/dist/**',
+                '../plugins-workspace/plugins/sql/dist-js/**/*',
+                '../flowbite-svelte/dist/**/*',
             ]
         }
     },
