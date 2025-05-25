@@ -16,3 +16,4 @@ src-tauri/gen/schemas/*
 src-tauri/res/*
 /*.db
 /tmp.json
+/tmp.html
