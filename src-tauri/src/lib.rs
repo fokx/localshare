@@ -32,7 +32,7 @@ use common::{generate_random_string, Message, Sessions, FINGERPRINT_LENGTH};
 use localsend::{
     daemon, handler_prepare_upload, handler_register, handler_upload, periodic_announce,
 };
-use assets::{proxy_uploads, AppState};
+use assets::{proxy_uploads, AppState, list_files, upload_file, download_file};
 use std::net::SocketAddr;
 use std::str::FromStr;
 use url::Url;
@@ -239,8 +239,11 @@ pub fn run() {
                         post(handler_prepare_upload),
                     )
                     .route("/api/localsend/v2/upload", post(handler_upload))
+                    .route("/api/files", get(list_files))
+                    .route("/api/files/download/{filename}", get(download_file))
+                    .route("/api/files/upload/{filename}", post(upload_file))
                     .route("/", get(|| async { "This is an axum server" }))
-                        .with_state(axum_app_state);
+                    .with_state(axum_app_state);
 
                 let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
                     .await

@@ -1,11 +1,14 @@
-use std::sync::Arc;
 use axum::{
-    routing::{get, post},
-    Router,
-    extract::{Path, State},
-    response::Response,
     body::Body,
+    extract::{Path, State},
+    response::{IntoResponse, Response},
+    routing::{get, post},
+    Json, Router,
 };
+use std::sync::Arc;
+
+use axum::http::StatusCode;
+use std::path::PathBuf;
 use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 use tokio;
@@ -18,16 +21,18 @@ pub struct AppState {
 
 pub async fn proxy_uploads(
     State(state): State<Arc<AppState>>,
-    Path(path): Path<String>
+    Path(path): Path<String>,
 ) -> Response<Body> {
     let client = state.client.clone();
     let app_handle = state.app_handle.clone();
     let path_handle = app_handle.path();
-    
+
     let target_url = format!("https://xjtu.app/uploads/{}", path);
     info!("proxing to: {}", target_url.clone());
     // Create cache directory path
-    let cache_dir = path_handle.resolve("assets", tauri::path::BaseDirectory::AppCache).unwrap();
+    let cache_dir = path_handle
+        .resolve("assets", tauri::path::BaseDirectory::AppCache)
+        .unwrap();
     let mut current_dir = cache_dir.clone();
     let path_segments: Vec<&str> = path.split('/').collect();
 
@@ -42,17 +47,16 @@ pub async fn proxy_uploads(
     let file_path = cache_dir.join(&path);
     if file_path.exists() {
         if let Ok(contents) = tokio::fs::read(&file_path).await {
-                info!("Serving {} from cache: {:?}", path, file_path);
-                return Response::builder()
-                        .status(200)
-                        .body(Body::from(contents))
-                        .unwrap();
-
-            } else {
+            info!("Serving {} from cache: {:?}", path, file_path);
+            return Response::builder()
+                .status(200)
+                .body(Body::from(contents))
+                .unwrap();
+        } else {
             error!("{:?} read failed", file_path);
         }
         // If reading fails, fallback to downloading
-    } else{
+    } else {
         warn!("{:?} does not exist", file_path);
     };
     return match client.get(&target_url).send().await {
@@ -62,17 +66,98 @@ pub async fn proxy_uploads(
             tokio::fs::write(&file_path, &bytes).await.unwrap();
 
             Response::builder()
-                    .status(200)
-                    .body(Body::from(bytes))
-                    .unwrap()
-        },
-        Err(_) => {
-            Response::builder()
-                    .status(404)
-                    .body(Body::empty())
-                    .unwrap()
+                .status(200)
+                .body(Body::from(bytes))
+                .unwrap()
         }
-    }
-
+        Err(_) => Response::builder().status(404).body(Body::empty()).unwrap(),
+    };
 }
 
+// List files in `cache_dir`
+pub async fn list_files(State(state): State<Arc<AppState>>) -> Json<Vec<String>> {
+    let app_handle = state.app_handle.clone();
+    let cache_dir = app_handle
+        .path()
+        .resolve("assets", tauri::path::BaseDirectory::AppCache)
+        .unwrap();
+
+    let mut files = vec![];
+    let mut entries = tokio::fs::read_dir(&cache_dir).await.unwrap();
+    while let Some(entry) = entries.next_entry().await.unwrap() {
+        if entry.file_type().await.unwrap().is_file() {
+            files.push(entry.file_name().to_string_lossy().to_string());
+        }
+    }
+    Json(files)
+}
+
+// Download a file
+pub async fn download_file(
+    State(state): State<Arc<AppState>>,
+    Path(filename): Path<String>,
+) -> axum::response::Result<Vec<u8>> {
+    let app_handle = state.app_handle.clone();
+    let cache_dir = app_handle
+        .path()
+        .resolve("assets", tauri::path::BaseDirectory::AppCache)
+        .unwrap();
+    let file_path = cache_dir.join(filename);
+
+    let file_content = tokio::fs::read(file_path).await.unwrap();
+    Ok(file_content)
+}
+
+use serde_json::json;
+
+#[axum::debug_handler]
+pub async fn upload_file(
+    State(state): State<Arc<AppState>>,
+    Path(filename): Path<String>,
+    body: axum::body::Bytes,
+) -> impl IntoResponse {
+    let app_handle = state.app_handle.clone();
+
+    // Try resolving the cache directory
+    let cache_dir = match app_handle
+            .path()
+            .resolve("assets", tauri::path::BaseDirectory::AppCache)
+    {
+        Ok(dir) => dir,
+        Err(e) => {
+            let error_message = format!("Failed to resolve cache directory: {e}");
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": error_message })));
+        }
+    };
+
+    // Sanitize the filename
+    let sanitized_filename = match std::path::Path::new(&filename)
+            .file_name()
+            .and_then(|name| name.to_str())
+    {
+        Some(valid_name) => valid_name.to_string(),
+        None => {
+            let error_message = "Invalid filename".to_string();
+            return (StatusCode::BAD_REQUEST, Json(json!({ "error": error_message })));
+        }
+    };
+
+    let file_path = cache_dir.join(sanitized_filename);
+
+    // Write the file
+    if let Err(e) = tokio::fs::write(&file_path, body).await {
+        let error_message = format!("Failed to write file to {:?}: {e}", file_path);
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": error_message })),
+        );
+    }
+
+    // Return a successful response
+    (
+        StatusCode::OK,
+        Json(json!({
+            "message": "File uploaded successfully"
+        })),
+    )
+}

@@ -312,6 +312,7 @@ pub async fn periodic_announce(my_response: Arc<Message>) -> std::io::Result<()>
     Ok(())
 }
 
+// localsend.rs - Modified `daemon` to start synchronization upon peer discovery
 pub async fn daemon(
     app_handle: tauri::AppHandle,
     port: u16,
@@ -321,9 +322,7 @@ pub async fn daemon(
     let udp = create_udp_socket(port)?;
     let mut buf = [0; 1024];
     let addr: std::net::Ipv4Addr = "224.0.0.167".parse().unwrap();
-    let app_handle_clone = app_handle.clone();
-    let peers_store = app_handle_clone.store("peers.json").unwrap();
-    peers_store.clear();
+    let peers_store = app_handle.store("peers.json").unwrap();
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
         .build()
@@ -336,7 +335,7 @@ pub async fn daemon(
         let response_clone = my_response.clone();
         let my_fingerprint_clone = my_fingerprint.clone();
         let peers_store_clone = peers_store.clone();
-        let app_handle_clone2 = app_handle.clone();
+        let app_handle_clone = app_handle.clone();
         let client_clone = client.clone();
 
         tauri::async_runtime::spawn(async move {
@@ -347,23 +346,18 @@ pub async fn daemon(
                     serde_json::to_string(&*response_clone).unwrap()
                 );
 
-                let peer_fingerprint = parsed_msg.fingerprint.clone();
-                let peer_protocol = parsed_msg.protocol.clone();
+                // Skip if it's my own message
                 if parsed_msg.fingerprint == my_fingerprint_clone {
                     debug!("skip my own fingerprint");
                     return;
                 }
-                // if fingerprint is in keys of the store, return
-                if let Some(peer_value) = peers_store_clone.get(&peer_fingerprint) {
-                    let peer_info: PeerInfo = serde_json::from_value(peer_value).unwrap();
-                    if peer_info.remote_addrs.contains(&remote_addr) {
-                        debug!("skip already registered fingerprint: {}", peer_fingerprint);
-                        return;
-                    } else {
-                        debug!("add new remote address: {:?}", remote_addr);
-                        let mut peer_info = peer_info;
+
+                // Update or register peer
+                if let Some(peer_value) = peers_store_clone.get(&parsed_msg.fingerprint) {
+                    let mut peer_info: PeerInfo = serde_json::from_value(peer_value).unwrap();
+                    if !peer_info.remote_addrs.contains(&remote_addr) {
                         peer_info.add_remote_addr(remote_addr);
-                        peers_store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
+                        peers_store_clone.set(parsed_msg.fingerprint.clone(), serde_json::json!(peer_info));
                     }
                 } else {
                     debug!(
@@ -371,40 +365,86 @@ pub async fn daemon(
                         remote_addr, parsed_msg
                     );
                     let peer_info = PeerInfo {
-                        message: parsed_msg,
+                        message: parsed_msg.clone(),
                         remote_addrs: vec![remote_addr].into(),
                     };
-                    peers_store_clone.set(peer_fingerprint, serde_json::json!(peer_info));
+                    peers_store_clone.set(parsed_msg.fingerprint.clone(), serde_json::json!(peer_info));
                 }
-                udp_clone
-                    .send_to(
-                        &serde_json::to_vec(&*response_clone).expect("Failed to serialize Message"),
-                        (addr, port),
-                    )
-                    .await
-                    .expect("Send error");
-                let res = client_clone
-                    .post(format!(
-                        "{}://{}:{}/api/localsend/v2/register",
-                        peer_protocol, remote_addr, remote_port
-                    ))
-                    .json(&*response_clone)
-                    .send()
-                    .await;
-                match res {
-                    Ok(response) => {
-                        debug!("reqwest response: {:?}", response);
-                    }
-                    Err(e) => {
-                        debug!("reqwest error: {:?}", e);
-                    }
+
+                // Initiate file sync with peer
+                let peer_protocol = parsed_msg.protocol;
+                let peer_address = format!("{}://{}:{}", peer_protocol, remote_addr, remote_port);
+
+                if let Err(e) = sync_files_with_peer(&client_clone, peer_address, app_handle_clone.clone()).await {
+                    debug!("File sync with peer failed: {}", e);
                 }
-                app_handle_clone2.emit("refresh-peers", ()).unwrap();
+                app_handle_clone.emit("refresh-peers", ()).unwrap();
             } else {
                 log::warn!("Failed to parse incoming multicast message");
             }
         });
     }
+}
 
-    // Ok(())
+async fn sync_files_with_peer(
+    client: &reqwest::Client,
+    peer_address: String,
+    app_handle: tauri::AppHandle,
+) -> anyhow::Result<()> {
+    // Retrieve and list local files
+    let cache_dir = app_handle
+        .path()
+        .resolve("assets", tauri::path::BaseDirectory::AppCache)
+        .unwrap();
+
+    let mut local_files = vec![];
+    let mut entries = tokio::fs::read_dir(&cache_dir).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        if entry.file_type().await?.is_file() {
+            local_files.push(entry.file_name().to_string_lossy().to_string());
+        }
+    }
+
+    // Get file list from peer
+    let peer_files: Vec<String> = client
+        .get(format!("{}/api/files", peer_address))
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    // Identify missing files to download from peer
+    let files_to_fetch: Vec<String> = peer_files.clone()
+        .into_iter()
+        .filter(|file| !local_files.contains(file))
+        .collect();
+
+    for file in files_to_fetch {
+        let response = client
+            .get(format!("{}/api/files/download/{}", peer_address, file))
+            .send()
+            .await?;
+
+        let content = response.bytes().await?;
+        let file_path = cache_dir.join(&file);
+        tokio::fs::write(file_path, content).await?;
+    }
+
+    // Identify files to upload to peer
+    let files_to_upload: Vec<String> = local_files
+        .into_iter()
+        .filter(|file| !peer_files.contains(file))
+        .collect();
+
+    for file in files_to_upload {
+        let file_path = cache_dir.join(&file);
+        let content = tokio::fs::read(&file_path).await?;
+        client
+            .post(format!("{}/api/files/upload", peer_address))
+            .body(content)
+            .send()
+            .await?;
+    }
+
+    Ok(())
 }
