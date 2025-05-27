@@ -79,8 +79,8 @@ pub async fn send_file_to_peer(
         debug!("{}", msg);
         return Err(msg.to_string());
     }
-
-    let client = if remote_protocol.as_str() == "https" {
+    // this client's security is decided by peer
+    let client_maybe_insecure = if remote_protocol.as_str() == "https" {
         reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
             .build()
@@ -155,9 +155,9 @@ pub async fn send_file_to_peer(
     let remote_host_53317 = SocketAddr::new(remote_host.ip(), 53317);
     remote_addrs.push_front(remote_host_53317);
     for remote_addr in remote_addrs {
-        let client_clone = client.clone();
+        let client_maybe_insecure_clone = client_maybe_insecure.clone();
         debug!("remote host: {}", remote_addr);
-        let res = client_clone
+        let res = client_maybe_insecure_clone
             .post(format!(
                 "{}://{}/api/localsend/v2/prepare-upload",
                 remote_protocol, remote_addr
@@ -187,7 +187,7 @@ pub async fn send_file_to_peer(
                         for (fileId, _file) in &files_map {
                             let token = filesIdToToken.get(fileId.clone()).unwrap();
                             let token = token.as_str().unwrap();
-                            let client_clone = client.clone();
+                            let client_maybe_insecure_2 = client_maybe_insecure.clone();
                             // POST /api/localsend/v2/upload?sessionId=mySessionId&fileId=someFileId&token=someFileToken
                             //
                             // Request
@@ -213,7 +213,7 @@ pub async fn send_file_to_peer(
                                 remote_protocol, remote_addr, sessionId, fileId, token
                             );
                             debug!("url: {}", url);
-                            let res = client_clone.post(url).body(file_binary).send().await;
+                            let res = client_maybe_insecure_2.post(url).body(file_binary).send().await;
                             match res {
                                 Ok(response) => {
                                     debug!("peer reply to upload: {:?}", response);

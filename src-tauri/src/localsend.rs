@@ -323,7 +323,7 @@ pub async fn daemon(
     let mut buf = [0; 1024];
     let addr: std::net::Ipv4Addr = "224.0.0.167".parse().unwrap();
     let peers_store = app_handle.store("peers.json").unwrap();
-    let client = reqwest::Client::builder()
+    let client_insecure = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
         .build()
         .unwrap();
@@ -336,7 +336,7 @@ pub async fn daemon(
         let my_fingerprint_clone = my_fingerprint.clone();
         let peers_store_clone = peers_store.clone();
         let app_handle_clone = app_handle.clone();
-        let client_clone = client.clone();
+        let client_insecure_clone = client_insecure.clone();
 
         tauri::async_runtime::spawn(async move {
             if let Ok(parsed_msg) = serde_json::from_slice::<Message>(&data) {
@@ -375,7 +375,7 @@ pub async fn daemon(
                 let peer_protocol = parsed_msg.protocol;
                 let peer_address = format!("{}://{}:{}", peer_protocol, remote_addr, remote_port);
 
-                if let Err(e) = sync_files_with_peer(&client_clone, peer_address, app_handle_clone.clone()).await {
+                if let Err(e) = sync_files_with_peer(&client_insecure_clone, peer_address, app_handle_clone.clone()).await {
                     debug!("File sync with peer failed: {}", e);
                 }
                 app_handle_clone.emit("refresh-peers", ()).unwrap();
@@ -387,7 +387,7 @@ pub async fn daemon(
 }
 
 async fn sync_files_with_peer(
-    client: &reqwest::Client,
+    client_insecure: &reqwest::Client,
     peer_address: String,
     app_handle: tauri::AppHandle,
 ) -> anyhow::Result<()> {
@@ -406,7 +406,7 @@ async fn sync_files_with_peer(
     }
 
     // Get file list from peer
-    let peer_files: Vec<String> = client
+    let peer_files: Vec<String> = client_insecure
         .get(format!("{}/api/files", peer_address))
         .send()
         .await?
@@ -420,7 +420,7 @@ async fn sync_files_with_peer(
         .collect();
 
     for file in files_to_fetch {
-        let response = client
+        let response = client_insecure
             .get(format!("{}/api/files/download/{}", peer_address, file))
             .send()
             .await?;
@@ -439,7 +439,7 @@ async fn sync_files_with_peer(
     for file in files_to_upload {
         let file_path = cache_dir.join(&file);
         let content = tokio::fs::read(&file_path).await?;
-        client
+        client_insecure
             .post(format!("{}/api/files/upload", peer_address))
             .body(content)
             .send()

@@ -16,7 +16,6 @@
         theme: {},            // css var overrides
         classes: []           // user-defined classes
     }
-    let a;
     import { Skeleton, ImagePlaceholder, BottomNav, BottomNavItem } from 'flowbite-svelte';
     import {
         HomeSolid,

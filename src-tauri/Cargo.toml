@@ -59,8 +59,8 @@ async_zip = { version = "0.0.17", default-features = false, features = ["deflate
 headers = "0.4"
 mime_guess = "2.0"
 if-addrs = "0.13"
-rustls-pemfile = { version = "2.2", optional = true }
-tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["ring", "tls12"] }
+rustls-pemfile = { version = "2.2" }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 md5 = "0.7"
 lazy_static = "1.5"
 uuid = { version = "1.17", features = ["v4", "fast-rng"] }
@@ -102,12 +102,13 @@ thiserror = "2.0.12"
 tauri-plugin-sql = { path = "../../plugins-workspace/plugins/sql", features = ["sqlite"] }
 tauri-plugin-os = "2"
 url = "2.5.4"
-
+axum-server = {version =  "0.7", features = ["tls-rustls"] }
 # Feature "bundled-sqlcipher" of libsqlite3 make android build fail
 #libsqlite3-sys = { version = "0.30", features = ["bundled-sqlcipher"] }
 #libsqlite3-sys = { version = "0.30", features = ["bundled-sqlcipher-vendored-openssl"] }
 
 pem = "3.0.5"
+rustls = "0.23.27"
 [features]
 default = []
-tls = ["rustls-pemfile", "tokio-rustls"]
+tls = []

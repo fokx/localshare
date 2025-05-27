@@ -37,6 +37,15 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 use url::Url;
 use rcgen::{date_time_ymd, CertificateParams, DistinguishedName, DnType, KeyPair, SanType};
+use rustls::pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject};
+use tokio_rustls::rustls::{self, ServerConfig};
+use tokio_rustls::TlsAcceptor;
+use std::fs;
+use tokio::net::TcpListener;
+use std::{fs::File, io::BufReader};
+use axum_server::tls_rustls::RustlsConfig;
+use crate::rustls::crypto::CryptoProvider;
+
 
 #[tokio::test]
 async fn client_test() -> std::io::Result<()> {
@@ -81,6 +90,7 @@ async fn client_test() -> std::io::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    rustls::crypto::ring::default_provider().install_default().expect("Failed to install rustls crypto provider");
     let server_handle = Arc::new(Mutex::new(None::<oneshot::Sender<()>>));
     // use tauri state to manage a vector of String
     let sessions = Mutex::new(Sessions::default());
@@ -228,9 +238,9 @@ pub fn run() {
                 println!("{pem_serialized}");
                 println!("{}", key_pair.serialize_pem());
                 // std::fs::create_dir_all("certs/")?;
-                std::fs::write(cer_dst, pem_serialized.as_bytes())?;
+                std::fs::write(cer_dst.clone(), pem_serialized.as_bytes())?;
                 // std::fs::write("cert.der", der_serialized)?;
-                std::fs::write(key_dst, key_pair.serialize_pem().as_bytes())?;
+                std::fs::write(key_dst.clone(), key_pair.serialize_pem().as_bytes())?;
                 // std::fs::write("key.der", key_pair.serialize_der())?;
             }
 
@@ -243,7 +253,7 @@ pub fn run() {
                 device_type: None,
                 fingerprint: my_fingerprint.clone(),
                 port,
-                protocol: "http".to_string(),
+                protocol: "https".to_string(),
                 download: Some(true),
                 announce: None,
             };
@@ -260,31 +270,48 @@ pub fn run() {
                 app_handle: app_handle_axum,
                 client: reqwest::Client::new(),
             });
-            let _handle_axum_server = tauri::async_runtime::spawn(async move {
+            let axum_app_state_https = axum_app_state.clone();
+            let _handle_axum_https_server = tauri::async_runtime::spawn(async move {
+                // let certs = CertificateDer::pem_file_iter(cer_dst.clone()).unwrap().collect::<Result<Vec<_>, _>>().unwrap();
+                // let key = PrivateKeyDer::from_pem_file(key_dst.clone()).unwrap();
+                // let mut config = ServerConfig::builder()
+                //     .with_no_client_auth()
+                //     .with_single_cert(certs, key)
+                //     .expect("Failed to configure TLS");
+                // config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+                // let tls_acceptor = TlsAcceptor::from(Arc::new(config));
+                let rustls_config = RustlsConfig::from_pem_file(cer_dst.clone(), key_dst.clone())
+                        .await
+                        .expect("Failed to load TLS configuration");
                 let axum_app = Router::new()
-                    .route("/uploads/{*path}", get(proxy_uploads))
                     .route("/api/localsend/v2/register", post(handler_register))
-                    .route(
-                        "/api/localsend/v2/prepare-upload",
-                        post(handler_prepare_upload),
-                    )
+                    .route("/api/localsend/v2/prepare-upload", post(handler_prepare_upload))
                     .route("/api/localsend/v2/upload", post(handler_upload))
                     .route("/api/files", get(list_files))
                     .route("/api/files/download/{filename}", get(download_file))
                     .route("/api/files/upload/{filename}", post(upload_file))
-                    .route("/", get(|| async { "This is an axum server" }))
-                    .with_state(axum_app_state);
+                    .route("/", get(|| async { "This is an HTTPS Axum server" }))
+                    .with_state(axum_app_state_https);
 
-                let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
-                    .await
-                    .unwrap();
+                let addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
+                axum_server::bind_rustls(addr, rustls_config)
+                        .serve(axum_app.into_make_service())
+                        .await
+                        .unwrap();
+            });
+            let _handle_axum_http_server = tauri::async_runtime::spawn(async move {
+                let axum_app = Router::new()
+                        .route("/uploads/{*path}", get(proxy_uploads))
+                        .route("/", get(|| async { "This is an HTTP Axum server" }))
+                        .with_state(axum_app_state);
+                let listener = TcpListener::bind(format!("0.0.0.0:{}", 53318)).await.unwrap();
                 axum::serve(
                     listener,
                     axum_app.into_make_service_with_connect_info::<SocketAddr>(),
-                )
-                .await
+                ) .await
                 .unwrap()
             });
+
             let app_handle = app.handle().clone();
             let _handle_daemon = tauri::async_runtime::spawn(daemon(
                 app_handle,
