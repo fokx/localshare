@@ -107,6 +107,7 @@ url = "2.5.4"
 #libsqlite3-sys = { version = "0.30", features = ["bundled-sqlcipher"] }
 #libsqlite3-sys = { version = "0.30", features = ["bundled-sqlcipher-vendored-openssl"] }
 
+pem = "3.0.5"
 [features]
 default = []
 tls = ["rustls-pemfile", "tokio-rustls"]

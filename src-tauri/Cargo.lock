@@ -2811,6 +2811,7 @@ dependencies = [
  "md5",
  "mime_guess",
  "network-interface",
+ "pem",
  "percent-encoding",
  "pin-project-lite",
  "rand 0.9.1",

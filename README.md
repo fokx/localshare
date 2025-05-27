@@ -72,3 +72,12 @@ for ERR_CLEARTEXT_NOT_PERMITTED on Android, set
         android:usesCleartextTraffic="true">
 ```
 in  ./src-tauri/gen/android/app/src/main/AndroidManifest.xml
+
+`cargo tauri android dev`
+will show logging >= info!
+
+`pnpm tauri android dev`
+will not
+
+
+

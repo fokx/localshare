@@ -36,13 +36,14 @@ use assets::{proxy_uploads, AppState, list_files, upload_file, download_file};
 use std::net::SocketAddr;
 use std::str::FromStr;
 use url::Url;
+use rcgen::{date_time_ymd, CertificateParams, DistinguishedName, DnType, KeyPair, SanType};
 
 #[tokio::test]
 async fn client_test() -> std::io::Result<()> {
     // cargo test -- --nocapture
     // https://stackoverflow.com/questions/25106554/why-doesnt-println-work-in-rust-unit-tests
     let my_fingerprint = generate_random_string(FINGERPRINT_LENGTH);
-    debug!("test client fingerprint : {}", my_fingerprint);
+    info!("test client fingerprint : {}", my_fingerprint);
     let port = 53317;
     let my_response = Arc::new(Message {
         alias: my_fingerprint[0..6].to_string(),
@@ -69,10 +70,10 @@ async fn client_test() -> std::io::Result<()> {
         .await;
     match res {
         Ok(response) => {
-            debug!("Response: {:?}", response);
+            info!("Response: {:?}", response);
         }
         Err(e) => {
-            debug!("Error: {:?}", e);
+            info!("Error: {:?}", e);
         }
     }
     Ok(())
@@ -83,9 +84,9 @@ pub fn run() {
     let server_handle = Arc::new(Mutex::new(None::<oneshot::Sender<()>>));
     // use tauri state to manage a vector of String
     let sessions = Mutex::new(Sessions::default());
-    #[cfg(debug_assertions)]
-    let log_level = log::LevelFilter::Debug;
-    #[cfg(not(debug_assertions))]
+    #[cfg(info_assertions)]
+    let log_level = log::LevelFilter::info;
+    #[cfg(not(info_assertions))]
     let log_level = log::LevelFilter::Info;
     let migrations = vec![
         // Define your migrations here
@@ -117,69 +118,70 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sharetarget::init())
         .setup(|app| {
-            debug!("readfile11");
+            info!("readfile11");
             let db_dst = app.path().resolve("", tauri::path::BaseDirectory::Document)?;
             if ! std::fs::exists(db_dst.clone()).unwrap() {
                 std::fs::create_dir(db_dst).unwrap();
             }
-            debug!("readfile1.1");
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Audio).unwrap());
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Config).unwrap());
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Data).unwrap());
-            debug!("2");
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::LocalData).unwrap());
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Document).unwrap());
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Download).unwrap());
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Picture).unwrap());
-            debug!("3");
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Resource).unwrap());
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppConfig).unwrap());
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppData).unwrap());
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLocalData).unwrap());
-            debug!("4");
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppCache).unwrap());
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLog).unwrap());
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Home).unwrap());
-            debug!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
+
+            info!("readfile1.1");
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Audio).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Config).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Data).unwrap());
+            info!("2");
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::LocalData).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Document).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Download).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Picture).unwrap());
+            info!("3");
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Resource).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppConfig).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppData).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLocalData).unwrap());
+            info!("4");
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppCache).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLog).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Home).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
             let db_src = app.path().resolve("res/xap.db", tauri::path::BaseDirectory::Resource)?;
             let db_dst = app.path().resolve("xap.db", tauri::path::BaseDirectory::Document)?;
-            debug!("readfile: src {:?}", db_src.clone());
-            debug!("readfile: dst {:?}", db_dst.clone());
+            info!("readfile: src {:?}", db_src.clone());
+            info!("readfile: dst {:?}", db_dst.clone());
             if cfg!(target_os = "android") {
                 // this SQL copy logic currently does not work on Android, patched it in sql plugin rust code
-                debug!("readfile 1");
+                info!("readfile 1");
                 let scope = app.fs_scope();
                 let android_fs_api = app.android_fs();
                 scope.allow_directory(app.path().resolve("", tauri::path::BaseDirectory::Document).unwrap(), false);
                 // scope.allow_directory("/path/to/directory", false);
                 // dbg!(scope.allowed());
-                // debug!("{:?}", scope.allowed());
+                // info!("{:?}", scope.allowed());
                 let src_path = tauri_plugin_fs::FilePath::Path(db_src.clone());
-                debug!("readfile 2: {:?}", src_path);
+                info!("readfile 2: {:?}", src_path);
                 let db_file_content = app.fs().read(src_path).unwrap();
-                // debug!("readfile 4: {:?}", db_file_content.clone());
-                debug!("{:?}", db_dst.as_path());
+                // info!("readfile 4: {:?}", db_file_content.clone());
+                info!("{:?}", db_dst.as_path());
                 // let file = tauri_plugin_fs::OpenOptions::new().write(true).open(db_dst.as_path());
                 let p =  tauri_plugin_fs::FilePath::Path(db_dst);
                 let uri: FileUri = p.into();
                 let mut file: std::fs::File = android_fs_api.open_file(&uri, tauri_plugin_android_fs::FileAccessMode::WriteTruncate)
                         .unwrap();
-                debug!("writeall");
+                info!("writeall");
                 // let file: std::fs::File = api.open_file(&uri, FileAccessMode::WriteTruncate)?;
                 // let mut file_opened = std::fs::OpenOptions::new().write(true).open(db_dst.as_path()).unwrap();
-                // debug!("copying bundled sqlite");
+                // info!("copying bundled sqlite");
                 file.write_all(&db_file_content);
-                debug!("done");
+                info!("done");
             } else {
                 // let db_file_content = std::fs::File::open(&db_src).unwrap();
                 if !std::path::Path::new(&db_dst.clone()).exists() {
-                    debug!("copy bundled sqlite");
+                    info!("copy bundled sqlite");
                 } else {
-                    debug!("overrite existing")
+                    info!("overrite existing")
                 }
                 std::fs::copy(db_src.as_path(), db_dst.as_path()).unwrap();
-                debug!("done");
+                info!("done");
             }
 
             let settings_store = app.store("settings.json").unwrap();
@@ -204,7 +206,35 @@ pub fn run() {
                     .unwrap()
                     .to_string(),
             };
-            debug!("my fingerprint : {}", my_fingerprint);
+            let certs_dst_dir = app.path().resolve("certs", tauri::path::BaseDirectory::AppLocalData)?;
+            if ! std::fs::exists(certs_dst_dir.clone()).unwrap() {
+                std::fs::create_dir(certs_dst_dir).unwrap();
+            }
+            let cer_dst = app.path().resolve("certs/cer.pem", tauri::path::BaseDirectory::AppLocalData)?;
+            let key_dst = app.path().resolve("certs/key.pem", tauri::path::BaseDirectory::AppLocalData)?;
+            if ! std::fs::exists(cer_dst.clone()).unwrap() {
+                let mut params: CertificateParams = Default::default();
+                params.not_before = date_time_ymd(1975, 1, 1);
+                params.not_after = date_time_ymd(4096, 1, 1);
+                // params.subject_alt_names = vec![SanType::DnsName(my_fingerprint.clone())];
+                params.subject_alt_names = vec![SanType::DnsName(rcgen::Ia5String::from_str(&my_fingerprint).unwrap())];
+
+                let key_pair = KeyPair::generate()?;
+                let cert = params.self_signed(&key_pair)?;
+
+                let pem_serialized = cert.pem();
+                let pem = pem::parse(&pem_serialized)?;
+                let der_serialized = pem.contents();
+                println!("{pem_serialized}");
+                println!("{}", key_pair.serialize_pem());
+                // std::fs::create_dir_all("certs/")?;
+                std::fs::write(cer_dst, pem_serialized.as_bytes())?;
+                // std::fs::write("cert.der", der_serialized)?;
+                std::fs::write(key_dst, key_pair.serialize_pem().as_bytes())?;
+                // std::fs::write("key.der", key_pair.serialize_der())?;
+            }
+
+            info!("my fingerprint : {}", my_fingerprint);
             let port = 53317;
             let message = Message {
                 alias: my_fingerprint[0..6].to_string(),
@@ -266,7 +296,7 @@ pub fn run() {
 
             // std::thread::spawn(move || block_on(tcc_main()));
             // tauri::async_runtime::spawn(actix_main());
-            #[cfg(debug_assertions)] // only include this code on debug builds
+            #[cfg(info_assertions)] // only include this code on info builds
             {
                 let window = app.get_webview_window("main").unwrap();
                 window.open_devtools();
