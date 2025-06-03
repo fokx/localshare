@@ -12,7 +12,7 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri_plugin_store::StoreExt;
 use tokio;
 use tokio::sync::oneshot;
-
+use hyper_util::rt::{TokioExecutor, TokioIo};
 mod commands;
 mod common;
 mod dufs;
@@ -43,7 +43,7 @@ use tokio_rustls::TlsAcceptor;
 use std::fs;
 use tokio::net::TcpListener;
 use std::{fs::File, io::BufReader};
-use axum_server::tls_rustls::RustlsConfig;
+use tower::Service;
 use crate::rustls::crypto::CryptoProvider;
 
 
@@ -272,17 +272,18 @@ pub fn run() {
             });
             let axum_app_state_https = axum_app_state.clone();
             let _handle_axum_https_server = tauri::async_runtime::spawn(async move {
-                // let certs = CertificateDer::pem_file_iter(cer_dst.clone()).unwrap().collect::<Result<Vec<_>, _>>().unwrap();
-                // let key = PrivateKeyDer::from_pem_file(key_dst.clone()).unwrap();
-                // let mut config = ServerConfig::builder()
-                //     .with_no_client_auth()
-                //     .with_single_cert(certs, key)
-                //     .expect("Failed to configure TLS");
-                // config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-                // let tls_acceptor = TlsAcceptor::from(Arc::new(config));
-                let rustls_config = RustlsConfig::from_pem_file(cer_dst.clone(), key_dst.clone())
-                        .await
-                        .expect("Failed to load TLS configuration");
+                let certs = CertificateDer::pem_file_iter(cer_dst.clone())
+                        .unwrap().collect::<Result<Vec<_>, _>>().unwrap();
+                let key = PrivateKeyDer::from_pem_file(key_dst.clone()).unwrap();
+                let mut config = ServerConfig::builder()
+                    .with_no_client_auth()
+                    .with_single_cert(certs, key)
+                    .expect("Failed to configure TLS");
+                config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+                let tls_acceptor = TlsAcceptor::from(Arc::new(config));
+                let addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
+                let tcp_listener = TcpListener::bind(addr).await.unwrap();
+
                 let axum_app = Router::new()
                     .route("/api/localsend/v2/register", post(handler_register))
                     .route("/api/localsend/v2/prepare-upload", post(handler_prepare_upload))
@@ -293,11 +294,41 @@ pub fn run() {
                     .route("/", get(|| async { "This is an HTTPS Axum server" }))
                     .with_state(axum_app_state_https);
 
-                let addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
-                axum_server::bind_rustls(addr, rustls_config)
-                        .serve(axum_app.into_make_service())
-                        .await
-                        .unwrap();
+                loop {
+                    let tower_service = axum_app.clone();
+                    let tls_acceptor = tls_acceptor.clone();
+                    // Wait for new tcp connection
+                    let (cnx, addr) = tcp_listener.accept().await.unwrap();
+                    tokio::spawn(async move {
+                        // Wait for tls handshake to happen
+                        let Ok(stream) = tls_acceptor.accept(cnx).await else {
+                            error!("error during tls handshake connection from {}", addr);
+                            return;
+                        };
+                        // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+                        // `TokioIo` converts between them.
+                        let stream = TokioIo::new(stream);
+
+                        // Hyper also has its own `Service` trait and doesn't use tower. We can use
+                        // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
+                        // `tower::Service::call`.
+                        let hyper_service = hyper::service::service_fn(move |request: axum::extract::Request<hyper::body::Incoming>| {
+                            // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
+                            // tower's `Service` requires `&mut self`.
+                            //
+                            // We don't need to call `poll_ready` since `Router` is always ready.
+                            tower_service.clone().call(request)
+                        });
+                        let ret = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+                                .serve_connection_with_upgrades(stream, hyper_service)
+                                .await;
+
+                        if let Err(err) = ret {
+                            warn!("error serving connection from {}: {}", addr, err);
+                        }
+                    });
+
+                }
             });
             let _handle_axum_http_server = tauri::async_runtime::spawn(async move {
                 let axum_app = Router::new()

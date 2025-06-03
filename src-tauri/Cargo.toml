@@ -102,7 +102,7 @@ thiserror = "2.0.12"
 tauri-plugin-sql = { path = "../../plugins-workspace/plugins/sql", features = ["sqlite"] }
 tauri-plugin-os = "2"
 url = "2.5.4"
-axum-server = {version =  "0.7", features = ["tls-rustls"] }
+#axum-server = {version =  "0.7", features = ["tls-rustls"] }
 # Feature "bundled-sqlcipher" of libsqlite3 make android build fail
 #libsqlite3-sys = { version = "0.30", features = ["bundled-sqlcipher"] }
 #libsqlite3-sys = { version = "0.30", features = ["bundled-sqlcipher-vendored-openssl"] }
