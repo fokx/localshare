@@ -64,7 +64,7 @@ async fn client_test() -> std::io::Result<()> {
         device_type: Some("unimplemented".to_string()),
         fingerprint: my_fingerprint.clone(),
         port,
-        protocol: "http".to_string(),
+        protocol: "https".to_string(),
         download: Some(true),
         announce: Some(false),
     });
