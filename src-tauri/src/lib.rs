@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::io::Write;
 use tauri_plugin_fs::FsExt;
 #[macro_use]
@@ -196,42 +197,28 @@ pub fn run() {
 
             let settings_store = app.store("settings.json").unwrap();
             let localsend_setting = settings_store.get("localsend");
-            let my_fingerprint = match localsend_setting {
-                None => {
-                    let _my_fingerprint = generate_random_string(FINGERPRINT_LENGTH);
-                    info!("no fingerprint found, generate a new one");
-                    settings_store.set(
-                        "localsend",
-                        serde_json::json!({
-                            "fingerprint": _my_fingerprint.clone(),
-                            "savingDir": "/storage/emulated/0/Download".to_string(),
-                        }),
-                    );
-                    _my_fingerprint
-                }
-                Some(setting) => setting
-                    .get("fingerprint")
-                    .unwrap()
-                    .as_str()
-                    .unwrap()
-                    .to_string(),
-            };
+
             let certs_dst_dir = app.path().resolve("certs", tauri::path::BaseDirectory::AppLocalData)?;
             if ! std::fs::exists(certs_dst_dir.clone()).unwrap() {
                 std::fs::create_dir(certs_dst_dir).unwrap();
             }
             let cer_dst = app.path().resolve("certs/cer.pem", tauri::path::BaseDirectory::AppLocalData)?;
             let key_dst = app.path().resolve("certs/key.pem", tauri::path::BaseDirectory::AppLocalData)?;
+            let cert_hash: String;
             if ! std::fs::exists(cer_dst.clone()).unwrap() {
                 let mut params: CertificateParams = Default::default();
                 params.not_before = date_time_ymd(1975, 1, 1);
                 params.not_after = date_time_ymd(4096, 1, 1);
-                // params.subject_alt_names = vec![SanType::DnsName(my_fingerprint.clone())];
-                params.subject_alt_names = vec![SanType::DnsName(rcgen::Ia5String::from_str(&my_fingerprint).unwrap())];
+                let subject_alt_names = generate_random_string(FINGERPRINT_LENGTH);
+                params.subject_alt_names = vec![SanType::DnsName(rcgen::Ia5String::from_str(&subject_alt_names).unwrap())];
 
                 let key_pair = KeyPair::generate()?;
                 let cert = params.self_signed(&key_pair)?;
-
+                use sha2::{Digest, Sha256};
+                let mut hasher = Sha256::new();
+                hasher.update(cert.pem());
+                let result = hasher.finalize();
+                cert_hash = hex::encode(result);
                 let pem_serialized = cert.pem();
                 let pem = pem::parse(&pem_serialized)?;
                 let der_serialized = pem.contents();
@@ -242,8 +229,34 @@ pub fn run() {
                 // std::fs::write("cert.der", der_serialized)?;
                 std::fs::write(key_dst.clone(), key_pair.serialize_pem().as_bytes())?;
                 // std::fs::write("key.der", key_pair.serialize_der())?;
+            } else {
+                use sha2::{Digest, Sha256};
+                let cert_content = std::fs::read_to_string(cer_dst.clone())?;
+                let mut hasher = Sha256::new();
+                hasher.update(cert_content.as_bytes());
+                let result = hasher.finalize();
+                cert_hash = hex::encode(result);
             }
-
+            let my_fingerprint = match localsend_setting {
+                None => {
+                    let _my_fingerprint = cert_hash;
+                    info!("no fingerprint saved, use a new one derived from certificate");
+                    settings_store.set(
+                        "localsend",
+                        serde_json::json!({
+                            "fingerprint": _my_fingerprint.clone(),
+                            "savingDir": "/storage/emulated/0/Download".to_string(),
+                        }),
+                    );
+                    _my_fingerprint
+                }
+                Some(setting) => setting
+                        .get("fingerprint")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .to_string(),
+            };
             info!("my fingerprint : {}", my_fingerprint);
             let port = 53317;
             let message = Message {

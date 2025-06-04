@@ -72,7 +72,7 @@
             visiblePagesBottom=15;
         }
         scrollHandler = () => {
-            console.log("Window scroll:", window.scrollY);
+            // console.log("Window scroll:", window.scrollY);
             if (window.scrollY > 100) {
                 window.currentTopicPageScrollY = window.scrollY;
             }
