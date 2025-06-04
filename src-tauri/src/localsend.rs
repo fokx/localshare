@@ -370,15 +370,18 @@ pub async fn daemon(
                     };
                     peers_store_clone.set(parsed_msg.fingerprint.clone(), serde_json::json!(peer_info));
                 }
-
-                // Initiate file sync with peer
-                let peer_protocol = parsed_msg.protocol;
-                let peer_address = format!("{}://{}:{}", peer_protocol, remote_addr, remote_port);
-
-                if let Err(e) = sync_files_with_peer(&client_insecure_clone, peer_address, app_handle_clone.clone()).await {
-                    debug!("File sync with peer failed: {}", e);
-                }
                 app_handle_clone.emit("refresh-peers", ()).unwrap();
+                
+                if parsed_msg.device_model.unwrap() == "localshare_device" {
+                    info!("peer is localshare, start syncing files");
+                    // Initiate file sync with peer
+                    let peer_protocol = parsed_msg.protocol;
+                    let peer_address = format!("{}://{}:{}", peer_protocol, remote_addr, remote_port);
+
+                    if let Err(e) = sync_files_with_peer(&client_insecure_clone, peer_address, app_handle_clone.clone()).await {
+                        debug!("File sync with peer failed: {}", e);
+                    }
+                }
             } else {
                 log::warn!("Failed to parse incoming multicast message");
             }

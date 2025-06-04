@@ -60,7 +60,7 @@ async fn client_test() -> std::io::Result<()> {
     let my_response = Arc::new(Message {
         alias: my_fingerprint[0..6].to_string(),
         version: "2.1".to_string(),
-        device_model: Some("unimplemented".to_string()),
+        device_model: Some("localshare_device".to_string()),
         device_type: Some("unimplemented".to_string()),
         fingerprint: my_fingerprint.clone(),
         port,
@@ -97,9 +97,9 @@ pub fn run() {
     let server_handle = Arc::new(Mutex::new(None::<oneshot::Sender<()>>));
     // use tauri state to manage a vector of String
     let sessions = Mutex::new(Sessions::default());
-    #[cfg(info_assertions)]
-    let log_level = log::LevelFilter::info;
-    #[cfg(not(info_assertions))]
+    #[cfg(debug_assertions)]
+    let log_level = log::LevelFilter::Debug;
+    #[cfg(not(debug_assertions))]
     let log_level = log::LevelFilter::Info;
     let migrations = vec![
         // Define your migrations here
@@ -241,43 +241,41 @@ pub fn run() {
                 cert_hash = hex::encode(result);
                 info!("hash der: {}", cert_hash);
             }
-            // let my_fingerprint = match localsend_setting {
-            //     None => {
-            //         let _my_fingerprint = cert_hash;
-            //         info!("no fingerprint saved, use a new one derived from certificate");
-            //         settings_store.set(
-            //             "localsend",
-            //             serde_json::json!({
-            //                 "fingerprint": _my_fingerprint.clone(),
-            //                 "savingDir": "/storage/emulated/0/Download".to_string(),
-            //             }),
-            //         );
-            //         _my_fingerprint
-            //     }
-            //     Some(setting) => setting
-            //             .get("fingerprint")
-            //             .unwrap()
-            //             .as_str()
-            //             .unwrap()
-            //             .to_string(),
-            // };
-            let my_fingerprint = cert_hash;
+            let my_fingerprint = match localsend_setting {
+                None => {
+                    let _my_fingerprint = cert_hash;
+                    info!("no fingerprint saved, use a new one derived from certificate");
+                    settings_store.set(
+                        "localsend",
+                        serde_json::json!({
+                            "fingerprint": _my_fingerprint.clone(),
+                            "savingDir": "/storage/emulated/0/Download".to_string(),
+                        }),
+                    );
+                    _my_fingerprint
+                }
+                Some(setting) => setting
+                        .get("fingerprint")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .to_string(),
+            };
             info!("my fingerprint : {}", my_fingerprint);
             let port = 53317;
             let message = Message {
                 alias: my_fingerprint[0..6].to_string(),
                 version: "2.1".to_string(),
-                device_model: None,
+                device_model: Some("localshare".to_string()),
                 device_type: None,
                 fingerprint: my_fingerprint.clone(),
                 port,
-                protocol: "https".to_string(),
+                protocol: "http".to_string(),
                 download: Some(true),
                 announce: None,
             };
             let my_response = Arc::new(message.clone());
             app.manage(message);
-            let my_response_for_route = Arc::clone(&my_response);
             let my_response_for_announce = Arc::clone(&my_response);
             let my_response_for_daemon = Arc::clone(&my_response);
 
@@ -290,17 +288,7 @@ pub fn run() {
             });
             let axum_app_state_https = axum_app_state.clone();
             let _handle_axum_https_server = tauri::async_runtime::spawn(async move {
-                let certs = CertificateDer::pem_file_iter(cer_dst.clone())
-                        .unwrap().collect::<Result<Vec<_>, _>>().unwrap();
-                let key = PrivateKeyDer::from_pem_file(key_dst.clone()).unwrap();
-                let mut config = ServerConfig::builder()
-                    .with_no_client_auth()
-                    .with_single_cert(certs, key)
-                    .expect("Failed to configure TLS");
-                config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-                let tls_acceptor = TlsAcceptor::from(Arc::new(config));
-                let addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
-                let tcp_listener = TcpListener::bind(addr).await.unwrap();
+
 
                 let axum_app = Router::new()
                     .route("/api/localsend/v2/register", post(handler_register))
@@ -311,41 +299,60 @@ pub fn run() {
                     .route("/api/files/upload/{filename}", post(upload_file))
                     .route("/", get(|| async { "This is an HTTPS Axum server" }))
                     .with_state(axum_app_state_https);
-
-                loop {
-                    let tower_service = axum_app.clone();
-                    let tls_acceptor = tls_acceptor.clone();
-                    // Wait for new tcp connection
-                    let (cnx, addr) = tcp_listener.accept().await.unwrap();
-                    tokio::spawn(async move {
-                        // Wait for tls handshake to happen
-                        let Ok(stream) = tls_acceptor.accept(cnx).await else {
-                            error!("error during tls handshake connection from {}", addr);
-                            return;
-                        };
-                        // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
-                        // `TokioIo` converts between them.
-                        let stream = TokioIo::new(stream);
-
-                        // Hyper also has its own `Service` trait and doesn't use tower. We can use
-                        // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
-                        // `tower::Service::call`.
-                        let hyper_service = hyper::service::service_fn(move |request: axum::extract::Request<hyper::body::Incoming>| {
-                            // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
-                            // tower's `Service` requires `&mut self`.
-                            //
-                            // We don't need to call `poll_ready` since `Router` is always ready.
-                            tower_service.clone().call(request)
+                if my_response.clone().protocol == "http" {
+                    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
+                            .await
+                            .unwrap();
+                    axum::serve(
+                        listener,
+                        axum_app.into_make_service_with_connect_info::<SocketAddr>(),
+                    )
+                            .await
+                            .unwrap();
+                } else {
+                    let certs = CertificateDer::pem_file_iter(cer_dst.clone())
+                            .unwrap().collect::<Result<Vec<_>, _>>().unwrap();
+                    let key = PrivateKeyDer::from_pem_file(key_dst.clone()).unwrap();
+                    let mut config = ServerConfig::builder()
+                            .with_no_client_auth()
+                            .with_single_cert(certs, key)
+                            .expect("Failed to configure TLS");
+                    config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+                    let tls_acceptor = TlsAcceptor::from(Arc::new(config));
+                    let addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
+                    let tcp_listener = TcpListener::bind(addr).await.unwrap();
+                    loop {
+                        let tower_service = axum_app.clone();
+                        let tls_acceptor = tls_acceptor.clone();
+                        // Wait for new tcp connection
+                        let (cnx, addr) = tcp_listener.accept().await.unwrap();
+                        tokio::spawn(async move {
+                            // Wait for tls handshake to happen
+                            let Ok(stream) = tls_acceptor.accept(cnx).await else {
+                                error!("error during tls handshake connection from {}", addr);
+                                return;
+                            };
+                            // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+                            // `TokioIo` converts between them.
+                            let stream = TokioIo::new(stream);
+                            // Hyper also has its own `Service` trait and doesn't use tower. We can use
+                            // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
+                            // `tower::Service::call`.
+                            let hyper_service = hyper::service::service_fn(move |request: axum::extract::Request<hyper::body::Incoming>| {
+                                // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
+                                // tower's `Service` requires `&mut self`.
+                                //
+                                // We don't need to call `poll_ready` since `Router` is always ready.
+                                tower_service.clone().call(request)
+                            });
+                            let ret = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+                                    .serve_connection_with_upgrades(stream, hyper_service)
+                                    .await;
+                            if let Err(err) = ret {
+                                warn!("error serving connection from {}: {}", addr, err);
+                            }
                         });
-                        let ret = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
-                                .serve_connection_with_upgrades(stream, hyper_service)
-                                .await;
-
-                        if let Err(err) = ret {
-                            warn!("error serving connection from {}: {}", addr, err);
-                        }
-                    });
-
+                    }
                 }
             });
             let _handle_axum_http_server = tauri::async_runtime::spawn(async move {
@@ -372,7 +379,7 @@ pub fn run() {
 
             // std::thread::spawn(move || block_on(tcc_main()));
             // tauri::async_runtime::spawn(actix_main());
-            #[cfg(info_assertions)] // only include this code on info builds
+            #[cfg(debug_assertions)] // only include this code on info builds
             {
                 let window = app.get_webview_window("main").unwrap();
                 window.open_devtools();
