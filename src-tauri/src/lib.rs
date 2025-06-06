@@ -14,6 +14,7 @@ use tauri_plugin_store::StoreExt;
 use tokio;
 use tokio::sync::oneshot;
 use hyper_util::rt::{TokioExecutor, TokioIo};
+use zstd::decode_all;
 mod commands;
 mod common;
 mod dufs;
@@ -137,27 +138,28 @@ pub fn run() {
                 std::fs::create_dir(db_dst).unwrap();
             }
 
-            info!("readfile1.1");
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Audio).unwrap());
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Config).unwrap());
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Data).unwrap());
-            info!("2");
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::LocalData).unwrap());
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Document).unwrap());
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Download).unwrap());
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Picture).unwrap());
-            info!("3");
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Resource).unwrap());
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppConfig).unwrap());
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppData).unwrap());
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLocalData).unwrap());
-            info!("4");
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppCache).unwrap());
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLog).unwrap());
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Home).unwrap());
-            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
-            let db_src = app.path().resolve("res/xap.db", tauri::path::BaseDirectory::Resource)?;
+            // info!("readfile1.1");
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Audio).unwrap());
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Config).unwrap());
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Data).unwrap());
+            // info!("2");
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::LocalData).unwrap());
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Document).unwrap());
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Download).unwrap());
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Picture).unwrap());
+            // info!("3");
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Resource).unwrap());
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppConfig).unwrap());
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppData).unwrap());
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLocalData).unwrap());
+            // info!("4");
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppCache).unwrap());
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLog).unwrap());
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Home).unwrap());
+            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
+            // cd src-tauri/res; zstdmt -19 xap.db -o xap.db.zst
+            let db_src = app.path().resolve("res/xap.db.zst", tauri::path::BaseDirectory::Resource)?;
             let db_dst = app.path().resolve("xap.db", tauri::path::BaseDirectory::Document)?;
             info!("readfile: src {:?}", db_src.clone());
             info!("readfile: dst {:?}", db_dst.clone());
@@ -172,19 +174,15 @@ pub fn run() {
                 // info!("{:?}", scope.allowed());
                 let src_path = tauri_plugin_fs::FilePath::Path(db_src.clone());
                 info!("readfile 2: {:?}", src_path);
-                let db_file_content = app.fs().read(src_path).unwrap();
-                // info!("readfile 4: {:?}", db_file_content.clone());
+                let compressed_content = app.fs().read(src_path).unwrap();
+                let db_file_content = decode_all(&compressed_content[..]).unwrap();
                 info!("{:?}", db_dst.as_path());
-                // let file = tauri_plugin_fs::OpenOptions::new().write(true).open(db_dst.as_path());
-                let p =  tauri_plugin_fs::FilePath::Path(db_dst);
+                let p = tauri_plugin_fs::FilePath::Path(db_dst);
                 let uri: FileUri = p.into();
                 let mut file: std::fs::File = android_fs_api.open_file(&uri, tauri_plugin_android_fs::FileAccessMode::WriteTruncate)
                         .unwrap();
-                info!("writeall");
-                // let file: std::fs::File = api.open_file(&uri, FileAccessMode::WriteTruncate)?;
-                // let mut file_opened = std::fs::OpenOptions::new().write(true).open(db_dst.as_path()).unwrap();
-                // info!("copying bundled sqlite");
-                file.write_all(&db_file_content);
+                info!("writeall decompressed content");
+                file.write_all(&db_file_content).unwrap();
                 info!("done");
             } else {
                 // let db_file_content = std::fs::File::open(&db_src).unwrap();
@@ -193,7 +191,9 @@ pub fn run() {
                 } else {
                     info!("overrite existing")
                 }
-                std::fs::copy(db_src.as_path(), db_dst.as_path()).unwrap();
+                let compressed_content = std::fs::read(db_src.as_path()).unwrap();
+                let db_file_content = decode_all(&compressed_content[..]).unwrap();
+                std::fs::write(db_dst.as_path(), db_file_content).unwrap();
                 info!("done");
             }
 
