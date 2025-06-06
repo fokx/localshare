@@ -4,8 +4,12 @@ You can then access them from any device on your network using browser. Support 
 Support Windows, Linux and Android thanks to [tauri](https://github.com/tauri-apps/tauri).
 
 ```zsh
-pnpm tauri-build-apk; pnpm tauri-build-win; pnpm tauri-build; 
 cd /f/localshare/
+pnpm i
+#rm -r ./src-tauri/gen/android/app/src/main/assets/    
+#rm src-tauri/gen/android/app/build -r
+#rm src-tauri/target -r
+pnpm tauri-build-apk; pnpm tauri-build-win; pnpm tauri-build; 
 rm -r /tmp/localshare
 mkdir /tmp/localshare
 VERSION=0.5.6

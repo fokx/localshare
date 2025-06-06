@@ -19,6 +19,7 @@
     import { Skeleton, ImagePlaceholder, BottomNav, BottomNavItem } from 'flowbite-svelte';
     import {
         HomeSolid,
+        MessageDotsSolid,
         AdjustmentsHorizontalSolid,
         ShareNodesSolid,
         GlobeSolid,
@@ -30,6 +31,13 @@
     $effect(() => {
         activeUrl = page.url.pathname;
     });
+
+    function toggleDarkMode(event) {
+        let target = event.target;
+        let child = target.querySelector('.darkmode-button-in-bottom-navbar');
+        child?.click();
+    }
+
 </script>
 
 <!--<container-->
@@ -39,19 +47,26 @@
     {@render children()}
     </div>
     <!--</container>-->
-    <BottomNav {activeUrl} position="sticky" outerClass="bg-white bg:bg-dark-800" innerClass="grid-cols-4">
+    <BottomNav {activeUrl} position="sticky" outerClass="bg-white bg:bg-dark-800" innerClass="grid-cols-5">
         <!--<BottomNav {activeUrl} position="absolute" innerClass="grid-cols-3">-->
         <BottomNavItem btnName="LocalSend" href="/localsend">
             <ShareNodesSolid />
         </BottomNavItem>
+
+        <BottomNavItem btnName="Chat" href="/chat">
+            <MessageDotsSolid />
+        </BottomNavItem>
+
         <BottomNavItem btnName="Home" href="/">
             <HomeSolid />
         </BottomNavItem>
+
         <BottomNavItem btnName="Dufs" href="/dufs">
             <GlobeSolid />
         </BottomNavItem>
-        <BottomNavItem btnName="Darkmode">
-            <DarkMode></DarkMode>
+
+        <BottomNavItem btnName="Darkmode" onclick={event => toggleDarkMode(event)}>
+            <DarkMode class="darkmode-button-in-bottom-navbar" />
         </BottomNavItem>
     </BottomNav>
     <SvelteToast {options} />

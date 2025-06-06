@@ -38,4 +38,12 @@ export default defineConfig(async () => ({
             ]
         }
     },
+    build: {
+        rollupOptions: {
+            external: [
+                '@tauri-apps/api',
+                '@tauri-apps/api/core'
+            ]
+        }
+    }
 }));
