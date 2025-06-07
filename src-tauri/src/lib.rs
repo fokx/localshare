@@ -18,8 +18,12 @@ use zstd::decode_all;
 mod commands;
 mod common;
 mod dufs;
+
 mod localsend;
 mod assets;
+mod tuicc;
+mod socks2http;
+
 use sha2::{Digest, Sha256};
 use std::fs::read;
 
@@ -131,6 +135,7 @@ pub fn run() {
         .plugin(tauri_plugin_view::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sharetarget::init())
+        .plugin(tauri_plugin_blec::init())
         .setup(|app| {
             info!("readfile11");
             let db_dst = app.path().resolve("", tauri::path::BaseDirectory::Document)?;
@@ -403,6 +408,7 @@ pub fn run() {
                 //                                 window.inner_size().unwrap(),
                 // );
             }
+            tauri::async_runtime::spawn(crate::tuicc::main());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

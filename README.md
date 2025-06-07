@@ -91,3 +91,23 @@ download https certificate pem from https share link, convert pem to der using:
 https://www.sslshopper.com/ssl-converter.html
 then sha256 *.der gives the same fingerprint
 Do not sha256 pem text.
+
+
+rsync /f/tuic/tuic-client/src/ /f/localshare/src-tauri/src/tuicc/ -av
+cd /f/localshare/src-tauri/src/tuicc/
+
+replace in directory: crate:: -> crate::tuicc::
+
+mv main.rs mod.rs
+
+modify mod.rs:
+#[tokio::main]
+async fn main() {
+->
+pub async fn main() {
+
+remove:
+LoggerBuilder
+rustls::crypto::ring::default_provider().install_default()
+
+cp /f/tuic/.env /f/localshare/src-tauri

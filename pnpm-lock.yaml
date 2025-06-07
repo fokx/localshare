@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@mnlphlp/plugin-blec':
+        specifier: ^0.4.1
+        version: 0.4.1
       '@tailwindcss/vite':
         specifier: ^4.1.8
         version: 4.1.8(vite@6.3.5(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.19.4))
@@ -461,6 +464,9 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
+
+  '@mnlphlp/plugin-blec@0.4.1':
+    resolution: {integrity: sha512-oxxgZVjh3anarvkp+nyHuM9/5KMQr6EdU6SWEult7Y4ZJFf314nDYZR8ExRoKQP9YOBQZ3tmpJlhchqRKjLXdA==}
 
   '@petamoriken/float16@3.9.2':
     resolution: {integrity: sha512-VgffxawQde93xKxT3qap3OH+meZf7VaSB5Sqd4Rqc+FP5alWbpOyan/7tRbOAvynjpG3GpdtAuGU/NdhQpmrog==}
@@ -1704,6 +1710,10 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
+
+  '@mnlphlp/plugin-blec@0.4.1':
+    dependencies:
+      '@tauri-apps/api': 2.5.0
 
   '@petamoriken/float16@3.9.2':
     optional: true

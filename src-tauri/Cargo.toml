@@ -52,7 +52,7 @@ chrono = { version = "0.4",  features = ["clock"] }
 tokio-util = { version = "0.7",  features = ["io-util", "compat"] }
 hyper = { version = "1", features = ["http1", "server"] }
 percent-encoding = "2.3"
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive", "std"] }
 serde_json = "1"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 async_zip = { version = "0.0.17", default-features = false, features = ["deflate", "bzip2", "xz", "chrono", "tokio"] }
@@ -66,7 +66,7 @@ lazy_static = "1.5"
 uuid = { version = "1.17", features = ["v4", "fast-rng"] }
 urlencoding = "2.1"
 xml-rs = "0.8"
-log = { version = "0.4", features = ["std"] }
+log = { version = "0.4", features = ["std", "serde"] }
 socket2 = {version =  "0.5.9", features = ["all"] }
 
 async-stream = "0.3"
@@ -94,7 +94,7 @@ tauri-plugin-sharetarget = { path = "../../tauri-plugin-sharetarget" }
 
 rand = "0.9.1"
 hex = "0.4.3"
-reqwest= { version = "0.12.15", default-features = false,features = ["charset", "http2", "json", "macos-system-configuration", "rustls-tls"] }
+reqwest= { version = "0.12.15", default-features = false,features = ["charset", "http2", "json", "macos-system-configuration", "rustls-tls", "blocking", "socks", "cookies", "brotli", "gzip"] }
 rcgen = "0.13.2"
 tauri-plugin-log = "2"
 thiserror = "2.0.12"
@@ -110,6 +110,29 @@ url = "2.5.4"
 pem = "3.0.5"
 rustls = "0.23.27"
 zstd = "0.13.3"
+tauri-plugin-blec = "0.5.3"
+
+crossbeam-utils = { version = "0.8.21", default-features = false, features = ["std"] }
+env_logger = { version = "0.11.8", default-features = false, features = ["humantime"] }
+humantime = { version = "2.2.0", default-features = false }
+lexopt = { version = "0.3.1", default-features = false }
+once_cell = { version = "1.21.3", default-features = false, features = ["parking_lot", "std"] }
+parking_lot = { version = "0.12.3", default-features = false, features = ["send_guard"] }
+quinn = { version = "0.11.8", features = ["futures-io", "runtime-tokio"] }
+quinn-proto = "0.11.12"
+register-count = { version = "0.1.0", default-features = false, features = ["std"] }
+rustls-native-certs = { version = "0.8.0" }
+socks5-proto = { path = "../../socks5-server/socks5-proto", default-features = false }
+socks5-server = { path = "../../socks5-server/socks5-server", default-features = false }
+tuic = { path = "../../tuic/tuic", default-features = false }
+tuic-quinn = { path = "../../tuic/tuic-quinn" }
+dotenvy = "0.15.7"
+dotenvy_macro = "0.15.7"
+
+async-socks5 = "0.6.0"
+httparse = "1.10.1"
+
+
 [features]
 default = []
 tls = []

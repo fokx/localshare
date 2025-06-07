@@ -44,7 +44,8 @@
     "resources": [
       // https://v2.tauri.app/develop/resources/
       // relative to src-tauri/
-      "res/**/*"
+//      "res/**/*"
+      "res/xap.db.zst"
     ]
   },
 //  "plugins": {

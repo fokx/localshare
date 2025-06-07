@@ -54,6 +54,7 @@
     "log:default",
     "sql:default",
     "sql:allow-execute",
-    "os:default"
+    "os:default",
+    "blec:default"
   ]
 }

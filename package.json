@@ -25,6 +25,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@mnlphlp/plugin-blec": "^0.4.1",
     "@tailwindcss/vite": "^4.1.8",
     "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-autostart": "~2.2.0",
