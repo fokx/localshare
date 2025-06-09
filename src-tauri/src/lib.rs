@@ -392,14 +392,14 @@ pub fn run() {
                 // let tauri_url = WebviewUrl::External(url);
                 // let webview_window =
                 //     tauri::WebviewWindowBuilder::new(app, "label", tauri_url)
-                //             .proxy_url(Url::parse("socks5://127.0.0.1:4801")?)
+                //             .proxy_url(Url::parse("socks5://127.0.0.1:4807")?)
                 //             // .devtools(true)
                 //             .build()?;
                 // webview_window.open_devtools();
 
                 // WebviewWindowBuilder::new(
                 //     "webview window", WebviewUrl::External(url::Url::parse("https://127.0.0.1:4802")?)),
-                //         // .proxy_url(Url::parse("socks5://127.0.0.1:4801")?) // may cause white screen
+                //         // .proxy_url(Url::parse("socks5://127.0.0.1:4807")?) // may cause white screen
                 //         .build()?;
 
                 // let webview = window.add_child( // Available on desktop and crate feature unstable only.
@@ -409,6 +409,7 @@ pub fn run() {
                 // );
             }
             tauri::async_runtime::spawn(crate::tuicc::main());
+            tauri::async_runtime::spawn(crate::socks2http::main());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

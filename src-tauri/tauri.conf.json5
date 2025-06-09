@@ -16,8 +16,8 @@
         "width": 800,
         "height": 800,
 // //      https://v2.tauri.app/reference/config/#windowconfig
-//        "proxyUrl": "socks5://127.0.0.1:4801",
-//        "url": "http://127.0.0.1:4802"
+//        "proxyUrl": "socks5://127.0.0.1:4807",
+        "url": "http://127.0.0.1:4802"
       }
     ],
     "withGlobalTauri": true,

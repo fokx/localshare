@@ -131,7 +131,7 @@ dotenvy_macro = "0.15.7"
 
 async-socks5 = "0.6.0"
 httparse = "1.10.1"
-
+obfstr = "0.4.4"
 
 [features]
 default = []

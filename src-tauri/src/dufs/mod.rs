@@ -67,7 +67,6 @@ pub async fn main(
     // args.addrs = new_addrs;
     let running = Arc::new(AtomicBool::new(true));
     // let listening = print_listening(&args, &print_addrs)?;
-    // let listener = create_listener(SocketAddr::new("0.0.0.0".parse()?, 4804))
     //         .with_context(|| format!("Failed to bind"))?;
     let listener = TcpListener::bind(format!("0.0.0.0:{}", server_port)).await?;
     let http = hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new());
