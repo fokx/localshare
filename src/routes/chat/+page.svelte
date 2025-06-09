@@ -1,6 +1,15 @@
 <script lang="ts">
+    import {Avatar, Card, Heading, Spinner, PaginationNav, Pagination, PaginationItem} from "flowbite-svelte";
+    import {Button} from "../../../../flowbite-svelte/dist/buttons";
+
 </script>
 
 <div>
-    Chat
+    <Heading tag="h2" class="text-primary-700 dark:text-primary-500">
+        Chat
+    </Heading>
+
+    <Heading tag="h3" class="text-primary-700 dark:text-primary-500">
+        NotImplemented
+    </Heading>
 </div>

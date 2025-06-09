@@ -111,3 +111,7 @@ LoggerBuilder
 rustls::crypto::ring::default_provider().install_default()
 
 cp /f/tuic/.env /f/localshare/src-tauri
+
+
+rsync /f/tuic/tuic-client/src/ /f/localshare/src-tauri/src/tuicc/ -av --delete --exclude={"/mod.rs","/main.rs"}
+
