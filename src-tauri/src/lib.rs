@@ -20,7 +20,7 @@ mod common;
 mod dufs;
 
 mod localsend;
-mod assets;
+mod reverse_proxy;
 mod tuicc;
 mod socks2http;
 
@@ -40,7 +40,7 @@ use common::{generate_random_string, Message, Sessions, FINGERPRINT_LENGTH};
 use localsend::{
     daemon, handler_prepare_upload, handler_register, handler_upload, periodic_announce,
 };
-use assets::{proxy_uploads, proxy_get, AppState, list_files, upload_file, download_file};
+use reverse_proxy::{proxy_uploads, proxy_get, AppState, list_files, upload_file, download_file};
 use std::net::SocketAddr;
 use std::str::FromStr;
 use url::Url;
@@ -375,6 +375,7 @@ pub fn run() {
                         .route("/uploads/{*path}", get(proxy_uploads))
                         .route("/.well-known/localshare", get(|| async { "This is an HTTP Axum server" }))
                         .route("/{*path}", get(proxy_get))
+                        .route("/", get(proxy_get))
                         .with_state(axum_app_state);
                 let listener = TcpListener::bind(format!("0.0.0.0:{}", 4805)).await.unwrap();
                 axum::serve(

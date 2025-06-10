@@ -21,16 +21,16 @@ pub struct AppState {
 
 pub async fn proxy_get(
     State(state): State<Arc<AppState>>,
-    Path(path): Path<Option<String>>, // Accept Option<String> for handling both cases
+    path: Option<Path<String>>, // Accept Option<String> for handling both cases
 ) -> Response<Body> {
     let client = state.client.clone();
     let app_handle = state.app_handle.clone();
     let path_handle = app_handle.path();
 
     // Use the default root path if no path is provided
-    let path = path.unwrap_or_else(|| "".to_string());
-    let target_url = format!("https://xjtu.app/{}", path);
-    info!("forward to: {}", target_url.clone());
+    let path = path.unwrap_or_else(|| axum::extract::Path("".to_string()));
+    let target_url = format!("https://xjtu.app/{}", path.as_str());
+    info!("proxy to: {}", target_url.clone());
 
     return match client.get(&target_url).send().await {
         Ok(response) => {
@@ -61,7 +61,7 @@ pub async fn proxy_uploads(
     let path_handle = app_handle.path();
 
     let target_url = format!("https://xjtu.app/uploads/{}", path);
-    info!("proxing to: {}", target_url.clone());
+    info!("proxy_uploads to: {}", target_url.clone());
     // Create cache directory path
     let cache_dir = path_handle
         .resolve("assets", tauri::path::BaseDirectory::AppCache)

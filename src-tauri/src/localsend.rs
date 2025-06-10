@@ -1,4 +1,4 @@
-use crate::assets::AppState;
+use crate::reverse_proxy::AppState;
 use crate::common::{
     create_udp_socket, generate_random_string, Message, PeerInfo, PrepareUploadParams,
     PrepareUploadRequest, PrepareUploadRequestAndSessionId, Session, Sessions, TokenAndUploadFile,
