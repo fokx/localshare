@@ -40,7 +40,7 @@ use common::{generate_random_string, Message, Sessions, FINGERPRINT_LENGTH};
 use localsend::{
     daemon, handler_prepare_upload, handler_register, handler_upload, periodic_announce,
 };
-use assets::{proxy_uploads, AppState, list_files, upload_file, download_file};
+use assets::{proxy_uploads, proxy_get, AppState, list_files, upload_file, download_file};
 use std::net::SocketAddr;
 use std::str::FromStr;
 use url::Url;
@@ -287,9 +287,19 @@ pub fn run() {
             let _handle_announce =
                 tauri::async_runtime::spawn(periodic_announce(my_response_for_announce));
             let app_handle_axum = app.handle().clone();
+            let socks5_url = reqwest::Url::parse("socks5h://127.0.0.1:4807").unwrap();
+
+            // Build the client with SOCKS5 proxy
+            // let client = reqwest::Client::new();
+            let reqwest_client = reqwest::Client::builder()
+                    .proxy(reqwest::Proxy::all(socks5_url).unwrap())
+                    .cookie_store(true)
+                    .build()
+                    .unwrap();
+
             let axum_app_state = Arc::new(AppState {
                 app_handle: app_handle_axum,
-                client: reqwest::Client::new(),
+                client: reqwest_client,
             });
             let axum_app_state_https = axum_app_state.clone();
             let _handle_axum_https_server = tauri::async_runtime::spawn(async move {
@@ -363,9 +373,10 @@ pub fn run() {
             let _handle_axum_http_server = tauri::async_runtime::spawn(async move {
                 let axum_app = Router::new()
                         .route("/uploads/{*path}", get(proxy_uploads))
-                        .route("/", get(|| async { "This is an HTTP Axum server" }))
+                        .route("/.well-known/localshare", get(|| async { "This is an HTTP Axum server" }))
+                        .route("/{*path}", get(proxy_get))
                         .with_state(axum_app_state);
-                let listener = TcpListener::bind(format!("0.0.0.0:{}", 53318)).await.unwrap();
+                let listener = TcpListener::bind(format!("0.0.0.0:{}", 4805)).await.unwrap();
                 axum::serve(
                     listener,
                     axum_app.into_make_service_with_connect_info::<SocketAddr>(),

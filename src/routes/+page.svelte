@@ -48,8 +48,14 @@
 
     }
 
+    async function fetchLatestPosts() {
+        let latest_posts = fetch('http://127.0.0.1:4805/latest.json');
+
+    }
+
     function handlePageChange(page: number) {
         currentPage = page;
+        fetchLatestPosts();
         loadTopics();
         window.scrollTo({left: 0, top: 0, behavior: 'smooth'});
         window.currentTopicPage = page;

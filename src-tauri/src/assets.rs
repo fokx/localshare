@@ -19,6 +19,39 @@ pub struct AppState {
     pub client: reqwest::Client,
 }
 
+pub async fn proxy_get(
+    State(state): State<Arc<AppState>>,
+    Path(path): Path<Option<String>>, // Accept Option<String> for handling both cases
+) -> Response<Body> {
+    let client = state.client.clone();
+    let app_handle = state.app_handle.clone();
+    let path_handle = app_handle.path();
+
+    // Use the default root path if no path is provided
+    let path = path.unwrap_or_else(|| "".to_string());
+    let target_url = format!("https://xjtu.app/{}", path);
+    info!("forward to: {}", target_url.clone());
+
+    return match client.get(&target_url).send().await {
+        Ok(response) => {
+            let status = response.status();
+            let headers = response.headers().clone();
+            let bytes = response.bytes().await.unwrap();
+
+            let mut builder = Response::builder().status(status);
+            builder = builder.header("Access-Control-Allow-Origin", "*");
+            for (key, value) in headers.iter() {
+                if key != "access-control-allow-origin" && key != "alt-svc" {
+                    builder = builder.header(key, value);
+                }
+            }
+
+            builder.body(Body::from(bytes)).unwrap()
+        }
+        Err(_) => Response::builder().status(404).body(Body::empty()).unwrap(),
+    };
+}
+
 pub async fn proxy_uploads(
     State(state): State<Arc<AppState>>,
     Path(path): Path<String>,

@@ -21,7 +21,8 @@
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "json2db": "tsx src/lib/db/json2db.ts"
+    "json2db": "tsx src/lib/db/json2db.ts",
+    "disapi": "tsx disapi.ts"
   },
   "license": "MIT",
   "dependencies": {
@@ -44,6 +45,7 @@
     "@tauri-apps/plugin-store": "~2.2.0",
     "dayjs": "^1.11.13",
     "dexie": "^4.0.11",
+    "dotenv": "^16.5.0",
     "drizzle-orm": "1.0.0-beta.1-c0277c0",
     "emoji-js": "^3.8.1",
     "flowbite-svelte": "link:../flowbite-svelte",
@@ -69,6 +71,7 @@
     "svelte-check": "^4.2.1",
     "tsx": "^4.19.4",
     "typescript": "~5.6.3",
+    "discourse2": "^1.1.26",
     "vite": "^6.3.5"
   }
 }
