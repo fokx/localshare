@@ -292,8 +292,12 @@ pub fn run() {
             // Build the client with SOCKS5 proxy
             // let client = reqwest::Client::new();
             let reqwest_client = reqwest::Client::builder()
+                    // .user_agent("localshareapp") // platform specific UA?
                     .proxy(reqwest::Proxy::all(socks5_url).unwrap())
                     .cookie_store(true)
+                    .deflate(true)
+                    .zstd(true)
+                    .brotli(true)
                     .build()
                     .unwrap();
 

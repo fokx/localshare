@@ -36,7 +36,22 @@ pub async fn proxy_get(
         Ok(response) => {
             let status = response.status();
             let headers = response.headers().clone();
+            let is_text = headers
+                    .get("content-type")
+                    .and_then(|ct| ct.to_str().ok())
+                    .map(|ct| ct.starts_with("text/"))
+                    .unwrap_or(false);
+
             let bytes = response.bytes().await.unwrap();
+            let body = if is_text {
+                let text = String::from_utf8_lossy(&bytes);
+                let replaced = text
+                        .replace("http://xjtu.app", "http://127.0.0.1:4805")
+                        .replace("https://xjtu.app", "http://127.0.0.1:4805");
+                replaced.into_bytes()
+            } else {
+                bytes.to_vec()
+            };
 
             let mut builder = Response::builder().status(status);
             builder = builder.header("Access-Control-Allow-Origin", "*");
@@ -46,7 +61,7 @@ pub async fn proxy_get(
                 }
             }
 
-            builder.body(Body::from(bytes)).unwrap()
+            builder.body(Body::from(body)).unwrap()
         }
         Err(_) => Response::builder().status(404).body(Body::empty()).unwrap(),
     };
