@@ -19,6 +19,7 @@
     import { Skeleton, ImagePlaceholder, BottomNav, BottomNavItem } from 'flowbite-svelte';
     import {
         HomeSolid,
+        XSolid,
         MessageDotsSolid,
         AdjustmentsHorizontalSolid,
         ShareNodesSolid,
@@ -62,11 +63,12 @@
             <HomeSolid />
         </BottomNavItem>
 
+        <BottomNavItem btnName="Discourse" onclick={event => window.location = "http://127.0.0.1:4805/"}>
+            <XSolid />
+        </BottomNavItem>
+
         <BottomNavItem btnName="Dufs" href="/dufs">
             <GlobeSolid />
-        </BottomNavItem>
-        <BottomNavItem btnName="Darkmode" onclick={event => window.location = "http://127.0.0.1:4805/"}>
-            <HomeSolid />
         </BottomNavItem>
 
         <BottomNavItem btnName="Darkmode" onclick={event => toggleDarkMode(event)}>
