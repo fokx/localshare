@@ -7,7 +7,9 @@ const REQ_HOST: &str = "xjtu.app";
 const REQ_PORT: u16 = 443;
 
 pub async fn main() {
+    warn!("socks2http bind 4802");
     let listener = TcpListener::bind("127.0.0.1:4802").await.unwrap();
+    warn!("socks2http bind 4802 finished");
     let socks5_url = reqwest::Url::parse("socks5h://127.0.0.1:4807").unwrap();
 
     // Build the client with SOCKS5 proxy

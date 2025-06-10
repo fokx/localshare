@@ -12,7 +12,7 @@ use tauri_plugin_android_fs::{
 use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri_plugin_store::StoreExt;
 use tokio;
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, Notify};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use zstd::decode_all;
 mod commands;
@@ -284,13 +284,13 @@ pub fn run() {
             let my_response_for_announce = Arc::clone(&my_response);
             let my_response_for_daemon = Arc::clone(&my_response);
 
-            let _handle_announce =
+            let _handler_announce =
                 tauri::async_runtime::spawn(periodic_announce(my_response_for_announce));
             let app_handle_axum = app.handle().clone();
             let socks5_url = reqwest::Url::parse("socks5h://127.0.0.1:4807").unwrap();
 
             // Build the client with SOCKS5 proxy
-            // let client = reqwest::Client::new();
+            // let reqwest_client = reqwest::Client::new();
             let reqwest_client = reqwest::Client::builder()
                     // .user_agent("localshareapp") // platform specific UA?
                     .proxy(reqwest::Proxy::all(socks5_url).unwrap())
@@ -306,9 +306,8 @@ pub fn run() {
                 client: reqwest_client,
             });
             let axum_app_state_https = axum_app_state.clone();
-            let _handle_axum_https_server = tauri::async_runtime::spawn(async move {
 
-
+            let _handler_axum_https_server = tauri::async_runtime::spawn(async move {
                 let axum_app = Router::new()
                     .route("/api/localsend/v2/register", post(handler_register))
                     .route("/api/localsend/v2/prepare-upload", post(handler_prepare_upload))
@@ -319,9 +318,11 @@ pub fn run() {
                     .route("/", get(|| async { "This is an HTTPS Axum server" }))
                     .with_state(axum_app_state_https);
                 if my_response.clone().protocol == "http" {
+                    warn!("binding on 53317 http");
                     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
                             .await
                             .unwrap();
+                    warn!("binding on 53317 http finished");
                     axum::serve(
                         listener,
                         axum_app.into_make_service_with_connect_info::<SocketAddr>(),
@@ -339,7 +340,9 @@ pub fn run() {
                     config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
                     let tls_acceptor = TlsAcceptor::from(Arc::new(config));
                     let addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
+                    warn!("binding on 53317 https");
                     let tcp_listener = TcpListener::bind(addr).await.unwrap();
+                    warn!("binding on 53317 https finished");
                     loop {
                         let tower_service = axum_app.clone();
                         let tls_acceptor = tls_acceptor.clone();
@@ -374,14 +377,30 @@ pub fn run() {
                     }
                 }
             });
-            let _handle_axum_http_server = tauri::async_runtime::spawn(async move {
+            let notify_handler_axum_http_server = Arc::new(Notify::new());
+            let notify_clone_handler_axum_http_server = Arc::clone(&notify_handler_axum_http_server);
+
+            let _handler_axum_http_server = tauri::async_runtime::spawn(async move {
                 let axum_app = Router::new()
                         .route("/uploads/{*path}", get(proxy_uploads))
                         .route("/.well-known/localshare", get(|| async { "This is an HTTP Axum server" }))
                         .route("/{*path}", get(proxy_get))
                         .route("/", get(proxy_get))
                         .with_state(axum_app_state);
-                let listener = TcpListener::bind(format!("0.0.0.0:{}", 4805)).await.unwrap();
+                warn!("binding on 4805");
+                let listener = match tokio::net::TcpListener::bind("127.0.0.1:4805").await {
+                    Ok(listener) => {
+                        // Notify that the server has successfully started
+                        notify_clone_handler_axum_http_server.notify_one();
+                        listener
+                    }
+                    Err(e) => {
+                        log::error!("Failed to start HTTP server: {}", e);
+                        return;
+                    }
+                };
+                warn!("binding on 4805 finished");
+
                 axum::serve(
                     listener,
                     axum_app.into_make_service_with_connect_info::<SocketAddr>(),
@@ -390,7 +409,7 @@ pub fn run() {
             });
 
             let app_handle = app.handle().clone();
-            let _handle_daemon = tauri::async_runtime::spawn(daemon(
+            let _handler_daemon = tauri::async_runtime::spawn(daemon(
                 app_handle,
                 port,
                 my_response_for_daemon,
@@ -424,8 +443,19 @@ pub fn run() {
                 //                                 window.inner_size().unwrap(),
                 // );
             }
-            tauri::async_runtime::spawn(crate::tuicc::main());
-            tauri::async_runtime::spawn(crate::socks2http::main());
+            let _handler_tuicc = tauri::async_runtime::spawn(crate::tuicc::main());
+            let _handler_socks2http = tauri::async_runtime::spawn(crate::socks2http::main());
+            warn!("waiting for web server to start");
+            let result = tauri::async_runtime::block_on(async {
+                tokio::time::timeout(tokio::time::Duration::from_secs(5), notify_handler_axum_http_server.notified()).await
+            });
+
+            if result.is_err() {
+                return Err("HTTP server failed to start within 5 seconds.".into());
+            } else {
+                warn!(" web server started");
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

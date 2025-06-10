@@ -25,6 +25,7 @@
         GlobeSolid,
     } from 'flowbite-svelte-icons';
     import { page } from '$app/state';
+    import {goto} from "$app/navigation";
 
     let activeUrl = $state(page.url.pathname);
 
@@ -47,7 +48,7 @@
     {@render children()}
     </div>
     <!--</container>-->
-    <BottomNav {activeUrl} position="sticky" outerClass="bg-white bg:bg-dark-800" innerClass="grid-cols-5">
+    <BottomNav {activeUrl} position="sticky" outerClass="bg-white bg:bg-dark-800" innerClass="grid-cols-6">
         <!--<BottomNav {activeUrl} position="absolute" innerClass="grid-cols-3">-->
         <BottomNavItem btnName="LocalSend" href="/localsend">
             <ShareNodesSolid />
@@ -63,6 +64,9 @@
 
         <BottomNavItem btnName="Dufs" href="/dufs">
             <GlobeSolid />
+        </BottomNavItem>
+        <BottomNavItem btnName="Darkmode" onclick={event => window.location = "http://127.0.0.1:4805/"}>
+            <HomeSolid />
         </BottomNavItem>
 
         <BottomNavItem btnName="Darkmode" onclick={event => toggleDarkMode(event)}>
