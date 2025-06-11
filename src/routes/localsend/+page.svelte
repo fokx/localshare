@@ -4,7 +4,6 @@
     import {invoke, type PermissionState, PluginListener} from '@tauri-apps/api/core'
     import {toast} from "@zerodevx/svelte-toast";
     import {A, Card, ButtonGroup, Checkbox, Heading, Input, InputAddon, Button, Listgroup} from 'flowbite-svelte';
-    import {EyeOutline, EyeSlashOutline, GithubSolid} from 'flowbite-svelte-icons';
     import {load, type Store} from '@tauri-apps/plugin-store';
     import {onMount} from "svelte";
     import {listenForShareEvents, type ShareEvent} from 'tauri-plugin-sharetarget-api';

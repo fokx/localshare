@@ -13,9 +13,13 @@
     import {goto} from "$app/navigation";
     import {getUserById, emoji} from "$lib";
     import { count, sql } from 'drizzle-orm';
-    import { ArrowLeftOutline, ArrowRightOutline, CaretRightSolid, CaretLeftSolid } from "flowbite-svelte-icons";
+    import Fa from 'svelte-fa';
+    import {faArrowLeft, faArrowRight} from '@fortawesome/free-solid-svg-icons';
+    import {faDiscourse} from '@fortawesome/free-brands-svg-icons';
     import { platform } from '@tauri-apps/plugin-os';
     import {migrations} from "$lib/db/migrations";
+    import { fetch } from '@tauri-apps/plugin-http';
+
     let current_topics = $state<
         { id: number; created_at: string | null; raw: string | null }[]
     >([]);
@@ -27,7 +31,7 @@
     const NUM_TOPICS_PER_PAGE = 20;
     let topicsCount = $state();
     let currentPlatform;
-    let visiblePagesTop = $state(4);
+    let visiblePagesTop = $state(3);
     let visiblePagesBottom = $state(7);
     let isDesktop = $state(false);
 
@@ -53,7 +57,7 @@
         fetchLatestPosts();
     }
     async function fetchLatestPosts() {
-        try {
+        // try {
             let response = await fetch('http://127.0.0.1:4805/posts.json');
             console.log('response', response);
             let json = await response.json();
@@ -155,12 +159,12 @@
                     .onConflictDoUpdate({ target: schema.posts.id, set: _item });
             }
 
-        } catch (error) {
-            console.error('Error fetching latest posts:', error);
-        }
+        // } catch (error) {
+        //     console.error('Error fetching latest posts:', error);
+        // }
     }
     async function fetchLatestTopics() {
-        try {
+        // try {
             let url = 'http://127.0.0.1:4805/latest.json';
             if( currentPage != 1) {
                 url += `?no_definitions=true&page=${currentPage-1}`
@@ -268,9 +272,9 @@
                 await db.insert(schema.topics).values(_item)
                     .onConflictDoUpdate({ target: schema.topics.id, set: _item });
             }
-        } catch (error) {
-            console.error('Error fetching latest topics:', error);
-        }
+        // } catch (error) {
+        //     console.error('Error fetching latest topics:', error);
+        // }
     }
 
     function handlePageChange(page: number) {
@@ -346,11 +350,11 @@
         <PaginationNav visiblePages={Math.min(visiblePagesTop, totalPages)} {currentPage} {totalPages} onPageChange={handlePageChange}>
             {#snippet prevContent()}
                 <span class="sr-only">Previous</span>
-                <ArrowLeftOutline class="h-5 w-5" />
+                <Fa icon={faArrowLeft} />
             {/snippet}
             {#snippet nextContent()}
                 <span class="sr-only">Next</span>
-                <ArrowRightOutline class="h-5 w-5" />
+                <Fa icon={faArrowRight} />
             {/snippet}
         </PaginationNav>
         {/if}

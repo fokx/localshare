@@ -8,6 +8,15 @@ importers:
 
   .:
     dependencies:
+      '@fortawesome/free-brands-svg-icons':
+        specifier: ^6.7.2
+        version: 6.7.2
+      '@fortawesome/free-regular-svg-icons':
+        specifier: ^6.7.2
+        version: 6.7.2
+      '@fortawesome/free-solid-svg-icons':
+        specifier: ^6.7.2
+        version: 6.7.2
       '@mnlphlp/plugin-blec':
         specifier: ^0.4.1
         version: 0.4.1
@@ -39,8 +48,8 @@ importers:
         specifier: ~2.2.1
         version: 2.2.1
       '@tauri-apps/plugin-http':
-        specifier: ~2.3.0
-        version: 2.3.0
+        specifier: ~2.4.4
+        version: 2.4.4
       '@tauri-apps/plugin-log':
         specifier: ~2.4.0
         version: 2.4.0
@@ -80,15 +89,15 @@ importers:
       plugin-sql:
         specifier: link:../plugins-workspace/plugins/sql
         version: link:../plugins-workspace/plugins/sql
+      svelte-fa:
+        specifier: ^4.0.4
+        version: 4.0.4(svelte@5.33.14)
       svelte-inspect-value:
         specifier: ^0.5.0
         version: 0.5.0(svelte@5.33.14)
       tailwindcss:
         specifier: ^4.1.8
         version: 4.1.8
-      tauri-plugin-mic-recorder-api:
-        specifier: ^2.0.0
-        version: 2.0.0
       tauri-plugin-sharetarget-api:
         specifier: 0.1.6
         version: 0.1.6
@@ -129,9 +138,6 @@ importers:
       flowbite:
         specifier: ^3.1.2
         version: 3.1.2(rollup@4.41.1)
-      flowbite-svelte-icons:
-        specifier: ^2.2.0
-        version: 2.2.0(svelte@5.33.14)
       svelte:
         specifier: ^5.33.14
         version: 5.33.14
@@ -451,6 +457,22 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@fortawesome/fontawesome-common-types@6.7.2':
+    resolution: {integrity: sha512-Zs+YeHUC5fkt7Mg1l6XTniei3k4bwG/yo3iFUtZWd/pMx9g3fdvkSK9E0FOC+++phXOka78uJcYb8JaFkW52Xg==}
+    engines: {node: '>=6'}
+
+  '@fortawesome/free-brands-svg-icons@6.7.2':
+    resolution: {integrity: sha512-zu0evbcRTgjKfrr77/2XX+bU+kuGfjm0LbajJHVIgBWNIDzrhpRxiCPNT8DW5AdmSsq7Mcf9D1bH0aSeSUSM+Q==}
+    engines: {node: '>=6'}
+
+  '@fortawesome/free-regular-svg-icons@6.7.2':
+    resolution: {integrity: sha512-7Z/ur0gvCMW8G93dXIQOkQqHo2M5HLhYrRVC0//fakJXxcF1VmMPsxnG6Ee8qEylA8b8Q3peQXWMNZ62lYF28g==}
+    engines: {node: '>=6'}
+
+  '@fortawesome/free-solid-svg-icons@6.7.2':
+    resolution: {integrity: sha512-GsBrnOzU8uj0LECDfD5zomZJIjrPhIlWU82AHwa2s40FKH+kcxQaBvBo3Z4TxyZHIyX8XTDxsyA33/Vx9eFuQA==}
+    engines: {node: '>=6'}
 
   '@isaacs/fs-minipass@4.0.1':
     resolution: {integrity: sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==}
@@ -823,8 +845,8 @@ packages:
   '@tauri-apps/plugin-global-shortcut@2.2.1':
     resolution: {integrity: sha512-b64/TI1t5LIi2JY4OWlYjZpPRq60T5GVVL/no27sUuxaNUZY8dVtwsMtDUgxUpln2yR+P2PJsYlqY5V8sLSxEw==}
 
-  '@tauri-apps/plugin-http@2.3.0':
-    resolution: {integrity: sha512-pigTvz+zzAqbIhCzRiR1GE98Jw7A03j2V+Eiexr9thBI8VfMiwFQMcbgON51xlwnVaI72LdbYKNajU84im8tlg==}
+  '@tauri-apps/plugin-http@2.4.4':
+    resolution: {integrity: sha512-IjlaaS4z8ybB10qnh6djZ2FIaHdWVs/U1D1C56udKcjX1f+jAmR8/s7qBV5cv/OmcGkOIzet3LWuH70LKf4J2A==}
 
   '@tauri-apps/plugin-log@2.4.0':
     resolution: {integrity: sha512-j7yrDtLNmayCBOO2esl3aZv9jSXy2an8MDLry3Ys9ZXerwUg35n1Y2uD8HoCR+8Ng/EUgx215+qOUfJasjYrHw==}
@@ -1122,11 +1144,6 @@ packages:
 
   flowbite-datepicker@1.3.2:
     resolution: {integrity: sha512-6Nfm0MCVX3mpaR7YSCjmEO2GO8CDt6CX8ZpQnGdeu03WUCWtEPQ/uy0PUiNtIJjJZWnX0Cm3H55MOhbD1g+E/g==}
-
-  flowbite-svelte-icons@2.2.0:
-    resolution: {integrity: sha512-X+xZXeLaYS/NaybPonw1RGIIzmrExmCOrva62NPCXN52xGmJWqcSnnbHO4+iZsDD4V6EsDRqwH8tVq6t6SLLQg==}
-    peerDependencies:
-      svelte: ^5.0.0
 
   flowbite@2.5.2:
     resolution: {integrity: sha512-kwFD3n8/YW4EG8GlY3Od9IoKND97kitO+/ejISHSqpn3vw2i5K/+ZI8Jm2V+KC4fGdnfi0XZ+TzYqQb4Q1LshA==}
@@ -1437,6 +1454,11 @@ packages:
       svelte: ^4.0.0 || ^5.0.0-next.0
       typescript: '>=5.0.0'
 
+  svelte-fa@4.0.4:
+    resolution: {integrity: sha512-85BomCGkTrH8kPDGvb8JrVwq9CqR9foprbKjxemP4Dtg3zPR7OXj5hD0xVYK0C+UCzFI1zooLoK/ndIX6aYXAw==}
+    peerDependencies:
+      svelte: ^4.0.0 || ^5.0.0
+
   svelte-inspect-value@0.5.0:
     resolution: {integrity: sha512-ZWbu/TZl/gGAPe8Xjmg0YvERSpEC+q07HV8m0xhp51auTNh8mjaf07bcmcl0coBb0wnJqcAB4uWJ1GDdtGQrQw==}
     peerDependencies:
@@ -1445,9 +1467,6 @@ packages:
   svelte@5.33.14:
     resolution: {integrity: sha512-kRlbhIlMTijbFmVDQFDeKXPLlX1/ovXwV0I162wRqQhRcygaqDIcu1d/Ese3H2uI+yt3uT8E7ndgDthQv5v5BA==}
     engines: {node: '>=18'}
-
-  tailwind-merge@3.3.0:
-    resolution: {integrity: sha512-fyW/pEfcQSiigd5SNn0nApUOxx0zB/dm6UDU/rEwc2c3sX2smWUNbapHv+QRqLGVp9GWX3THIa7MUGPo+YkDzQ==}
 
   tailwindcss@4.1.8:
     resolution: {integrity: sha512-kjeW8gjdxasbmFKpVGrGd5T4i40mV5J2Rasw48QARfYeQ8YS9x02ON9SFWax3Qf616rt4Cp3nVNIj6Hd1mP3og==}
@@ -1466,9 +1485,6 @@ packages:
   tar@7.4.3:
     resolution: {integrity: sha512-5S7Va8hKfV7W5U6g3aYxXmlPoZVAwUMy9AOKyF2fVuZa2UD3qZjg578OrLRt8PcNN1PleVaL/5/yYATNL0ICUw==}
     engines: {node: '>=18'}
-
-  tauri-plugin-mic-recorder-api@2.0.0:
-    resolution: {integrity: sha512-04wqYCX4WIlYd6KUY7aS3+W4B5RtnSoVczaQCBSXKpQkEx9XdaaBN05XCee2unxGva0btSXBItFqQSdosnS4jQ==}
 
   tauri-plugin-sharetarget-api@0.1.6:
     resolution: {integrity: sha512-R9LgXu7hn8LaCW5ll8tJ4es0N2nCNVnptT4v3HTXInDra9pm5CuXalX3m5W7+/XTwOFn0sMRv4eOKz8S5FEy1w==}
@@ -1737,6 +1753,20 @@ snapshots:
 
   '@esbuild/win32-x64@0.25.5':
     optional: true
+
+  '@fortawesome/fontawesome-common-types@6.7.2': {}
+
+  '@fortawesome/free-brands-svg-icons@6.7.2':
+    dependencies:
+      '@fortawesome/fontawesome-common-types': 6.7.2
+
+  '@fortawesome/free-regular-svg-icons@6.7.2':
+    dependencies:
+      '@fortawesome/fontawesome-common-types': 6.7.2
+
+  '@fortawesome/free-solid-svg-icons@6.7.2':
+    dependencies:
+      '@fortawesome/fontawesome-common-types': 6.7.2
 
   '@isaacs/fs-minipass@4.0.1':
     dependencies:
@@ -2044,7 +2074,7 @@ snapshots:
     dependencies:
       '@tauri-apps/api': 2.5.0
 
-  '@tauri-apps/plugin-http@2.3.0':
+  '@tauri-apps/plugin-http@2.4.4':
     dependencies:
       '@tauri-apps/api': 2.5.0
 
@@ -2286,12 +2316,6 @@ snapshots:
       flowbite: 2.5.2(rollup@4.41.1)
     transitivePeerDependencies:
       - rollup
-
-  flowbite-svelte-icons@2.2.0(svelte@5.33.14):
-    dependencies:
-      clsx: 2.1.1
-      svelte: 5.33.14
-      tailwind-merge: 3.3.0
 
   flowbite@2.5.2(rollup@4.41.1):
     dependencies:
@@ -2594,6 +2618,10 @@ snapshots:
     transitivePeerDependencies:
       - picomatch
 
+  svelte-fa@4.0.4(svelte@5.33.14):
+    dependencies:
+      svelte: 5.33.14
+
   svelte-inspect-value@0.5.0(svelte@5.33.14):
     dependencies:
       esm-env: 1.2.2
@@ -2617,8 +2645,6 @@ snapshots:
       locate-character: 3.0.0
       magic-string: 0.30.17
       zimmerframe: 1.1.2
-
-  tailwind-merge@3.3.0: {}
 
   tailwindcss@4.1.8: {}
 
@@ -2647,10 +2673,6 @@ snapshots:
       minizlib: 3.0.2
       mkdirp: 3.0.1
       yallist: 5.0.0
-
-  tauri-plugin-mic-recorder-api@2.0.0:
-    dependencies:
-      '@tauri-apps/api': 2.5.0
 
   tauri-plugin-sharetarget-api@0.1.6:
     dependencies:

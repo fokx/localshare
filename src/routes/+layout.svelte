@@ -17,16 +17,10 @@
         classes: []           // user-defined classes
     }
     import { Skeleton, ImagePlaceholder, BottomNav, BottomNavItem } from 'flowbite-svelte';
-    import {
-        HomeSolid,
-        XSolid,
-        MessageDotsSolid,
-        AdjustmentsHorizontalSolid,
-        ShareNodesSolid,
-        GlobeSolid,
-    } from 'flowbite-svelte-icons';
+    import Fa from 'svelte-fa';
+    import {faHouse, faMessage, faShare, faEarthAmericas} from '@fortawesome/free-solid-svg-icons';
+    import {faDiscourse} from '@fortawesome/free-brands-svg-icons';
     import { page } from '$app/state';
-    import {goto} from "$app/navigation";
 
     let activeUrl = $state(page.url.pathname);
 
@@ -52,23 +46,26 @@
     <BottomNav {activeUrl} position="sticky" outerClass="bg-white bg:bg-dark-800" innerClass="grid-cols-6">
         <!--<BottomNav {activeUrl} position="absolute" innerClass="grid-cols-3">-->
         <BottomNavItem btnName="LocalSend" href="/localsend">
-            <ShareNodesSolid />
+            <Fa icon={faShare} />
+
         </BottomNavItem>
 
         <BottomNavItem btnName="Chat" href="/chat">
-            <MessageDotsSolid />
+            <Fa icon={faMessage} />
+
         </BottomNavItem>
 
         <BottomNavItem btnName="Home" href="/">
-            <HomeSolid />
+            <Fa icon={faHouse} />
         </BottomNavItem>
 
         <BottomNavItem btnName="Discourse" onclick={event => window.location = "http://127.0.0.1:4805/"}>
-            <XSolid />
+            <Fa icon={faDiscourse} />
         </BottomNavItem>
 
         <BottomNavItem btnName="Dufs" href="/dufs">
-            <GlobeSolid />
+            <Fa icon={faEarthAmericas} />
+
         </BottomNavItem>
 
         <BottomNavItem btnName="Darkmode" onclick={event => toggleDarkMode(event)}>

@@ -5,7 +5,11 @@
     import UrlInfo from '../../components/UrlInfo.svelte';
     import {toast} from "@zerodevx/svelte-toast";
     import {A, Button, ButtonGroup, Checkbox, Heading, Input, InputAddon} from 'flowbite-svelte';
-    import {EyeOutline, EyeSlashOutline, GithubSolid} from 'flowbite-svelte-icons';
+
+    import Fa from 'svelte-fa';
+    import {faEye, faEyeSlash} from '@fortawesome/free-solid-svg-icons';
+    import {faGithub} from '@fortawesome/free-brands-svg-icons';
+
     import {load} from '@tauri-apps/plugin-store';
     import {onMount} from "svelte";
     import {listenForShareEvents, type ShareEvent} from 'tauri-plugin-sharetarget-api';
@@ -436,9 +440,9 @@
                     <InputAddon size="sm">
                         <Button size="xs" class="mx-0" onclick={() => (show_password = !show_password)}>
                             {#if show_password}
-                                <EyeOutline/>
+                                <Fa icon={faEye} />
                             {:else}
-                                <EyeSlashOutline/>
+                                <Fa icon={faEyeSlash} />
                             {/if}
                         </Button>
                     </InputAddon>
@@ -477,7 +481,9 @@
         Acquire permission on Android
     </Button>
     <A href="https://github.com/fokx/localshare" target="_blank" class="font-medium hover:underline">
-        <GithubSolid class="ms-2 h-6 w-6 me-1"/>
+        <Fa icon={faGithub} />
+
+<!--        <GithubSolid class="ms-2 h-6 w-6 me-1"/>-->
         source code
     </A>
     <div>

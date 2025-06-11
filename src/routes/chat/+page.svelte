@@ -1,6 +1,5 @@
 <script lang="ts">
-    import {Avatar, Card, Heading, Spinner, PaginationNav, Pagination, PaginationItem} from "flowbite-svelte";
-    import {Button} from "../../../../flowbite-svelte/dist/buttons";
+    import {Avatar, Button, Card, Heading, Spinner, PaginationNav, Pagination, PaginationItem} from "flowbite-svelte";
 
 </script>
 
