@@ -7,7 +7,7 @@ use sysinfo::{Disks, System};
 use tauri::path::PathResolver;
 use tauri::{Emitter, Listener, Manager};
 use tauri_plugin_android_fs::{
-    AndroidFs, AndroidFsExt, FileUri, InitialLocation, PersistableAccessMode, PrivateDir,
+    AndroidFs, AndroidFsExt, FileUri, InitialLocation, PersistableAccessMode, PrivateDir, UriType
 };
 use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri_plugin_store::StoreExt;
@@ -185,22 +185,26 @@ pub fn run() {
                 info!("{:?}", db_dst.as_path());
                 let p = tauri_plugin_fs::FilePath::Path(db_dst);
                 let uri: FileUri = p.into();
-                let mut file: std::fs::File = android_fs_api.open_file(&uri, tauri_plugin_android_fs::FileAccessMode::WriteTruncate)
-                        .unwrap();
-                info!("writeall decompressed content");
-                file.write_all(&db_file_content).unwrap();
-                info!("done");
+                if android_fs_api.get_uri_type(&uri).unwrap() == UriType::NotFound {
+                    let mut file: std::fs::File = android_fs_api.open_file(&uri, tauri_plugin_android_fs::FileAccessMode::WriteTruncate)
+                            .unwrap();
+                    info!("writeall decompressed content");
+                    file.write_all(&db_file_content).unwrap();
+                    info!("done");
+                } else {
+                    info!("sqlite already exists, will not overrite");
+                }
             } else {
                 // let db_file_content = std::fs::File::open(&db_src).unwrap();
                 if !std::path::Path::new(&db_dst.clone()).exists() {
+                    let compressed_content = std::fs::read(db_src.as_path()).unwrap();
+                    let db_file_content = decode_all(&compressed_content[..]).unwrap();
+                    std::fs::write(db_dst.as_path(), db_file_content).unwrap();
+                    info!("done");
                     info!("copy bundled sqlite");
                 } else {
-                    info!("overrite existing")
+                    info!("sqlite already exists, will not overrite")
                 }
-                let compressed_content = std::fs::read(db_src.as_path()).unwrap();
-                let db_file_content = decode_all(&compressed_content[..]).unwrap();
-                std::fs::write(db_dst.as_path(), db_file_content).unwrap();
-                info!("done");
             }
 
             let settings_store = app.store("settings.json").unwrap();

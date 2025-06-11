@@ -6388,8 +6388,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-android-fs"
-version = "9.3.0"
+version = "9.4.0"
 dependencies = [
+ "percent-encoding",
  "serde",
  "serde_json",
  "tauri",
