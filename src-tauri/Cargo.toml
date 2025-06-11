@@ -36,8 +36,8 @@ tauri-plugin-fs = "2"
 tauri-plugin-opener = "2"
 futures = "0.3.31"
 tauri-plugin-dialog = "2"
-tauri-plugin-android-fs = { version = "9.4.0", features = ["avoid-issue1"] }
-#tauri-plugin-android-fs = { path = "../../tauri-plugin-android-fs", features = ["avoid-issue1"] }
+#tauri-plugin-android-fs = { version = "9.4.0", features = ["avoid-issue1"] }
+tauri-plugin-android-fs = { path = "../../tauri-plugin-android-fs", features = ["avoid-issue1"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 axum = { version="0.8.4", features = ["query", "macros"] }
