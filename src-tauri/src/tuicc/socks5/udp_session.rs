@@ -58,10 +58,10 @@ impl UdpSession {
         })?;
 
         socket
-                .bind(&SockAddr::from(SocketAddr::from((local_ip, 0))))
-                .map_err(|err| {
-                    Error::Socket("failed to bind socks5 server UDP associate socket", err)
-                })?;
+            .bind(&SockAddr::from(SocketAddr::from((local_ip, 0))))
+            .map_err(|err| {
+                Error::Socket("failed to bind socks5 server UDP associate socket", err)
+            })?;
 
         let socket = UdpSocket::from_std(StdUdpSocket::from(socket)).map_err(|err| {
             Error::Socket("failed to create socks5 server UDP associate socket", err)

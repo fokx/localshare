@@ -23,10 +23,7 @@ use hyper_util::{
     server::conn::auto::Builder,
 };
 use std::net::{IpAddr, SocketAddr, TcpListener as StdTcpListener};
-use std::sync::{
-    atomic::AtomicBool,
-    Arc,
-};
+use std::sync::{atomic::AtomicBool, Arc};
 use std::time::Duration;
 use tokio::sync::oneshot;
 use tokio::{net::TcpListener, task::JoinHandle};

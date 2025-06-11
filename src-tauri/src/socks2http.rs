@@ -1,7 +1,7 @@
-use tokio::net::{TcpListener, TcpStream};
-use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
-use tokio::sync::mpsc;
 use reqwest::Method;
+use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::mpsc;
 
 const REQ_HOST: &str = "xjtu.app";
 const REQ_PORT: u16 = 443;
@@ -14,10 +14,10 @@ pub async fn main() {
 
     // Build the client with SOCKS5 proxy
     let client = reqwest::Client::builder()
-            .proxy(reqwest::Proxy::all(socks5_url).unwrap())
-            .cookie_store(true)
-            .build()
-            .unwrap();
+        .proxy(reqwest::Proxy::all(socks5_url).unwrap())
+        .cookie_store(true)
+        .build()
+        .unwrap();
 
     while let Ok((mut inbound, client_addr)) = listener.accept().await {
         let client = client.clone();
@@ -36,9 +36,9 @@ pub async fn main() {
                                 if method == "CONNECT" {
                                     // Handle HTTPS requests
                                     if inbound
-                                            .write_all(b"HTTP/1.1 200 Connection Established\r\n\r\n")
-                                            .await
-                                            .is_ok()
+                                        .write_all(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                                        .await
+                                        .is_ok()
                                     {
                                         handle_https_tunneling(inbound, path).await;
                                     }
@@ -76,10 +76,19 @@ async fn handle_https_tunneling(mut inbound: TcpStream, host: &str) {
     }
 }
 
-async fn handle_http_request(client: reqwest::Client, mut inbound: TcpStream, method: &str, path: &str) {
+async fn handle_http_request(
+    client: reqwest::Client,
+    mut inbound: TcpStream,
+    method: &str,
+    path: &str,
+) {
     let req_url = format!("https://{}{}", REQ_HOST, path);
 
-    match client.request(method.parse().unwrap_or(Method::GET), req_url).send().await {
+    match client
+        .request(method.parse().unwrap_or(Method::GET), req_url)
+        .send()
+        .await
+    {
         Ok(response) => {
             let status = format!(
                 "HTTP/1.1 {} {}\r\n",
@@ -87,15 +96,15 @@ async fn handle_http_request(client: reqwest::Client, mut inbound: TcpStream, me
                 response.status().canonical_reason().unwrap_or("")
             );
             let headers = response
-                    .headers()
-                    .iter()
-                    .map(|(key, value)| format!("{}: {}\r\n", key, value.to_str().unwrap_or("")))
-                    .collect::<String>();
+                .headers()
+                .iter()
+                .map(|(key, value)| format!("{}: {}\r\n", key, value.to_str().unwrap_or("")))
+                .collect::<String>();
 
             if inbound
-                    .write_all(format!("{}{}\r\n", status, headers).as_bytes())
-                    .await
-                    .is_ok()
+                .write_all(format!("{}{}\r\n", status, headers).as_bytes())
+                .await
+                .is_ok()
             {
                 if let Ok(body_bytes) = response.bytes().await {
                     let _ = inbound.write_all(&body_bytes).await;
@@ -103,7 +112,9 @@ async fn handle_http_request(client: reqwest::Client, mut inbound: TcpStream, me
             }
         }
         Err(_) => {
-            let _ = inbound.write_all(b"HTTP/1.1 500 Internal Server Error\r\n\r\n").await;
+            let _ = inbound
+                .write_all(b"HTTP/1.1 500 Internal Server Error\r\n\r\n")
+                .await;
         }
     }
 

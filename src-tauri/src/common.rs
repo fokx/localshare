@@ -43,16 +43,16 @@ pub struct PrepareUploadParams {
 
 fn empty_string_as_none<'de, D, T>(de: D) -> anyhow::Result<Option<T>, D::Error>
 where
-        D: serde::Deserializer<'de>,
-        T: std::str::FromStr,
-        T::Err: std::fmt::Display,
+    D: serde::Deserializer<'de>,
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
 {
     let opt = Option::<String>::deserialize(de)?;
     match opt.as_deref() {
         None | Some("") => Ok(None),
         Some(s) => std::str::FromStr::from_str(s)
-                .map_err(serde::de::Error::custom)
-                .map(Some),
+            .map_err(serde::de::Error::custom)
+            .map(Some),
     }
 }
 
@@ -70,8 +70,6 @@ impl PeerInfo {
         self.remote_addrs.push_back(addr);
     }
 }
-
-
 
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -119,7 +117,7 @@ pub struct Session {
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct TokenAndUploadFile {
     pub token: String,
-    pub  uploadFile: UploadFile,
+    pub uploadFile: UploadFile,
 }
 #[allow(non_snake_case)]
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
@@ -129,7 +127,7 @@ pub struct UploadFile {
     pub size: u64, // bytes
     pub fileType: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub  sha256: Option<String>, // nullable
+    pub sha256: Option<String>, // nullable
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preview: Option<Vec<u8>>, // nullable
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -157,12 +155,12 @@ fn deserialize_system_time<'de, D>(
     deserializer: D,
 ) -> anyhow::Result<Option<std::time::SystemTime>, D::Error>
 where
-        D: serde::Deserializer<'de>,
+    D: serde::Deserializer<'de>,
 {
     let opt = Option::<String>::deserialize(deserializer)?;
     if let Some(date_str) = opt {
         let parsed =
-                chrono::DateTime::parse_from_rfc3339(&date_str).map_err(serde::de::Error::custom)?;
+            chrono::DateTime::parse_from_rfc3339(&date_str).map_err(serde::de::Error::custom)?;
         Ok(Some(std::time::SystemTime::from(parsed)))
     } else {
         Ok(None)
@@ -176,7 +174,6 @@ pub struct UploadQuery {
     pub fileId: String,
     pub token: String,
 }
-
 
 pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket>> {
     let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(socket2::Protocol::UDP))?;

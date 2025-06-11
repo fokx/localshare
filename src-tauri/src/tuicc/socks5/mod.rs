@@ -2,8 +2,8 @@ use std::{
     collections::HashMap,
     net::{SocketAddr, TcpListener as StdTcpListener},
     sync::{
-        Arc,
         atomic::{AtomicU16, Ordering},
+        Arc,
     },
 };
 
@@ -36,20 +36,20 @@ pub struct Server {
 impl Server {
     pub fn set_config(cfg: Local) -> Result<(), Error> {
         SERVER
-                .set(Self::new(
-                    cfg.server,
-                    cfg.dual_stack,
-                    cfg.max_packet_size,
-                    cfg.username,
-                    cfg.password,
-                )?)
-                .map_err(|_| "failed initializing socks5 server")
-                .unwrap();
+            .set(Self::new(
+                cfg.server,
+                cfg.dual_stack,
+                cfg.max_packet_size,
+                cfg.username,
+                cfg.password,
+            )?)
+            .map_err(|_| "failed initializing socks5 server")
+            .unwrap();
 
         UDP_SESSIONS
-                .set(Mutex::new(HashMap::new()))
-                .map_err(|_| "failed initializing socks5 UDP session pool")
-                .unwrap();
+            .set(Mutex::new(HashMap::new()))
+            .map_err(|_| "failed initializing socks5 UDP session pool")
+            .unwrap();
 
         Ok(())
     }
@@ -68,7 +68,7 @@ impl Server {
             };
 
             let socket = Socket::new(domain, Type::STREAM, Some(Protocol::TCP))
-                    .map_err(|err| Error::Socket("failed to create socks5 server socket", err))?;
+                .map_err(|err| Error::Socket("failed to create socks5 server socket", err))?;
 
             if let Some(dual_stack) = dual_stack {
                 socket.set_only_v6(!dual_stack).map_err(|err| {
@@ -85,20 +85,32 @@ impl Server {
             })?;
 
             socket
-                    .bind(&SockAddr::from(addr))
-                    .map_err(|err| Error::Socket("failed to bind socks5 server socket", err))?;
+                .bind(&SockAddr::from(addr))
+                .map_err(|err| Error::Socket("failed to bind socks5 server socket", err))?;
 
             socket
-                    .listen(i32::MAX)
-                    .map_err(|err| Error::Socket("failed to listen on socks5 server socket", err))?;
+                .listen(i32::MAX)
+                .map_err(|err| Error::Socket("failed to listen on socks5 server socket", err))?;
 
             TcpListener::from_std(StdTcpListener::from(socket))
-                    .map_err(|err| Error::Socket("failed to create socks5 server socket", err))?
+                .map_err(|err| Error::Socket("failed to create socks5 server socket", err))?
         };
 
         let auth = match (username, password) {
-            (None, None) => Arc::new(NoAuth) as Arc<dyn Auth<Output=Result<bool, socks5_proto::handshake::password::Error>> + Send + Sync>,
-            (Some(username), Some(password)) => Arc::new(Password::new(username.into(), password.into())) as Arc<dyn Auth<Output=Result<bool, socks5_proto::handshake::password::Error>> + Send + Sync>,
+            (None, None) => Arc::new(NoAuth)
+                as Arc<
+                    dyn Auth<Output = Result<bool, socks5_proto::handshake::password::Error>>
+                        + Send
+                        + Sync,
+                >,
+            (Some(username), Some(password)) => {
+                Arc::new(Password::new(username.into(), password.into()))
+                    as Arc<
+                        dyn Auth<Output = Result<bool, socks5_proto::handshake::password::Error>>
+                            + Send
+                            + Sync,
+                    >
+            }
             _ => return Err(Error::InvalidSocks5Auth),
         };
 
@@ -143,7 +155,7 @@ impl Server {
                                     server.dual_stack,
                                     server.max_pkt_size,
                                 )
-                                        .await;
+                                .await;
                             }
                             Ok(Command::Bind(bind, _)) => {
                                 log::info!("[socks5] [{addr}] [bind]");

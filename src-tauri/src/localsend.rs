@@ -1,9 +1,9 @@
-use crate::reverse_proxy::AppState;
 use crate::common::{
     create_udp_socket, generate_random_string, Message, PeerInfo, PrepareUploadParams,
     PrepareUploadRequest, PrepareUploadRequestAndSessionId, Session, Sessions, TokenAndUploadFile,
     UploadQuery, FILE_TOKEN_LENGTH, SESSION_LENGTH,
 };
+use crate::reverse_proxy::AppState;
 use axum::extract::{ConnectInfo, Query, State};
 use axum::Json;
 use futures_util::TryStreamExt;
@@ -357,7 +357,8 @@ pub async fn daemon(
                     let mut peer_info: PeerInfo = serde_json::from_value(peer_value).unwrap();
                     if !peer_info.remote_addrs.contains(&remote_addr) {
                         peer_info.add_remote_addr(remote_addr);
-                        peers_store_clone.set(parsed_msg.fingerprint.clone(), serde_json::json!(peer_info));
+                        peers_store_clone
+                            .set(parsed_msg.fingerprint.clone(), serde_json::json!(peer_info));
                     }
                 } else {
                     debug!(
@@ -368,17 +369,25 @@ pub async fn daemon(
                         message: parsed_msg.clone(),
                         remote_addrs: vec![remote_addr].into(),
                     };
-                    peers_store_clone.set(parsed_msg.fingerprint.clone(), serde_json::json!(peer_info));
+                    peers_store_clone
+                        .set(parsed_msg.fingerprint.clone(), serde_json::json!(peer_info));
                 }
                 app_handle_clone.emit("refresh-peers", ()).unwrap();
-                
+
                 if parsed_msg.device_model.unwrap() == "localshare_device" {
                     info!("peer is localshare, start syncing files");
                     // Initiate file sync with peer
                     let peer_protocol = parsed_msg.protocol;
-                    let peer_address = format!("{}://{}:{}", peer_protocol, remote_addr, remote_port);
+                    let peer_address =
+                        format!("{}://{}:{}", peer_protocol, remote_addr, remote_port);
 
-                    if let Err(e) = sync_files_with_peer(&client_insecure_clone, peer_address, app_handle_clone.clone()).await {
+                    if let Err(e) = sync_files_with_peer(
+                        &client_insecure_clone,
+                        peer_address,
+                        app_handle_clone.clone(),
+                    )
+                    .await
+                    {
                         debug!("File sync with peer failed: {}", e);
                     }
                 }
@@ -417,7 +426,8 @@ async fn sync_files_with_peer(
         .await?;
 
     // Identify missing files to download from peer
-    let files_to_fetch: Vec<String> = peer_files.clone()
+    let files_to_fetch: Vec<String> = peer_files
+        .clone()
         .into_iter()
         .filter(|file| !local_files.contains(file))
         .collect();

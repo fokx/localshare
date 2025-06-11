@@ -1,5 +1,5 @@
-use std::{env, process};
 use env_logger::Builder as LoggerBuilder;
+use std::{env, process};
 
 use crate::tuicc::{
     config::{Config, ConfigError},

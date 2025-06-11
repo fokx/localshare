@@ -200,10 +200,11 @@ pub async fn send_file_to_peer(
                                 let fs_api = app_handle.fs();
                                 // let android_fs_api = app_handle.android_fs();
                                 // let options = OpenOptions::default();
-                                let path = tauri_plugin_fs::FilePath::Url(Url::from_str(fullpath).unwrap());
+                                let path = tauri_plugin_fs::FilePath::Url(
+                                    Url::from_str(fullpath).unwrap(),
+                                );
                                 let mut file = fs_api.read(path).unwrap();
                                 file
-
                             } else {
                                 warn!("read using std::fs");
                                 std::fs::read(fullpath).unwrap()
@@ -213,7 +214,11 @@ pub async fn send_file_to_peer(
                                 remote_protocol, remote_addr, sessionId, fileId, token
                             );
                             debug!("url: {}", url);
-                            let res = client_maybe_insecure_2.post(url).body(file_binary).send().await;
+                            let res = client_maybe_insecure_2
+                                .post(url)
+                                .body(file_binary)
+                                .send()
+                                .await;
                             match res {
                                 Ok(response) => {
                                     debug!("peer reply to upload: {:?}", response);
@@ -227,7 +232,7 @@ pub async fn send_file_to_peer(
                         }
                     }
                     // when transfer to one address succeeds, won't try another address
-                    break
+                    break;
                 } else {
                     debug!(
                         "peer reply to prepare-upload error: {:?}",
@@ -367,12 +372,12 @@ pub fn acquire_permission_android(app: tauri::AppHandle) -> anyhow::Result<Strin
     let api = app.android_fs();
 
     // pick a folder to read and write
-    let _res = api.acquire_app_manage_external_storage().unwrap_or_else(
-        |_| {
+    let _res = api
+        .acquire_app_manage_external_storage()
+        .unwrap_or_else(|_| {
             debug!("Permission acquire_app_manage_external_storage not granted");
             ()
-        },
-    );
+        });
     return Ok("done".to_string());
     // let selected_folder = api
     //     .show_manage_dir_dialog(
@@ -381,35 +386,35 @@ pub fn acquire_permission_android(app: tauri::AppHandle) -> anyhow::Result<Strin
     //     .unwrap();
     //
     // if let Some(selected_dir_uri) = selected_folder {
-        // for entry in api.read_dir(&selected_dir_uri).unwrap() {
-        //     match entry {
-        //         Entry::File { name, uri, last_modified, len, mime_type, .. } => {
-        // return Ok(format!("File: {} - {:?} - {:?} - {}", name, uri, last_modified, len))
-        // },
-        // Entry::Dir { name, uri, last_modified, .. } => {
-        // return Ok(format!("Dir: {} - {:?} - {:?}", name, uri, last_modified))
-        // },
-        // }
-        // }
-        // debug!("reading /storage/emulated/0/books/index.html");
-        // debug!("Selected folder: {:?}", &selected_dir_uri);
-        // let res3 = std::fs::read_to_string("/storage/emulated/0/books/index.html").unwrap();
-        // debug!("res3: {:?}", res3);
-        //
-        // let res1 = api
-        //     .check_persisted_uri_permission(&selected_dir_uri, PersistableAccessMode::ReadAndWrite)
-        //     .unwrap();
-        // debug!("res1 {:?}", res1);
-        // let res2 = api
-        //     .take_persistable_uri_permission(&selected_dir_uri)
-        //     .unwrap();
-        // debug!("res2 {:?}", res2);
-        // let persisted_uri_perms = api.get_all_persisted_uri_permissions();
-        // for permission in persisted_uri_perms {
-        //     debug!("Persisted URI: {:?}", permission.collect::<Vec<_>>());
-        // }
-        // let file_path: tauri_plugin_fs::FilePath = selected_dir_uri.into();
-        // let file_path = PathResolver::file_name(selected_dir_uri);
+    // for entry in api.read_dir(&selected_dir_uri).unwrap() {
+    //     match entry {
+    //         Entry::File { name, uri, last_modified, len, mime_type, .. } => {
+    // return Ok(format!("File: {} - {:?} - {:?} - {}", name, uri, last_modified, len))
+    // },
+    // Entry::Dir { name, uri, last_modified, .. } => {
+    // return Ok(format!("Dir: {} - {:?} - {:?}", name, uri, last_modified))
+    // },
+    // }
+    // }
+    // debug!("reading /storage/emulated/0/books/index.html");
+    // debug!("Selected folder: {:?}", &selected_dir_uri);
+    // let res3 = std::fs::read_to_string("/storage/emulated/0/books/index.html").unwrap();
+    // debug!("res3: {:?}", res3);
+    //
+    // let res1 = api
+    //     .check_persisted_uri_permission(&selected_dir_uri, PersistableAccessMode::ReadAndWrite)
+    //     .unwrap();
+    // debug!("res1 {:?}", res1);
+    // let res2 = api
+    //     .take_persistable_uri_permission(&selected_dir_uri)
+    //     .unwrap();
+    // debug!("res2 {:?}", res2);
+    // let persisted_uri_perms = api.get_all_persisted_uri_permissions();
+    // for permission in persisted_uri_perms {
+    //     debug!("Persisted URI: {:?}", permission.collect::<Vec<_>>());
+    // }
+    // let file_path: tauri_plugin_fs::FilePath = selected_dir_uri.into();
+    // let file_path = PathResolver::file_name(selected_dir_uri);
     //     for entry in api.read_dir(&selected_dir_uri).unwrap() {
     //         match entry {
     //             tauri_plugin_android_fs::Entry::File {

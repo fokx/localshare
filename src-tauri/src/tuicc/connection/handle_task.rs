@@ -8,7 +8,9 @@ use tokio::time;
 use tuic::Address;
 use tuic_quinn::{Connect, Packet};
 
-use crate::tuicc::{error::Error, socks5::UDP_SESSIONS as SOCKS5_UDP_SESSIONS, utils::UdpRelayMode};
+use crate::tuicc::{
+    error::Error, socks5::UDP_SESSIONS as SOCKS5_UDP_SESSIONS, utils::UdpRelayMode,
+};
 
 use super::Connection;
 
@@ -22,9 +24,9 @@ impl Connection {
         log::debug!("[relay] [authenticate] sending authentication");
 
         match self
-                .model
-                .authenticate(self.uuid, self.password.clone())
-                .await
+            .model
+            .authenticate(self.uuid, self.password.clone())
+            .await
         {
             Ok(()) => log::info!("[relay] [authenticate] {uuid}", uuid = self.uuid),
             Err(err) => log::warn!("[relay] [authenticate] authentication sending error: {err}"),
