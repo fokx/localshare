@@ -181,45 +181,7 @@ impl Server {
             }
         }
 
-        if !target_in_whitelist {
-            let target_addr_str = format!("{}", target_addr);
-            // create a stream directly to target_addr
-            let relay = tokio::net::TcpStream::connect(target_addr_str).await;
-            if let Err(err) = relay {
-                log::warn!("[socks5bypass] [{peer_addr}] [connect] [{target_addr}] failed to connect to target: {err}");
-                match conn
-                        .reply(Reply::HostUnreachable, Address::unspecified())
-                        .await
-                {
-                    Ok(mut conn) => {
-                        let _ = conn.shutdown().await;
-                    }
-                    Err((err, mut conn)) => {
-                        let _ = conn.shutdown().await;
-                        log::warn!("[socks5bypass] [{peer_addr}] [connect] [{target_addr}] command reply error: {err}");
-                    }
-                }
-                return;
-            } else{
-                let mut relay = relay.unwrap();
-                log::warn!("[socks5bypass] [{peer_addr}] [connect] [{target_addr}] connected to target");
-                match conn.reply(Reply::Succeeded, Address::unspecified()).await {
-                    Ok(mut conn) => match io::copy_bidirectional(&mut conn, &mut relay).await {
-                        Ok(_) => {}
-                        Err(err) => {
-                            let _ = conn.shutdown().await;
-                            let _ = relay.shutdown().await;
-                            log::warn!("[socks5bypass] [{peer_addr}] [connect] [{target_addr}] TCP stream relaying error: {err}");
-                        }
-                    },
-                    Err((err, mut conn)) => {
-                        let _ = conn.shutdown().await;
-                        let _ = relay.shutdown().await;
-                        log::warn!("[socks5bypass] [{peer_addr}] [connect] [{target_addr}] command reply error: {err}");
-                    }
-                }
-            }
-        } else {
+        if target_in_whitelist {
             let relay = match TuicConnection::get().await {
                 Ok(conn) => conn.connect(target_addr.clone()).await,
                 Err(err) => Err(err),
@@ -259,6 +221,44 @@ impl Server {
                             let _ = conn.shutdown().await;
                             log::warn!("[socks5] [{peer_addr}] [connect] [{target_addr}] command reply error: {err}")
                         }
+                    }
+                }
+            }
+        } else {
+            let target_addr_str = format!("{}", target_addr);
+            // create a stream directly to target_addr
+            let relay = tokio::net::TcpStream::connect(target_addr_str).await;
+            if let Err(err) = relay {
+                log::warn!("[socks5bypass] [{peer_addr}] [connect] [{target_addr}] failed to connect to target: {err}");
+                match conn
+                        .reply(Reply::HostUnreachable, Address::unspecified())
+                        .await
+                {
+                    Ok(mut conn) => {
+                        let _ = conn.shutdown().await;
+                    }
+                    Err((err, mut conn)) => {
+                        let _ = conn.shutdown().await;
+                        log::warn!("[socks5bypass] [{peer_addr}] [connect] [{target_addr}] command reply error: {err}");
+                    }
+                }
+                return;
+            } else{
+                let mut relay = relay.unwrap();
+                log::warn!("[socks5bypass] [{peer_addr}] [connect] [{target_addr}] connected to target");
+                match conn.reply(Reply::Succeeded, Address::unspecified()).await {
+                    Ok(mut conn) => match io::copy_bidirectional(&mut conn, &mut relay).await {
+                        Ok(_) => {}
+                        Err(err) => {
+                            let _ = conn.shutdown().await;
+                            let _ = relay.shutdown().await;
+                            log::warn!("[socks5bypass] [{peer_addr}] [connect] [{target_addr}] TCP stream relaying error: {err}");
+                        }
+                    },
+                    Err((err, mut conn)) => {
+                        let _ = conn.shutdown().await;
+                        let _ = relay.shutdown().await;
+                        log::warn!("[socks5bypass] [{peer_addr}] [connect] [{target_addr}] command reply error: {err}");
                     }
                 }
             }

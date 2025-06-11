@@ -1,13 +1,16 @@
+use reqwest::Client;
 use axum::{
     body::Body,
+    body::to_bytes,
     extract::{Path, State},
+    http::{Request, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
+use hyper;
 use std::sync::Arc;
 
-use axum::http::StatusCode;
 use std::path::PathBuf;
 use tauri::Manager;
 use tauri_plugin_fs::FsExt;
@@ -16,23 +19,43 @@ use tokio;
 #[derive(Clone)]
 pub struct AppState {
     pub app_handle: tauri::AppHandle,
-    pub client: reqwest::Client,
+    pub client: Client,          // The HTTP client for forwarding requests
 }
 
-pub async fn proxy_get(
+#[axum::debug_handler]
+pub async fn proxy_all_requests(
     State(state): State<Arc<AppState>>,
     path: Option<Path<String>>, // Accept Option<String> for handling both cases
+    req: Request<Body>,        // Captures the incoming request
 ) -> Response<Body> {
-    let client = state.client.clone();
-    let app_handle = state.app_handle.clone();
-    let path_handle = app_handle.path();
-
-    // Use the default root path if no path is provided
+    let backend_url = "https://xjtu.app";
     let path = path.unwrap_or_else(|| axum::extract::Path("".to_string()));
-    let target_url = format!("https://xjtu.app/{}", path.as_str());
-    info!("proxy to: {}", target_url.clone());
 
-    return match client.get(&target_url).send().await {
+    let client = &state.client; // Clone the reqwest client from the state
+    let target_url = format!("{}/{}", backend_url.trim_end_matches('/'), path.as_str()); // Construct the target URL
+
+    info!("Proxying request to: {}", target_url);
+
+    // Prepare the forwarded request
+    let method = req.method().clone();
+    let headers = req.headers().clone();
+    let body = req.into_body();
+
+    // Convert axum body to bytes
+    let body_bytes = to_bytes(body, usize::MAX).await.unwrap_or_default();
+
+    let mut forwarded_request = client.request(method, &target_url);
+
+    // Forward headers
+    for (key, value) in headers.iter() {
+        forwarded_request = forwarded_request.header(key, value);
+    }
+
+    // Forward the body as bytes
+    let forwarded_response = forwarded_request.body(body_bytes).send().await;
+
+    // Relay the response back to the client
+    match forwarded_response {
         Ok(response) => {
             let status = response.status();
             let headers = response.headers().clone();
@@ -43,7 +66,7 @@ pub async fn proxy_get(
                     .unwrap_or(false);
 
             let bytes = response.bytes().await.unwrap();
-            let body = if is_text {
+            let body_bytes = if is_text {
                 let text = String::from_utf8_lossy(&bytes);
                 let replaced = text
                         .replace("http://xjtu.app", "http://127.0.0.1:4805")
@@ -52,19 +75,26 @@ pub async fn proxy_get(
             } else {
                 bytes.to_vec()
             };
-
-            let mut builder = Response::builder().status(status);
-            builder = builder.header("Access-Control-Allow-Origin", "*");
-            for (key, value) in headers.iter() {
-                if key != "access-control-allow-origin" && key != "alt-svc" {
-                    builder = builder.header(key, value);
+            let mut response_builder = Response::builder().status(status);
+            response_builder = response_builder.header("Access-Control-Allow-Origin", "*");
+            for (key, value) in headers {
+                if let Some(k) = key {
+                    if k != "access-control-allow-origin" && k != "alt-svc" {
+                        response_builder = response_builder.header(k, value);
+                    }
                 }
             }
 
-            builder.body(Body::from(body)).unwrap()
+            response_builder.body(Body::from(body_bytes)).unwrap()
         }
-        Err(_) => Response::builder().status(404).body(Body::empty()).unwrap(),
-    };
+        Err(err) => {
+            error!("Error proxying request: {}", err);
+            Response::builder()
+                .status(StatusCode::BAD_GATEWAY)
+                .body(Body::from("Bad Gateway"))
+                .unwrap()
+        }
+    }
 }
 
 pub async fn proxy_uploads(
@@ -79,8 +109,8 @@ pub async fn proxy_uploads(
     info!("proxy_uploads to: {}", target_url.clone());
     // Create cache directory path
     let cache_dir = path_handle
-        .resolve("assets", tauri::path::BaseDirectory::AppCache)
-        .unwrap();
+            .resolve("assets", tauri::path::BaseDirectory::AppCache)
+            .unwrap();
     let mut current_dir = cache_dir.clone();
     let path_segments: Vec<&str> = path.split('/').collect();
 
@@ -97,9 +127,9 @@ pub async fn proxy_uploads(
         if let Ok(contents) = tokio::fs::read(&file_path).await {
             info!("Serving {} from cache: {:?}", path, file_path);
             return Response::builder()
-                .status(200)
-                .body(Body::from(contents))
-                .unwrap();
+                    .status(200)
+                    .body(Body::from(contents))
+                    .unwrap();
         } else {
             error!("{:?} read failed", file_path);
         }
@@ -114,9 +144,9 @@ pub async fn proxy_uploads(
             tokio::fs::write(&file_path, &bytes).await.unwrap();
 
             Response::builder()
-                .status(200)
-                .body(Body::from(bytes))
-                .unwrap()
+                    .status(200)
+                    .body(Body::from(bytes))
+                    .unwrap()
         }
         Err(_) => Response::builder().status(404).body(Body::empty()).unwrap(),
     };
@@ -126,9 +156,9 @@ pub async fn proxy_uploads(
 pub async fn list_files(State(state): State<Arc<AppState>>) -> Json<Vec<String>> {
     let app_handle = state.app_handle.clone();
     let cache_dir = app_handle
-        .path()
-        .resolve("assets", tauri::path::BaseDirectory::AppCache)
-        .unwrap();
+            .path()
+            .resolve("assets", tauri::path::BaseDirectory::AppCache)
+            .unwrap();
 
     let mut files = vec![];
     let mut entries = tokio::fs::read_dir(&cache_dir).await.unwrap();
@@ -147,9 +177,9 @@ pub async fn download_file(
 ) -> axum::response::Result<Vec<u8>> {
     let app_handle = state.app_handle.clone();
     let cache_dir = app_handle
-        .path()
-        .resolve("assets", tauri::path::BaseDirectory::AppCache)
-        .unwrap();
+            .path()
+            .resolve("assets", tauri::path::BaseDirectory::AppCache)
+            .unwrap();
     let file_path = cache_dir.join(filename);
 
     let file_content = tokio::fs::read(file_path).await.unwrap();

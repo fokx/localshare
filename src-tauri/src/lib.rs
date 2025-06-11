@@ -32,7 +32,7 @@ use std::sync::{Arc, Mutex};
 use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 
 use axum::{
-    routing::{get, post},
+    routing::{self, get, post},
     Router,
 };
 use common::{generate_random_string, Message, Sessions, FINGERPRINT_LENGTH};
@@ -40,7 +40,7 @@ use common::{generate_random_string, Message, Sessions, FINGERPRINT_LENGTH};
 use localsend::{
     daemon, handler_prepare_upload, handler_register, handler_upload, periodic_announce,
 };
-use reverse_proxy::{proxy_uploads, proxy_get, AppState, list_files, upload_file, download_file};
+use reverse_proxy::{proxy_uploads, proxy_all_requests, AppState, list_files, upload_file, download_file};
 use std::net::SocketAddr;
 use std::str::FromStr;
 use url::Url;
@@ -384,8 +384,8 @@ pub fn run() {
                 let axum_app = Router::new()
                         .route("/uploads/{*path}", get(proxy_uploads))
                         .route("/.well-known/localshare", get(|| async { "This is an HTTP Axum server" }))
-                        .route("/{*path}", get(proxy_get))
-                        .route("/", get(proxy_get))
+                        .route("/{*path}", routing::any(proxy_all_requests))
+                        .route("/", routing::any(proxy_all_requests))
                         .with_state(axum_app_state);
                 warn!("binding on 4805");
                 let listener = match tokio::net::TcpListener::bind("127.0.0.1:4805").await {
