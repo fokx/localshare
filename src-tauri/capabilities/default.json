@@ -55,6 +55,7 @@
     "sql:default",
     "sql:allow-execute",
     "os:default",
-    "blec:default"
+    "blec:default",
+    "mic-recorder:default"
   ]
 }

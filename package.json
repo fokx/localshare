@@ -52,6 +52,7 @@
     "plugin-sql": "link:../plugins-workspace/plugins/sql",
     "svelte-inspect-value": "^0.5.0",
     "tailwindcss": "^4.1.8",
+    "tauri-plugin-mic-recorder-api": "^2.0.0",
     "tauri-plugin-sharetarget-api": "0.1.6",
     "tauri-plugin-system-info-api": "^2.0.10",
     "tauri-plugin-view-api": "^0.0.5"
@@ -64,6 +65,7 @@
     "@tauri-apps/cli": "^2.5.0",
     "@zerodevx/svelte-toast": "^0.9.6",
     "better-sqlite3": "^11.10.0",
+    "discourse2": "^1.1.26",
     "drizzle-kit": "1.0.0-beta.1-c0277c0",
     "flowbite": "^3.1.2",
     "flowbite-svelte-icons": "^2.2.0",
@@ -71,7 +73,6 @@
     "svelte-check": "^4.2.1",
     "tsx": "^4.19.4",
     "typescript": "~5.6.3",
-    "discourse2": "^1.1.26",
     "vite": "^6.3.5"
   }
 }
