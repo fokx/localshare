@@ -32,7 +32,12 @@ pub async fn proxy_all_requests(
     let path = path.unwrap_or_else(|| axum::extract::Path("".to_string()));
 
     let client = &state.client; // Clone the reqwest client from the state
-    let target_url = format!("{}/{}", backend_url.trim_end_matches('/'), path.as_str()); // Construct the target URL
+
+    // Extract query string from the original request
+    let query_string = req.uri().query().map_or_else(String::new, |q| format!("?{}", q));
+
+    // Construct the target URL with query parameters
+    let target_url = format!("{}/{}{}", backend_url.trim_end_matches('/'), path.as_str(), query_string);
 
     info!("Proxying request to: {}", target_url);
 
