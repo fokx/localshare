@@ -33,7 +33,7 @@ export const users = sqliteTable('users', {
 export const topics = sqliteTable('topics', {
     id: integer('id').primaryKey().notNull(),
     category_name: text('category_name'),
-    category_id: integer('category_id'),
+    category_id: integer('category_id'), // todo: remove
     title: text('title'),
     excerpt: text('excerpt'),
     created_at: integer('created_at', {mode: 'timestamp'}),

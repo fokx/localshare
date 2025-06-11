@@ -15,6 +15,7 @@
     import { count, sql } from 'drizzle-orm';
     import { ArrowLeftOutline, ArrowRightOutline, CaretRightSolid, CaretLeftSolid } from "flowbite-svelte-icons";
     import { platform } from '@tauri-apps/plugin-os';
+    import {migrations} from "$lib/db/migrations";
     let current_topics = $state<
         { id: number; created_at: string | null; raw: string | null }[]
     >([]);
@@ -47,15 +48,234 @@
         console.log("window.currentTopicPageScrollY", window.currentTopicPageScrollY);
 
     }
-
+    async function fetchLatest() {
+        fetchLatestTopics();
+        fetchLatestPosts();
+    }
     async function fetchLatestPosts() {
-        let latest_posts = fetch('http://127.0.0.1:4805/latest.json');
+        try {
+            let response = await fetch('http://127.0.0.1:4805/posts.json');
+            console.log('response', response);
+            let json = await response.json();
+            let latest_posts = json.latest_posts;
+            /*
+            {
+            "id": 56004,
+            "name": "                ",
+            "username": "Revan",
+            "avatar_template": "/letter_avatar_proxy/v4/letter/r/87869e/{size}.png",
+            "created_at": "2025-06-11T02:27:48.826Z",
+            "cooked": "<p data-ln=\"0\"><div class=\"lightbox-wrapper\"><a class=\"lightbox\" href=\"https://xjtu.app/uploads/default/original/3X/5/c/5cfd628ded8a3417514f4f53975f03f34af2fe87.jpeg\" data-download-href=\"https://xjtu.app/uploads/default/5cfd628ded8a3417514f4f53975f03f34af2fe87\" title=\"IMG_6134\"><img src=\"https://xjtu.app/uploads/default/optimized/3X/5/c/5cfd628ded8a3417514f4f53975f03f34af2fe87_2_667x500.jpeg\" alt=\"IMG_6134\" data-base62-sha1=\"dgCNJfhQxsEBbjUcM44xLgSCffV\" width=\"667\" height=\"500\" srcset=\"https://xjtu.app/uploads/default/optimized/3X/5/c/5cfd628ded8a3417514f4f53975f03f34af2fe87_2_667x500.jpeg, https://xjtu.app/uploads/default/original/3X/5/c/5cfd628ded8a3417514f4f53975f03f34af2fe87.jpeg 1.5x, https://xjtu.app/uploads/default/original/3X/5/c/5cfd628ded8a3417514f4f53975f03f34af2fe87.jpeg 2x\" data-dominant-color=\"F0F0F0\"><div class=\"meta\"><svg class=\"fa d-icon d-icon-far-image svg-icon\" aria-hidden=\"true\"><use href=\"#far-image\"></use></svg><span class=\"filename\">IMG_6134</span><span class=\"informations\">854×640 37.7 KB</span><svg class=\"fa d-icon d-icon-discourse-expand svg-icon\" aria-hidden=\"true\"><use href=\"#discourse-expand\"></use></svg></div></a></div></p>",
+            "external_id": "z76DKUCtlQRcPHx4",
+            "post_number": 29,
+            "post_type": 1,
+            "posts_count": 29,
+            "updated_at": "2025-06-11T02:27:48.826Z",
+            "reply_count": 0,
+            "reply_to_post_number": null,
+            "quote_count": 0,
+            "incoming_link_count": 0,
+            "reads": 1,
+            "readers_count": 0,
+            "score": 0,
+            "yours": false,
+            "topic_id": 14752,
+            "topic_slug": "topic",
+            "topic_title": "【破防楼】期末周限定",
+            "topic_html_title": "【破防楼】期末周限定",
+            "category_id": 4,
+            "display_username": "                ",
+            "primary_group_name": null,
+            "flair_name": null,
+            "flair_url": null,
+            "flair_bg_color": null,
+            "flair_color": null,
+            "flair_group_id": null,
+            "badges_granted": [],
+            "version": 1,
+            "can_edit": false,
+            "can_delete": false,
+            "can_recover": false,
+            "can_see_hidden_post": false,
+            "can_wiki": false,
+            "user_title": "黄金",
+            "title_is_group": false,
+            "bookmarked": false,
+            "raw": "![IMG_6134|667x500](upload://dgCNJfhQxsEBbjUcM44xLgSCffV.jpeg)",
+            "actions_summary": [],
+            "moderator": false,
+            "admin": false,
+            "staff": false,
+            "user_id": 1590,
+            "hidden": false,
+            "trust_level": 3,
+            "deleted_at": null,
+            "user_deleted": false,
+            "edit_reason": null,
+            "can_view_edit_history": false,
+            "wiki": false,
+            "excerpt": "<a class=\"lightbox\" href=\"https://xjtu.app/uploads/default/original/3X/5/c/5cfd628ded8a3417514f4f53975f03f34af2fe87.jpeg\" data-download-href=\"https://xjtu.app/uploads/default/5cfd628ded8a3417514f4f53975f03f34af2fe87\" title=\"IMG_6134\">[IMG_6134]</a>",
+            "truncated": true,
+            "mentioned_users": [],
+            "post_url": "/t/topic/14752/29",
+            "animated_avatar": null,
+            "journal": null,
+            "reactions": [],
+            "current_user_reaction": null,
+            "reaction_users_count": 0,
+            "current_user_used_main_reaction": false,
+            "user_signature": null,
+            "can_accept_answer": false,
+            "can_unaccept_answer": false,
+            "accepted_answer": false,
+            "topic_accepted_answer": null,
+            "retorts": [],
+            "my_retorts": [],
+            "can_retort": false,
+            "can_remove_retort": false
+            }
+             */
+            for (const item of latest_posts) {
+                let _item = {
+                    id: item.id,
+                    raw: item.raw || null,
+                    cooked: item.cooked || null,
+                    post_number: item.post_number || null,
+                    topic_id: item.topic_id || null,
+                    user_id: item.user_id || null,
+                    created_at: item.created_at ? new Date(item.created_at) : null,
+                    updated_at: item.updated_at ? new Date(item.updated_at) : null,
+                    reply_to_post_number: item.reply_to_post_number || null,
+                    reply_to_user_id: item.reply_to_user_id || null,
+                    reply_count: item.reply_count || null,
+                    like_count: item.like_count || null,
+                    word_count: item.word_count || null // not found in json
+                }
+                await db.insert(schema.posts).values(_item)
+                    .onConflictDoUpdate({ target: schema.posts.id, set: _item });
+            }
 
+        } catch (error) {
+            console.error('Error fetching latest posts:', error);
+        }
+    }
+    async function fetchLatestTopics() {
+        try {
+            let url = 'http://127.0.0.1:4805/latest.json';
+            if( currentPage != 1) {
+                url += `?no_definitions=true&page=${currentPage-1}`
+            }
+            let response = await fetch(url);
+            console.log('response', response);
+            let json = await response.json();
+            let users = json.users;
+            /*
+                {
+            "id": 5905,
+            "username": "PipaQinse233",
+            "name": "PipaQinse233",
+            "avatar_template": "/user_avatar/xjtu.app/pipaqinse233/{size}/11241_2.png",
+            "trust_level": 3,
+            "animated_avatar": null
+            },
+             */
+            for (const item of users) {
+                let _item = {
+                    id: item.id,
+                    username: item.username,
+                    name: item.name,
+                    avatar_template: item.avatar_template,
+                    trust_level: item.trust_level,
+                }
+                await db.insert(schema.users).values(_item)
+                    .onConflictDoUpdate({ target: schema.users.id, set: _item });
+            }
+
+            //   "more_topics_url": "/latest?no_definitions=true&page=1",
+            //    "per_page": 30,
+            // const NUM_POSTS_PER_PAGE = 30;
+            let topic_list = json.topic_list;
+            let categories = topic_list.categories;
+            /*
+                  {
+            "id": 4,
+            "name": "闲聊吹水",
+            "slug": "general",
+            "color": "25AAE2",
+            "text_color": "FFFFFF",
+            "style_type": "emoji",
+            "icon": "droplet",
+            "emoji": "ocean",
+            "read_restricted": false
+            },
+             */
+            let topics = topic_list.topics;
+            /*
+                  {
+            "id": 14752,
+            "title": "【破防楼】期末周限定",
+            "fancy_title": "【破防楼】期末周限定",
+            "slug": "topic",
+            "posts_count": 28,
+            "external_id": "JX3lSIjfOKgsJUAs",
+            "reply_count": 14,
+            "highest_post_number": 28,
+            "image_url": null,
+            "created_at": "2025-06-10T15:43:31.277Z",
+            "last_posted_at": "2025-06-11T02:22:59.557Z",
+            "bumped": true,
+            "bumped_at": "2025-06-11T02:22:59.557Z",
+            "archetype": "regular",
+            "unseen": false,
+            "pinned": false,
+            "unpinned": null,
+            "excerpt": "从 怎么办？｜一个愿为他人知晓的日记楼 (Part 2) 继续讨论： \n期末破防楼，后续等期末考完再说（） \n俺不中嘞，我先来：还有十个小时就考高数，而现在才看到重积分，我现在要 \n:sanguosha::sanguosha:&hellip;",
+            "visible": true,
+            "closed": false,
+            "archived": false,
+            "bookmarked": null,
+            "liked": null,
+            "tags": [],
+            "tags_descriptions": {},
+            "views": 57,
+            "like_count": 78,
+            "has_summary": false,
+            "last_poster_username": "CR450BF-5033",
+            "category_id": 4,
+            "pinned_globally": false,
+            "featured_link": null,
+            "journal": null,
+            "has_accepted_answer": false,
+            }
+             */
+            for (const item of topics) {
+                let _item = {
+                    id: item.id,
+                    category_id: item.category_id,
+                    category_name: categories.find(c => c.id === item.category_id)?.name,
+                    title: item.title,
+                    excerpt: item.excerpt,
+                    created_at: new Date(item.created_at),
+                    last_posted_at: new Date(item.last_posted_at),
+                    updated_at: new Date(item.bumped_at),
+                    views: item.views,
+                    posts_count: item.posts_count,
+                    like_count: item.like_count,
+                    user_id: item.posters?.find(p => p.description === "原始发帖人")?.user_id,
+                    last_post_user_id: item.posters?.find(p => p.description === "最新发帖人")?.user_id,
+                    tags: item.tags,
+                }
+                await db.insert(schema.topics).values(_item)
+                    .onConflictDoUpdate({ target: schema.topics.id, set: _item });
+            }
+        } catch (error) {
+            console.error('Error fetching latest topics:', error);
+        }
     }
 
     function handlePageChange(page: number) {
         currentPage = page;
-        fetchLatestPosts();
+        fetchLatest();
         loadTopics();
         window.scrollTo({left: 0, top: 0, behavior: 'smooth'});
         window.currentTopicPage = page;
@@ -66,7 +286,8 @@
 
     onMount(()=> {
         const container = document.querySelector("#container");
-        console.log("component mounted")
+        console.log("component mounted");
+        fetchLatest();
         loadTopics();
         currentPlatform = platform();
         if (currentPlatform==="android"||currentPlatform==="ios"){

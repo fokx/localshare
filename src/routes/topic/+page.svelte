@@ -26,6 +26,136 @@
     let visiblePagesBottom = $state(7);
     let isDesktop = $state(false);
 
+    async function fetchLatestTopicPosts() {
+        try {
+            let topic_id = window.current_topic_id;
+            let url = `http://127.0.0.1:4805/t/${topic_id}.json?print=true`; // with print=true, will fetch at most 1000 posts
+            let response = await fetch(url);
+            console.log('response', response);
+            let json = await response.json();
+            let posts = json?.post_stream?.posts;
+            for (const item of posts) {
+                let _item = {
+                    id: item.id,
+                    raw: item.raw || null,
+                    cooked: item.cooked || null,
+                    post_number: item.post_number || null,
+                    topic_id: item.topic_id || null,
+                    user_id: item.user_id || null,
+                    created_at: item.created_at ? new Date(item.created_at) : null,
+                    updated_at: item.updated_at ? new Date(item.updated_at) : null,
+                    reply_to_post_number: item.reply_to_post_number || null,
+                    reply_to_user_id: item.reply_to_user_id || null,
+                    reply_count: item.reply_count || null,
+                    like_count: item.like_count || null, // not found in json
+                    word_count: item.word_count || null // not found in json
+                }
+                await db.insert(schema.posts).values(_item)
+                    .onConflictDoUpdate({target: schema.posts.id, set: _item});
+            }
+
+        } catch (error) {
+            console.error('Error fetching topic posts:', error);
+        }
+    }
+        /*
+              {
+        "id": 55854,
+        "name": "wyhlele",
+        "username": "wyhao",
+        "avatar_template": "/letter_avatar_proxy/v4/letter/w/ce73a5/{size}.png",
+        "created_at": "2025-06-10T08:28:28.984Z",
+        "cooked": "\u003cp data-ln=\"0\"\u003eRUST 课程自主命题项目，正值校庆 130 周年宣传，故制作此游戏，现发布于 github，欢迎大家来体验。\u003c/p\u003e\n\u003cp data-ln=\"2\"\u003e游戏下载链接：\u003c/p\u003e\u003caside class=\"onebox githubrepo\" data-onebox-src=\"https://github.com/wyhlele/I-wanna-be-XJTUer\"\u003e\n  \u003cheader class=\"source\"\u003e\n\n      \u003ca href=\"https://github.com/wyhlele/I-wanna-be-XJTUer\" target=\"_blank\" rel=\"noopener nofollow ugc\"\u003egithub.com\u003c/a\u003e\n  \u003c/header\u003e\n\n  \u003carticle class=\"onebox-body\"\u003e\n    \u003cdiv class=\"github-row\" data-github-private-repo=\"false\"\u003e\n  \u003cimg width=\"690\" height=\"344\" class=\"thumbnail\" src=\"//xjtu.app/uploads/default/original/3X/5/7/5712cb3f84ecdd34a0f3bdfacd7690617c7cc760.png\" data-dominant-color=\"F4F2F3\"\u003e\n\n  \u003ch3\u003e\u003ca href=\"https://github.com/wyhlele/I-wanna-be-XJTUer\" target=\"_blank\" rel=\"noopener nofollow ugc\"\u003eGitHub - wyhlele/I-wanna-be-XJTUer\u003c/a\u003e\u003c/h3\u003e\n\n    \u003cp\u003e\u003cspan class=\"github-repo-description\"\u003e通过在 GitHub 上创建帐户来为 wyhlele/I-wanna-be-XJTUer 开发做出贡献。\u003c/span\u003e\u003c/p\u003e\n\u003c/div\u003e\n\n  \u003c/article\u003e\n\n  \u003cdiv class=\"onebox-metadata\"\u003e\n    \n    \n  \u003c/div\u003e\n\n  \u003cdiv style=\"clear: both\"\u003e\u003c/div\u003e\n\u003c/aside\u003e\n",
+        "external_id": "UI6WNqgfuw6O4jnT",
+        "post_number": 1,
+        "post_type": 1,
+        "posts_count": 14,
+        "updated_at": "2025-06-10T08:28:28.984Z",
+        "reply_count": 0,
+        "reply_to_post_number": null,
+        "quote_count": 0,
+        "incoming_link_count": 0,
+        "reads": 43,
+        "readers_count": 42,
+        "score": 188.6,
+        "yours": false,
+        "topic_id": 14751,
+        "topic_slug": "topic",
+        "display_username": "wyhlele",
+        "primary_group_name": null,
+        "flair_name": null,
+        "flair_url": null,
+        "flair_bg_color": null,
+        "flair_color": null,
+        "flair_group_id": null,
+        "badges_granted": [],
+        "version": 1,
+        "can_edit": false,
+        "can_delete": false,
+        "can_recover": false,
+        "can_see_hidden_post": false,
+        "can_wiki": false,
+        "link_counts": [
+          {
+            "url": "https://github.com/wyhlele/I-wanna-be-XJTUer",
+            "internal": false,
+            "reflection": false,
+            "title": "GitHub - wyhlele/I-wanna-be-XJTUer",
+            "clicks": 13
+          }
+        ],
+        "read": true,
+        "user_title": "",
+        "bookmarked": false,
+        "actions_summary": [
+          {
+            "id": 2,
+            "count": 8
+          }
+        ],
+        "moderator": false,
+        "admin": false,
+        "staff": false,
+        "user_id": 6032,
+        "hidden": false,
+        "trust_level": 1,
+        "deleted_at": null,
+        "user_deleted": false,
+        "edit_reason": null,
+        "can_view_edit_history": false,
+        "wiki": false,
+        "mentioned_users": [],
+        "post_url": "/t/topic/14751/1",
+        "animated_avatar": null,
+        "calendar_details": [],
+        "journal": null,
+        "reactions": [
+          {
+            "id": "heart",
+            "type": "emoji",
+            "count": 6
+          },
+          {
+            "id": "grey_question",
+            "type": "emoji",
+            "count": 2
+          }
+        ],
+        "current_user_reaction": null,
+        "reaction_users_count": 8,
+        "current_user_used_main_reaction": false,
+        "user_signature": null,
+        "can_accept_answer": false,
+        "can_unaccept_answer": false,
+        "accepted_answer": false,
+        "topic_accepted_answer": null,
+        "retorts": [],
+        "my_retorts": [],
+        "can_retort": false,
+        "can_remove_retort": false
+      }
+         */
+
     function handlePageChange(page: number) {
         dbb.browse_history.update(window.current_topic_id, {
             topic_id: window.current_topic_id,
@@ -34,11 +164,13 @@
         currentPage = page;
         console.log("window.current_topic_id", window.current_topic_id);
         console.log("Page changed to:", page);
+        fetchLatestTopicPosts();
         load_topic_posts(window.current_topic_id)
         window.scrollTo({left: 0, top: 0, behavior: 'smooth'});
     }
 
     onMount(()=>{
+        fetchLatestTopicPosts();
         currentPlatform = platform();
         if (currentPlatform==="android"||currentPlatform==="ios"){
             visiblePagesTop=4;
