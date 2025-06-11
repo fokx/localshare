@@ -136,7 +136,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sharetarget::init())
         .plugin(tauri_plugin_blec::init())
-        .plugin(tauri_plugin_mic_recorder::init())
+        // .plugin(tauri_plugin_mic_recorder::init())
         .setup(|app| {
             info!("readfile11");
             let db_dst = app.path().resolve("", tauri::path::BaseDirectory::Document)?;
