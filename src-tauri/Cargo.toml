@@ -36,8 +36,8 @@ tauri-plugin-fs = "2"
 tauri-plugin-opener = "2"
 futures = "0.3.31"
 tauri-plugin-dialog = "2"
-#tauri-plugin-android-fs = { version = "9.1.0", features = ["avoid-issue1"] }
-tauri-plugin-android-fs = { path = "../../tauri-plugin-android-fs", features = ["avoid-issue1"] }
+tauri-plugin-android-fs = { version = "9.4.0", features = ["avoid-issue1"] }
+#tauri-plugin-android-fs = { path = "../../tauri-plugin-android-fs", features = ["avoid-issue1"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 axum = { version="0.8.4", features = ["query", "macros"] }
@@ -132,6 +132,9 @@ dotenvy_macro = "0.15.7"
 async-socks5 = "0.6.0"
 httparse = "1.10.1"
 obfstr = "0.4.4"
+tauri-plugin-http = { version = "2.4.4", features = ["unsafe-headers"] }
+#tauri-plugin-mic-recorder = "2.0.0"
+#tauri-plugin-mic-recorder = { git = "https://github.com/ayangweb/tauri-plugin-mic-recorder", branch = "fix-mobile" }
 #tauri-plugin-mic-recorder = "2.0.0"
 
 [features]

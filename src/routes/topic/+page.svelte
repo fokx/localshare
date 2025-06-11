@@ -12,12 +12,15 @@
     import {users, topics, posts} from "$lib/db/schema";
     import {goto} from "$app/navigation";
     import {getUserById, emoji} from "$lib";
-    import {ArrowLeftOutline, ArrowRightOutline, CaretLeftSolid,CaretUpSolid,CaretDownSolid, CaretRightSolid} from "flowbite-svelte-icons";
+    import Fa from 'svelte-fa';
+    import {faArrowLeft, faArrowRight, faCaretLeft, faCaretUp, faCaretDown} from '@fortawesome/free-solid-svg-icons';
     import {platform} from "@tauri-apps/plugin-os";
+    import { fetch } from '@tauri-apps/plugin-http';
+
     let current_topic_posts = $state([]);
     let current_topic = $state(null);
     let currentPage = $state(1);
-
+    let isLoading = $state(false); // Add loading state tracker
     let totalPages = $state(9999);
     const NUM_POSTS_PER_PAGE = 30;
     let postsCount = $state();
@@ -25,15 +28,18 @@
     let visiblePagesTop = $state(4);
     let visiblePagesBottom = $state(7);
     let isDesktop = $state(false);
-
+    
     async function fetchLatestTopicPosts() {
         try {
+            isLoading = true;
             let topic_id = window.current_topic_id;
             let url = `http://127.0.0.1:4805/t/${topic_id}.json?print=true`; // with print=true, will fetch at most 1000 posts
             let response = await fetch(url);
             console.log('response', response);
             let json = await response.json();
             let posts = json?.post_stream?.posts;
+            
+            // Process all posts in one batch
             for (const item of posts) {
                 let _item = {
                     id: item.id,
@@ -53,12 +59,16 @@
                 await db.insert(schema.posts).values(_item)
                     .onConflictDoUpdate({target: schema.posts.id, set: _item});
             }
-
+            
+            // Only call load_topic_posts once after all posts are processed
+            await load_topic_posts(window.current_topic_id);
         } catch (error) {
             console.error('Error fetching topic posts:', error);
+        } finally {
+            isLoading = false;
         }
     }
-        /*
+    /*
               {
         "id": 55854,
         "name": "wyhlele",
@@ -157,42 +167,57 @@
          */
 
     function handlePageChange(page: number) {
+        if (isLoading) return; // Prevent multiple calls while loading
+        
+        isLoading = true;
         dbb.browse_history.update(window.current_topic_id, {
             topic_id: window.current_topic_id,
             page_number: page,
-        })
+        });
         currentPage = page;
         console.log("window.current_topic_id", window.current_topic_id);
         console.log("Page changed to:", page);
-        fetchLatestTopicPosts();
+        
+        // Only load posts, don't fetch new data on page change
         load_topic_posts(window.current_topic_id)
-        window.scrollTo({left: 0, top: 0, behavior: 'smooth'});
+            .then(() => {
+                isLoading = false;
+                window.scrollTo({left: 0, top: 0, behavior: 'smooth'});
+            });
     }
 
-    onMount(()=>{
-        fetchLatestTopicPosts();
+    onMount(async () => {
+        isLoading = true;
+        // First load existing posts from database
+        await load_topic_posts(window.current_topic_id);
+        // Then fetch latest posts from API
+        await fetchLatestTopicPosts();
+        
         currentPlatform = platform();
-        if (currentPlatform==="android"||currentPlatform==="ios"){
-            visiblePagesTop=4;
-            visiblePagesBottom=7;
+        if (currentPlatform === "android" || currentPlatform === "ios") {
+            visiblePagesTop = 4;
+            visiblePagesBottom = 7;
         } else {
-            isDesktop=true;
-            visiblePagesTop=8;
-            visiblePagesBottom=15;
+            isDesktop = true;
+            visiblePagesTop = 8;
+            visiblePagesBottom = 15;
         }
+        isLoading = false;
     });
-    $effect(async ()=>{
+    
+    $effect(async () => {
         let tmp = await db.select({ count: count() }).from(schema.posts)
             .where(eq(schema.posts.topic_id, window.current_topic_id));
-        if (tmp){
+        if (tmp) {
             let cur_postsCount = tmp[0].count;
             if (cur_postsCount !== postsCount) {
                 postsCount = cur_postsCount;
-                totalPages=Math.ceil(cur_postsCount/NUM_POSTS_PER_PAGE);
+                totalPages = Math.ceil(cur_postsCount/NUM_POSTS_PER_PAGE);
             }
         }
     });
-    async function load_topic_posts(topic_id:number) {
+    
+    async function load_topic_posts(topic_id: number) {
         let tmp = await dbb.browse_history.get({topic_id: topic_id});
         if (tmp) {
             currentPage = tmp.page_number;
@@ -202,48 +227,73 @@
             await dbb.browse_history.add({
                 topic_id: window.current_topic_id,
                 page_number: 1,
-            })
+            });
         }
+        
         let offset = (currentPage-1)*NUM_POSTS_PER_PAGE;
         console.log("finding topic with id", topic_id);
-        db.query.topics
-            .findFirst({
-                where: {
-                    id: topic_id
-                }
-            })
-            .execute()
-            .then((result) => {
-                current_topic = result;
-            });
-
-        await db.query.posts
-            .findMany({
-                limit: NUM_POSTS_PER_PAGE,
-                offset: parseInt(offset),
-                where: {topic_id: topic_id},
-            })
-            .execute()
-            .then((results) => {
-                console.log("🚀 ~ FindMany response from Drizzle:", results);
-                current_topic_posts = results;
-                return results;
-            });
+        
+        // Run these queries in parallel with Promise.all
+        await Promise.all([
+            db.query.topics
+                .findFirst({
+                    where: {
+                        id: topic_id
+                    }
+                })
+                .execute()
+                .then((result) => {
+                    current_topic = result;
+                }),
+                
+            db.query.posts
+                .findMany({
+                    limit: NUM_POSTS_PER_PAGE,
+                    offset: parseInt(offset),
+                    where: {topic_id: topic_id},
+                })
+                .execute()
+                .then((results) => {
+                    console.log("🚀 ~ FindMany response from Drizzle:", results);
+                    current_topic_posts = results;
+                    return results;
+                })
+        ]);
     }
+    /*
+## Key Changes Made:
+1. **Added Loading State Tracking**:
+    - Added an `isLoading` state variable to track when data operations are in progress
+    - Added a loading spinner that displays during loading operations
 
+2. **Optimized `fetchLatestTopicPosts`**:
+    - Removed the redundant call to for each post `load_topic_posts`
+    - Now calls only once after all posts are processed `load_topic_posts`
+
+3. **Improved `handlePageChange`**:
+    - Added a guard to prevent multiple calls while loading
+    - Removed the call to since we only need to change the page view `fetchLatestTopicPosts`
+    - Added proper Promise chaining with the loading state
+
+4. **Enhanced `onMount`**:
+    - Made it async to properly handle the loading sequence
+    - First loads existing posts from database, then fetches latest from API
+    - Properly tracks loading state
+
+5. **Optimized `load_topic_posts`**:
+    - Used `Promise.all` to run database queries in parallel rather than sequentially
+
+This implementation ensures that:
+- The component loads data only once when mounted
+- Page changes only trigger necessary database operations
+- Loading states are properly tracked to prevent multiple simultaneous operations
+- Users get visual feedback during loading operations
+
+These changes should eliminate the flickering effect by ensuring that the topic posts are loaded only once at the appropriate times.
+
+
+     */
 </script>
-
-<!--<main class="container mx-auto flex flex-col gap-4">-->
-{#await load_topic_posts(window.current_topic_id)}
-    Loading...
-    <Spinner class="me-3" size="4" color="teal" />
-{:then value}
-    <!--{#if !value}-->
-<!--            <p style="color: red">Topic not found or empty</p>-->
-<!--        {/if}-->
-{:catch error}
-    <p style="color: red">Topic cannot be loaded with {error.message}</p>
-{/await}
 
 <div class="flex justify-between items-center">
     <Heading tag="h5" class="text-primary-700 dark:text-primary-500 mx-auto">
@@ -257,19 +307,26 @@
         <PaginationNav visiblePages={Math.min(visiblePagesTop, totalPages)} {currentPage} {totalPages} onPageChange={handlePageChange}>
             {#snippet prevContent()}
                 <span class="sr-only">Previous</span>
-                <ArrowLeftOutline class="h-5 w-5" />
+                <Fa icon={faArrowLeft} />
             {/snippet}
             {#snippet nextContent()}
                 <span class="sr-only">Next</span>
-                <ArrowRightOutline class="h-5 w-5" />
+                <Fa icon={faArrowRight} />
+
             {/snippet}
         </PaginationNav>
     {/if}
     <div class="flex">
+        {#if isLoading}
+            <div class="flex justify-center my-4 ml-2 mr-2">
+                <Spinner size="4" color="teal" />
+            </div>
+        {/if}
         <Avatar class="w-10 h-10 mr-2" onclick={()=>{history.back();}}>
-            <CaretLeftSolid/>
+            <Fa icon={faCaretLeft} />
         </Avatar>
-        <Avatar class="w-10 h-10" onclick={()=>{window.scrollTo({left: 0, top: document.body.scrollHeight, behavior: 'smooth'});}}><CaretDownSolid/></Avatar>
+        <Avatar class="w-10 h-10" onclick={()=>{window.scrollTo({left: 0, top: document.body.scrollHeight, behavior: 'smooth'});}}>            <Fa icon={faCaretDown} />
+        </Avatar>
     </div>
     </div>
 
@@ -328,11 +385,11 @@
         </div>
         <div class="flex">
             <Avatar class="w-10 h-10 mr-2" onclick={()=>{history.back();}}>
-                <CaretLeftSolid/>
+                <Fa icon={faCaretLeft} />
+
             </Avatar>
-            <Avatar class="w-10 h-10" onclick={()=>{window.scrollTo({left: 0, top: 0, behavior: 'smooth'});}}><CaretUpSolid/></Avatar>
+            <Avatar class="w-10 h-10" onclick={()=>{window.scrollTo({left: 0, top: 0, behavior: 'smooth'});}}><Fa icon={faCaretUp} /></Avatar>
         </div>
     </div>
 
 {/if}
-<!--</main>-->

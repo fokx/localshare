@@ -3,17 +3,17 @@ use std::io::Write;
 use tauri_plugin_fs::FsExt;
 #[macro_use]
 extern crate log;
+use hyper_util::rt::{TokioExecutor, TokioIo};
 use sysinfo::{Disks, System};
 use tauri::path::PathResolver;
 use tauri::{Emitter, Listener, Manager};
 use tauri_plugin_android_fs::{
-    AndroidFs, AndroidFsExt, FileUri, InitialLocation, PersistableAccessMode, PrivateDir, UriType
+    AndroidFs, AndroidFsExt, FileUri, InitialLocation, PersistableAccessMode, PrivateDir, UriType,
 };
 use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri_plugin_store::StoreExt;
 use tokio;
 use tokio::sync::{oneshot, Notify};
-use hyper_util::rt::{TokioExecutor, TokioIo};
 use zstd::decode_all;
 mod commands;
 mod common;
@@ -21,8 +21,8 @@ mod dufs;
 
 mod localsend;
 mod reverse_proxy;
-mod tuicc;
 mod socks2http;
+mod tuicc;
 
 use sha2::{Digest, Sha256};
 use std::fs::read;
@@ -37,23 +37,24 @@ use axum::{
 };
 use common::{generate_random_string, Message, Sessions, FINGERPRINT_LENGTH};
 // use std::io::prelude::*;
+use crate::rustls::crypto::CryptoProvider;
 use localsend::{
     daemon, handler_prepare_upload, handler_register, handler_upload, periodic_announce,
 };
-use reverse_proxy::{proxy_uploads, proxy_all_requests, AppState, list_files, upload_file, download_file};
+use rcgen::{date_time_ymd, CertificateParams, DistinguishedName, DnType, KeyPair, SanType};
+use reverse_proxy::{
+    download_file, list_files, proxy_all_requests, proxy_uploads, upload_file, AppState,
+};
+use rustls::pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer};
+use std::fs;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use url::Url;
-use rcgen::{date_time_ymd, CertificateParams, DistinguishedName, DnType, KeyPair, SanType};
-use rustls::pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject};
+use std::{fs::File, io::BufReader};
+use tokio::net::TcpListener;
 use tokio_rustls::rustls::{self, ServerConfig};
 use tokio_rustls::TlsAcceptor;
-use std::fs;
-use tokio::net::TcpListener;
-use std::{fs::File, io::BufReader};
 use tower::Service;
-use crate::rustls::crypto::CryptoProvider;
-
+use url::Url;
 
 #[tokio::test]
 async fn client_test() -> std::io::Result<()> {
@@ -98,7 +99,9 @@ async fn client_test() -> std::io::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    rustls::crypto::ring::default_provider().install_default().expect("Failed to install rustls crypto provider");
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
     let server_handle = Arc::new(Mutex::new(None::<oneshot::Sender<()>>));
     // use tauri state to manage a vector of String
     let sessions = Mutex::new(Sessions::default());
@@ -116,15 +119,19 @@ pub fn run() {
         },
     ];
     tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_os::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 // .add_migrations("sqlite:xap.db", migrations)
                 .build(),
         )
-        .plugin(tauri_plugin_log::Builder::new().level(log_level)
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log_level)
                 .level_for("sqlx::query", log::LevelFilter::Info)
-                .build())
+                .build(),
+        )
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(server_handle.clone())
@@ -139,8 +146,10 @@ pub fn run() {
         // .plugin(tauri_plugin_mic_recorder::init())
         .setup(|app| {
             info!("readfile11");
-            let db_dst = app.path().resolve("", tauri::path::BaseDirectory::Document)?;
-            if ! std::fs::exists(db_dst.clone()).unwrap() {
+            let db_dst = app
+                .path()
+                .resolve("", tauri::path::BaseDirectory::Document)?;
+            if !std::fs::exists(db_dst.clone()).unwrap() {
                 std::fs::create_dir(db_dst).unwrap();
             }
 
@@ -165,8 +174,12 @@ pub fn run() {
             // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Home).unwrap());
             // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
             // cd src-tauri/res; zstdmt -19 xap.db -o xap.db.zst
-            let db_src = app.path().resolve("res/xap.db.zst", tauri::path::BaseDirectory::Resource)?;
-            let db_dst = app.path().resolve("xap.db", tauri::path::BaseDirectory::Document)?;
+            let db_src = app
+                .path()
+                .resolve("res/xap.db.zst", tauri::path::BaseDirectory::Resource)?;
+            let db_dst = app
+                .path()
+                .resolve("xap.db", tauri::path::BaseDirectory::Document)?;
             info!("readfile: src {:?}", db_src.clone());
             info!("readfile: dst {:?}", db_dst.clone());
             if cfg!(target_os = "android") {
@@ -174,7 +187,12 @@ pub fn run() {
                 info!("readfile 1");
                 let scope = app.fs_scope();
                 let android_fs_api = app.android_fs();
-                scope.allow_directory(app.path().resolve("", tauri::path::BaseDirectory::Document).unwrap(), false);
+                scope.allow_directory(
+                    app.path()
+                        .resolve("", tauri::path::BaseDirectory::Document)
+                        .unwrap(),
+                    false,
+                );
                 // scope.allow_directory("/path/to/directory", false);
                 // dbg!(scope.allowed());
                 // info!("{:?}", scope.allowed());
@@ -185,15 +203,16 @@ pub fn run() {
                 info!("{:?}", db_dst.as_path());
                 let p = tauri_plugin_fs::FilePath::Path(db_dst);
                 let uri: FileUri = p.into();
-                if android_fs_api.get_uri_type(&uri).unwrap() == UriType::NotFound {
-                    let mut file: std::fs::File = android_fs_api.open_file(&uri, tauri_plugin_android_fs::FileAccessMode::WriteTruncate)
-                            .unwrap();
+                // if android_fs_api.get_uri_type(&uri).unwrap() == UriType::NotFound {
+                    let mut file: std::fs::File = android_fs_api
+                        .open_file(&uri, tauri_plugin_android_fs::FileAccessMode::WriteTruncate)
+                        .unwrap();
                     info!("writeall decompressed content");
                     file.write_all(&db_file_content).unwrap();
                     info!("done");
-                } else {
-                    info!("sqlite already exists, will not overrite");
-                }
+                // } else {
+                //     info!("sqlite already exists, will not overrite");
+                // }
             } else {
                 // let db_file_content = std::fs::File::open(&db_src).unwrap();
                 if !std::path::Path::new(&db_dst.clone()).exists() {
@@ -210,21 +229,31 @@ pub fn run() {
             let settings_store = app.store("settings.json").unwrap();
             let localsend_setting = settings_store.get("localsend");
 
-            let certs_dst_dir = app.path().resolve("certs", tauri::path::BaseDirectory::AppLocalData)?;
-            if ! std::fs::exists(certs_dst_dir.clone()).unwrap() {
+            let certs_dst_dir = app
+                .path()
+                .resolve("certs", tauri::path::BaseDirectory::AppLocalData)?;
+            if !std::fs::exists(certs_dst_dir.clone()).unwrap() {
                 std::fs::create_dir(certs_dst_dir).unwrap();
             }
-            let cer_dst = app.path().resolve("certs/cer.pem", tauri::path::BaseDirectory::AppLocalData)?;
-            let cer_der_dst = app.path().resolve("certs/cer.der", tauri::path::BaseDirectory::AppLocalData)?;
-            let key_dst = app.path().resolve("certs/key.pem", tauri::path::BaseDirectory::AppLocalData)?;
+            let cer_dst = app
+                .path()
+                .resolve("certs/cer.pem", tauri::path::BaseDirectory::AppLocalData)?;
+            let cer_der_dst = app
+                .path()
+                .resolve("certs/cer.der", tauri::path::BaseDirectory::AppLocalData)?;
+            let key_dst = app
+                .path()
+                .resolve("certs/key.pem", tauri::path::BaseDirectory::AppLocalData)?;
             let cert_hash: String;
-            if ! std::fs::exists(cer_der_dst.clone()).unwrap() {
+            if !std::fs::exists(cer_der_dst.clone()).unwrap() {
                 let mut params: CertificateParams = Default::default();
                 params.not_before = date_time_ymd(1975, 1, 1);
                 params.not_after = date_time_ymd(4096, 1, 1);
                 let subject_alt_names = generate_random_string(FINGERPRINT_LENGTH);
                 info!("cert SAN: {}", subject_alt_names);
-                params.subject_alt_names = vec![SanType::DnsName(rcgen::Ia5String::from_str(&subject_alt_names).unwrap())];
+                params.subject_alt_names = vec![SanType::DnsName(
+                    rcgen::Ia5String::from_str(&subject_alt_names).unwrap(),
+                )];
 
                 let key_pair = KeyPair::generate()?;
                 let cert = params.self_signed(&key_pair)?;
@@ -265,11 +294,11 @@ pub fn run() {
                     _my_fingerprint
                 }
                 Some(setting) => setting
-                        .get("fingerprint")
-                        .unwrap()
-                        .as_str()
-                        .unwrap()
-                        .to_string(),
+                    .get("fingerprint")
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    .to_string(),
             };
             info!("my fingerprint : {}", my_fingerprint);
             let port = 53317;
@@ -297,14 +326,14 @@ pub fn run() {
             // Build the client with SOCKS5 proxy
             // let reqwest_client = reqwest::Client::new();
             let reqwest_client = reqwest::Client::builder()
-                    // .user_agent("localshareapp") // platform specific UA?
-                    .proxy(reqwest::Proxy::all(socks5_url).unwrap())
-                    .cookie_store(true)
-                    .deflate(true)
-                    .zstd(true)
-                    .brotli(true)
-                    .build()
-                    .unwrap();
+                // .user_agent("localshareapp") // platform specific UA?
+                .proxy(reqwest::Proxy::all(socks5_url).unwrap())
+                .cookie_store(true)
+                .deflate(true)
+                .zstd(true)
+                .brotli(true)
+                .build()
+                .unwrap();
 
             let axum_app_state = Arc::new(AppState {
                 app_handle: app_handle_axum,
@@ -315,7 +344,10 @@ pub fn run() {
             let _handler_axum_https_server = tauri::async_runtime::spawn(async move {
                 let axum_app = Router::new()
                     .route("/api/localsend/v2/register", post(handler_register))
-                    .route("/api/localsend/v2/prepare-upload", post(handler_prepare_upload))
+                    .route(
+                        "/api/localsend/v2/prepare-upload",
+                        post(handler_prepare_upload),
+                    )
                     .route("/api/localsend/v2/upload", post(handler_upload))
                     .route("/api/files", get(list_files))
                     .route("/api/files/download/{filename}", get(download_file))
@@ -325,23 +357,25 @@ pub fn run() {
                 if my_response.clone().protocol == "http" {
                     warn!("binding on 53317 http");
                     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
-                            .await
-                            .unwrap();
+                        .await
+                        .unwrap();
                     warn!("binding on 53317 http finished");
                     axum::serve(
                         listener,
                         axum_app.into_make_service_with_connect_info::<SocketAddr>(),
                     )
-                            .await
-                            .unwrap();
+                    .await
+                    .unwrap();
                 } else {
                     let certs = CertificateDer::pem_file_iter(cer_dst.clone())
-                            .unwrap().collect::<Result<Vec<_>, _>>().unwrap();
+                        .unwrap()
+                        .collect::<Result<Vec<_>, _>>()
+                        .unwrap();
                     let key = PrivateKeyDer::from_pem_file(key_dst.clone()).unwrap();
                     let mut config = ServerConfig::builder()
-                            .with_no_client_auth()
-                            .with_single_cert(certs, key)
-                            .expect("Failed to configure TLS");
+                        .with_no_client_auth()
+                        .with_single_cert(certs, key)
+                        .expect("Failed to configure TLS");
                     config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
                     let tls_acceptor = TlsAcceptor::from(Arc::new(config));
                     let addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
@@ -365,14 +399,17 @@ pub fn run() {
                             // Hyper also has its own `Service` trait and doesn't use tower. We can use
                             // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
                             // `tower::Service::call`.
-                            let hyper_service = hyper::service::service_fn(move |request: axum::extract::Request<hyper::body::Incoming>| {
-                                // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
-                                // tower's `Service` requires `&mut self`.
-                                //
-                                // We don't need to call `poll_ready` since `Router` is always ready.
-                                tower_service.clone().call(request)
-                            });
-                            let ret = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+                            let hyper_service = hyper::service::service_fn(
+                                move |request: axum::extract::Request<hyper::body::Incoming>| {
+                                    // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
+                                    // tower's `Service` requires `&mut self`.
+                                    //
+                                    // We don't need to call `poll_ready` since `Router` is always ready.
+                                    tower_service.clone().call(request)
+                                },
+                            );
+                            let ret =
+                                hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
                                     .serve_connection_with_upgrades(stream, hyper_service)
                                     .await;
                             if let Err(err) = ret {
@@ -383,15 +420,19 @@ pub fn run() {
                 }
             });
             let notify_handler_axum_http_server = Arc::new(Notify::new());
-            let notify_clone_handler_axum_http_server = Arc::clone(&notify_handler_axum_http_server);
+            let notify_clone_handler_axum_http_server =
+                Arc::clone(&notify_handler_axum_http_server);
 
             let _handler_axum_http_server = tauri::async_runtime::spawn(async move {
                 let axum_app = Router::new()
-                        .route("/uploads/{*path}", get(proxy_uploads))
-                        .route("/.well-known/localshare", get(|| async { "This is an HTTP Axum server" }))
-                        .route("/{*path}", routing::any(proxy_all_requests))
-                        .route("/", routing::any(proxy_all_requests))
-                        .with_state(axum_app_state);
+                    .route("/uploads/{*path}", get(proxy_uploads))
+                    .route(
+                        "/.well-known/localshare",
+                        get(|| async { "This is an HTTP Axum server" }),
+                    )
+                    .route("/{*path}", routing::any(proxy_all_requests))
+                    .route("/", routing::any(proxy_all_requests))
+                    .with_state(axum_app_state);
                 warn!("binding on 4805");
                 let listener = match tokio::net::TcpListener::bind("127.0.0.1:4805").await {
                     Ok(listener) => {
@@ -409,7 +450,8 @@ pub fn run() {
                 axum::serve(
                     listener,
                     axum_app.into_make_service_with_connect_info::<SocketAddr>(),
-                ) .await
+                )
+                .await
                 .unwrap()
             });
 
@@ -424,8 +466,8 @@ pub fn run() {
 
             // std::thread::spawn(move || block_on(tcc_main()));
             // tauri::async_runtime::spawn(actix_main());
-            #[cfg(debug_assertions)] // only include this code on info builds
-            {
+            // #[cfg(debug_assertions)] // only include this code on info builds
+            // {
                 let window = app.get_webview_window("main").unwrap();
                 window.open_devtools();
                 // let url = Url::parse("https://xjtu.app:443")?;
@@ -447,12 +489,16 @@ pub fn run() {
                 //                                 tauri::LogicalPosition::new(0, 0),
                 //                                 window.inner_size().unwrap(),
                 // );
-            }
+            // }
             let _handler_tuicc = tauri::async_runtime::spawn(crate::tuicc::main());
             let _handler_socks2http = tauri::async_runtime::spawn(crate::socks2http::main());
             warn!("waiting for web server to start");
             let result = tauri::async_runtime::block_on(async {
-                tokio::time::timeout(tokio::time::Duration::from_secs(5), notify_handler_axum_http_server.notified()).await
+                tokio::time::timeout(
+                    tokio::time::Duration::from_secs(5),
+                    notify_handler_axum_http_server.notified(),
+                )
+                .await
             });
 
             if result.is_err() {
