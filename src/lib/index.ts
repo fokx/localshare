@@ -80,8 +80,14 @@ export function display_time(d) {
 }
 
 export async function getUserById(user_id: number) {
+    if (!user_id) {
+        return null;
+    }
     let user = await db.query.users.findFirst({
         where: {id: user_id}
+    }).catch((e) => {
+        console.error("getUserById error", e);
+        return null;
     });
     // console.log(user);
     return user;

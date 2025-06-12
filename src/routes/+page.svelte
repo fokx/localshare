@@ -58,9 +58,7 @@
     }
     async function fetchLatestPosts() {
         // try {
-            let response = await fetch('http://127.0.0.1:4805/posts.json');
-            console.log('response', response);
-            let json = await response.json();
+            let json = await fetch('http://127.0.0.1:4805/posts.json').then(r => r.json()).catch(e => console.error(e));
             console.log('json', json);
             let latest_posts = json.latest_posts;
             /*
@@ -166,13 +164,12 @@
     }
     async function fetchLatestTopics() {
         // try {
+
             let url = 'http://127.0.0.1:4805/latest.json';
             if( currentPage != 1) {
                 url += `?no_definitions=true&page=${currentPage-1}`
             }
-            let response = await fetch(url);
-            console.log('response', response);
-            let json = await response.json();
+            let json = await fetch(url).then(r => r.json()).catch(e => console.error(e));
             console.log('json', json);
             let users = json.users;
             /*
@@ -372,7 +369,9 @@
                             in {topic.category_name}
                             &nbsp;
                             {#await getUserById(topic.user_id) then user}
-                                <p>by {user.username}</p>
+                                {#if user?.username}
+                                    <p>by {user?.username}</p>
+                                {/if}
                             {/await}
                         </div>
                     {/if}

@@ -16,6 +16,7 @@
     import {exists, mkdir, readFile, writeFile} from "@tauri-apps/plugin-fs";
     import * as path from '@tauri-apps/api/path';
     import { platform } from '@tauri-apps/plugin-os';
+    import {emoji, siteTitle} from "$lib";
 
     let show_password = $state(false);
 
@@ -396,15 +397,14 @@
         // const response = await command.execute();
         // console.log(response);
     });
+    siteTitle.set('Share file locally');
 
 </script>
 
-<Heading tag="h2" class="text-primary-700 dark:text-primary-500"
->Share file locally
-    <Button class="ms-2" onclick={toggle_server} disabled={toggle_disable}>
-        {#if server_running}stop{:else}start{/if} sharing
-    </Button>
-</Heading>
+<!--<Heading tag="h2" class="text-primary-700 dark:text-primary-500"-->
+<!--&gt;Share file locally-->
+
+<!--</Heading>-->
 
 <div class="my-3">
     <form class="mb-4" onsubmit={reconfigure_server}>
@@ -460,6 +460,9 @@
         </div>
 
         <Button class="toggle_button" disabled={toggle_disable} type="submit">Reconfigure</Button>
+        <Button class="ms-2" onclick={toggle_server} disabled={toggle_disable}>
+            {#if server_running}stop{:else}start{/if} sharing
+        </Button>
     </form>
     {#if server_running}
         server listening at:

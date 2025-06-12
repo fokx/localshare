@@ -19,6 +19,8 @@
     let current_settings;
     let peers_store: Store<any>;
     let peers = $state([]);
+    import {siteTitle} from "$lib";
+
     let announce_btn_disable = $state(false);
     async function refresh_peers() {
         let _peers = [];
@@ -54,6 +56,7 @@
         current_settings = await settings_store.get('localsend');
         savingDir = current_settings.savingDir;
         fingerprint = current_settings.fingerprint;
+        siteTitle.set("LocalSend (" + fingerprint.substring(0, 8) + "...)");
 
         peers_store = await load('peers.json');
         await refresh_peers();
@@ -143,10 +146,11 @@
             )
             .catch((e) => console.error(e));
     }
+
 </script>
-<Heading tag="h2" class="text-primary-700 dark:text-primary-500">
-    LocalSend ({fingerprint.substring(0, 8)+"..."})
-</Heading>
+<!--<Heading tag="h2" class="text-primary-700 dark:text-primary-500">-->
+<!--     ({fingerprint.substring(0, 8)+"..."})-->
+<!--</Heading>-->
 
     <div class="mb-3">
         {#if incoming_request_exist}

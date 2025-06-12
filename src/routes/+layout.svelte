@@ -113,9 +113,9 @@
         <NavUl {activeUrl} transition={fly} transitionParams={{ y: -20, duration: 250 }}>
             <NavLi href="/">Home</NavLi>
             <NavLi href="/localsend">LocalSend</NavLi>
+            <NavLi href="/dufs">Dufs</NavLi>
             <NavLi href="/chat">Chat</NavLi>
             <NavLi href="/discourse">Discourse</NavLi>
-            <NavLi href="/dufs">Dufs</NavLi>
         </NavUl>
     </Navbar>
 
