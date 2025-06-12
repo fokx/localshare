@@ -61,6 +61,7 @@
             let response = await fetch('http://127.0.0.1:4805/posts.json');
             console.log('response', response);
             let json = await response.json();
+            console.log('json', json);
             let latest_posts = json.latest_posts;
             /*
             {
@@ -172,9 +173,10 @@
             let response = await fetch(url);
             console.log('response', response);
             let json = await response.json();
+            console.log('json', json);
             let users = json.users;
             /*
-                {
+            {
             "id": 5905,
             "username": "PipaQinse233",
             "name": "PipaQinse233",
@@ -344,21 +346,21 @@
 </script>
 
 
-    <div class="flex justify-center">
-       <span class="me-4"> <strong>Topic Browser</strong></span>
-        {#if totalPages>1}
-        <PaginationNav visiblePages={Math.min(visiblePagesTop, totalPages)} {currentPage} {totalPages} onPageChange={handlePageChange}>
-            {#snippet prevContent()}
-                <span class="sr-only">Previous</span>
-                <Fa icon={faArrowLeft} />
-            {/snippet}
-            {#snippet nextContent()}
-                <span class="sr-only">Next</span>
-                <Fa icon={faArrowRight} />
-            {/snippet}
-        </PaginationNav>
-        {/if}
-    </div>
+<!--    <div class="flex justify-center">-->
+<!--       <span class="me-4"> <strong>Topic Browser</strong></span>-->
+<!--        {#if totalPages>1}-->
+<!--        <PaginationNav visiblePages={Math.min(visiblePagesTop, totalPages)} {currentPage} {totalPages} onPageChange={handlePageChange}>-->
+<!--            {#snippet prevContent()}-->
+<!--                <span class="sr-only">Previous</span>-->
+<!--                <Fa icon={faArrowLeft} />-->
+<!--            {/snippet}-->
+<!--            {#snippet nextContent()}-->
+<!--                <span class="sr-only">Next</span>-->
+<!--                <Fa icon={faArrowRight} />-->
+<!--            {/snippet}-->
+<!--        </PaginationNav>-->
+<!--        {/if}-->
+<!--    </div>-->
 
     {#if current_topics}
         {#each current_topics as topic}

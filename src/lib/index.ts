@@ -86,3 +86,10 @@ export async function getUserById(user_id: number) {
     // console.log(user);
     return user;
 }
+
+import { writable } from 'svelte/store';
+
+// localStorage.getItem('FLAT_VIEW') === 'true'
+export const siteTitle = writable('');
+export const isLoading = writable(false);
+

@@ -11,7 +11,7 @@
     import {count, eq} from "drizzle-orm";
     import {users, topics, posts} from "$lib/db/schema";
     import {goto} from "$app/navigation";
-    import {getUserById, emoji} from "$lib";
+    import {getUserById, emoji, isLoading} from "$lib";
     import Fa from 'svelte-fa';
     import {faArrowLeft, faArrowRight, faCaretLeft, faCaretUp, faCaretDown} from '@fortawesome/free-solid-svg-icons';
     import {platform} from "@tauri-apps/plugin-os";
@@ -20,7 +20,7 @@
     let current_topic_posts = $state([]);
     let current_topic = $state(null);
     let currentPage = $state(1);
-    let isLoading = $state(false); // Add loading state tracker
+    
     let totalPages = $state(9999);
     const NUM_POSTS_PER_PAGE = 30;
     let postsCount = $state();
@@ -28,10 +28,11 @@
     let visiblePagesTop = $state(4);
     let visiblePagesBottom = $state(7);
     let isDesktop = $state(false);
-    
+    import { siteTitle } from '$lib';
+
     async function fetchLatestTopicPosts() {
         try {
-            isLoading = true;
+            isLoading.set(true);
             let topic_id = window.current_topic_id;
             let url = `http://127.0.0.1:4805/t/${topic_id}.json?print=true`; // with print=true, will fetch at most 1000 posts
             let response = await fetch(url);
@@ -65,7 +66,7 @@
         } catch (error) {
             console.error('Error fetching topic posts:', error);
         } finally {
-            isLoading = false;
+            isLoading.set(false);
         }
     }
     /*
@@ -167,9 +168,9 @@
          */
 
     function handlePageChange(page: number) {
-        if (isLoading) return; // Prevent multiple calls while loading
+        if ($isLoading) return; // Prevent multiple calls while loading
         
-        isLoading = true;
+        isLoading.set(true);
         dbb.browse_history.update(window.current_topic_id, {
             topic_id: window.current_topic_id,
             page_number: page,
@@ -181,13 +182,13 @@
         // Only load posts, don't fetch new data on page change
         load_topic_posts(window.current_topic_id)
             .then(() => {
-                isLoading = false;
+                isLoading.set(false);
                 window.scrollTo({left: 0, top: 0, behavior: 'smooth'});
             });
     }
 
     onMount(async () => {
-        isLoading = true;
+        isLoading.set(true);
         // First load existing posts from database
         await load_topic_posts(window.current_topic_id);
         // Then fetch latest posts from API
@@ -202,7 +203,7 @@
             visiblePagesTop = 8;
             visiblePagesBottom = 15;
         }
-        isLoading = false;
+        isLoading.set(false);
     });
     
     $effect(async () => {
@@ -243,7 +244,11 @@
                 })
                 .execute()
                 .then((result) => {
-                    current_topic = result;
+                    if (result) {
+                        siteTitle.set(emoji.replace_colons(result.title));
+                        current_topic = result;
+                    }
+
                 }),
                 
             db.query.posts
@@ -295,40 +300,30 @@ These changes should eliminate the flickering effect by ensuring that the topic 
      */
 </script>
 
-<div class="flex justify-between items-center">
-    <Heading tag="h5" class="text-primary-700 dark:text-primary-500 mx-auto">
-        {#if current_topic}
-            {emoji.replace_colons(current_topic.title)}
-        {:else}
-            Topic {window.current_topic_id}
-        {/if}
-    </Heading>
-    {#if totalPages>1}
-        <PaginationNav visiblePages={Math.min(visiblePagesTop, totalPages)} {currentPage} {totalPages} onPageChange={handlePageChange}>
-            {#snippet prevContent()}
-                <span class="sr-only">Previous</span>
-                <Fa icon={faArrowLeft} />
-            {/snippet}
-            {#snippet nextContent()}
-                <span class="sr-only">Next</span>
-                <Fa icon={faArrowRight} />
+<!--<div class="flex justify-between items-center">-->
+<!--    <Heading tag="h5" class="text-primary-700 dark:text-primary-500 mx-auto">-->
+<!--        {#if current_topic}-->
+<!--            {emoji.replace_colons(current_topic.title)}-->
+<!--        {:else}-->
+<!--            Topic {window.current_topic_id}-->
+<!--        {/if}-->
+<!--    </Heading>-->
 
-            {/snippet}
-        </PaginationNav>
-    {/if}
-    <div class="flex">
-        {#if isLoading}
-            <div class="flex justify-center my-4 ml-2 mr-2">
-                <Spinner size="4" color="teal" />
-            </div>
-        {/if}
-        <Avatar class="w-10 h-10 mr-2" onclick={()=>{history.back();}}>
-            <Fa icon={faCaretLeft} />
-        </Avatar>
-        <Avatar class="w-10 h-10" onclick={()=>{window.scrollTo({left: 0, top: document.body.scrollHeight, behavior: 'smooth'});}}>            <Fa icon={faCaretDown} />
-        </Avatar>
-    </div>
-    </div>
+    <!--{#if totalPages>1}-->
+    <!--    <PaginationNav visiblePages={Math.min(visiblePagesTop, totalPages)} {currentPage} {totalPages} onPageChange={handlePageChange}>-->
+    <!--        {#snippet prevContent()}-->
+    <!--            <span class="sr-only">Previous</span>-->
+    <!--            <Fa icon={faArrowLeft} />-->
+    <!--        {/snippet}-->
+    <!--        {#snippet nextContent()}-->
+    <!--            <span class="sr-only">Next</span>-->
+    <!--            <Fa icon={faArrowRight} />-->
+
+    <!--        {/snippet}-->
+    <!--    </PaginationNav>-->
+    <!--{/if}-->
+
+<!--    </div>-->
 
 {#if current_topic_posts && current_topic_posts.length > 0}
     {#each current_topic_posts as post}
