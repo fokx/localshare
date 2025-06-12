@@ -203,16 +203,16 @@ pub fn run() {
                 info!("{:?}", db_dst.as_path());
                 let p = tauri_plugin_fs::FilePath::Path(db_dst);
                 let uri: FileUri = p.into();
-                // if android_fs_api.get_uri_type(&uri).unwrap() == UriType::NotFound {
+                if android_fs_api.get_uri_type(&uri).unwrap() == UriType::NotFound {
                     let mut file: std::fs::File = android_fs_api
                         .open_file(&uri, tauri_plugin_android_fs::FileAccessMode::WriteTruncate)
                         .unwrap();
                     info!("writeall decompressed content");
                     file.write_all(&db_file_content).unwrap();
                     info!("done");
-                // } else {
-                //     info!("sqlite already exists, will not overrite");
-                // }
+                } else {
+                    info!("sqlite already exists, will not overrite");
+                }
             } else {
                 // let db_file_content = std::fs::File::open(&db_src).unwrap();
                 if !std::path::Path::new(&db_dst.clone()).exists() {

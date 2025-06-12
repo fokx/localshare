@@ -11,7 +11,7 @@
     import {eq} from "drizzle-orm";
     import {users} from "$lib/db/schema";
     import {goto} from "$app/navigation";
-    import {getUserById, emoji} from "$lib";
+    import {getUserById, emoji, isLoading} from "$lib";
     import { count, sql } from 'drizzle-orm';
     import Fa from 'svelte-fa';
     import {faArrowLeft, faArrowRight} from '@fortawesome/free-solid-svg-icons';
@@ -38,7 +38,9 @@
     async function loadTopics() {
         let offset = (currentPage-1)*NUM_TOPICS_PER_PAGE;
         console.log('loading topics with offset ',offset);
-        db.query.topics
+
+        // Return the promise so it can be chained
+        return db.query.topics
             .findMany({
                 limit: NUM_TOPICS_PER_PAGE,
                 offset: parseInt(offset),
@@ -48,18 +50,27 @@
             .then((results) => {
                 // console.log("🚀 ~ FindMany response from Drizzle:", results);
                 current_topics = results;
+                console.log("window.currentTopicPageScrollY", window.currentTopicPageScrollY);
+                return results;
             });
-        console.log("window.currentTopicPageScrollY", window.currentTopicPageScrollY);
-
     }
     async function fetchLatest() {
-        fetchLatestTopics();
-        fetchLatestPosts();
+        // Return a promise that resolves when both operations are complete
+        return Promise.all([
+            fetchLatestTopics(),
+            fetchLatestPosts()
+        ]);
     }
     async function fetchLatestPosts() {
-        // try {
+        try {
             let json = await fetch('http://127.0.0.1:4805/posts.json').then(r => r.json()).catch(e => console.error(e));
             console.log('json', json);
+
+            if (!json || !json.latest_posts) {
+                console.error('Invalid response from posts.json');
+                return;
+            }
+
             let latest_posts = json.latest_posts;
             /*
             {
@@ -138,7 +149,9 @@
             "can_remove_retort": false
             }
              */
-            for (const item of latest_posts) {
+
+            // Process all posts in one batch
+            const insertPromises = latest_posts.map(item => {
                 let _item = {
                     id: item.id,
                     raw: item.raw || null,
@@ -153,24 +166,33 @@
                     reply_count: item.reply_count || null,
                     like_count: item.like_count || null,
                     word_count: item.word_count || null // not found in json
-                }
-                await db.insert(schema.posts).values(_item)
+                };
+                return db.insert(schema.posts).values(_item)
                     .onConflictDoUpdate({ target: schema.posts.id, set: _item });
-            }
+            });
 
-        // } catch (error) {
-        //     console.error('Error fetching latest posts:', error);
-        // }
+            // Wait for all inserts to complete
+            return Promise.all(insertPromises);
+        } catch (error) {
+            console.error('Error fetching latest posts:', error);
+            return Promise.resolve(); // Return a resolved promise even on error
+        }
     }
     async function fetchLatestTopics() {
-        // try {
-
+        try {
             let url = 'http://127.0.0.1:4805/latest.json';
-            if( currentPage != 1) {
+            if (currentPage != 1) {
                 url += `?no_definitions=true&page=${currentPage-1}`
             }
+
             let json = await fetch(url).then(r => r.json()).catch(e => console.error(e));
             console.log('json', json);
+
+            if (!json || !json.users || !json.topic_list) {
+                console.error('Invalid response from latest.json');
+                return Promise.resolve();
+            }
+
             let users = json.users;
             /*
             {
@@ -182,23 +204,28 @@
             "animated_avatar": null
             },
              */
-            for (const item of users) {
+
+            // Process all users in one batch
+            const userPromises = users.map(item => {
                 let _item = {
                     id: item.id,
                     username: item.username,
                     name: item.name,
                     avatar_template: item.avatar_template,
                     trust_level: item.trust_level,
-                }
-                await db.insert(schema.users).values(_item)
+                };
+                return db.insert(schema.users).values(_item)
                     .onConflictDoUpdate({ target: schema.users.id, set: _item });
-            }
+            });
+
+            // Wait for all user inserts to complete
+            await Promise.all(userPromises);
 
             //   "more_topics_url": "/latest?no_definitions=true&page=1",
             //    "per_page": 30,
             // const NUM_POSTS_PER_PAGE = 30;
             let topic_list = json.topic_list;
-            let categories = topic_list.categories;
+            let categories = topic_list.categories || [];
             /*
                   {
             "id": 4,
@@ -212,7 +239,7 @@
             "read_restricted": false
             },
              */
-            let topics = topic_list.topics;
+            let topics = topic_list.topics || [];
             /*
                   {
             "id": 14752,
@@ -251,7 +278,9 @@
             "has_accepted_answer": false,
             }
              */
-            for (const item of topics) {
+
+            // Process all topics in one batch
+            const topicPromises = topics.map(item => {
                 let _item = {
                     id: item.id,
                     category_id: item.category_id,
@@ -267,31 +296,50 @@
                     user_id: item.posters?.find(p => p.description === "原始发帖人")?.user_id,
                     last_post_user_id: item.posters?.find(p => p.description === "最新发帖人")?.user_id,
                     tags: item.tags,
-                }
-                await db.insert(schema.topics).values(_item)
+                };
+                return db.insert(schema.topics).values(_item)
                     .onConflictDoUpdate({ target: schema.topics.id, set: _item });
-            }
-        // } catch (error) {
-        //     console.error('Error fetching latest topics:', error);
-        // }
+            });
+
+            // Wait for all topic inserts to complete and return the promise
+            await Promise.all(topicPromises);
+            await loadTopics();
+        } catch (error) {
+            console.error('Error fetching latest topics:', error);
+            return Promise.resolve(); // Return a resolved promise even on error
+        }
     }
 
     function handlePageChange(page: number) {
+        if ($isLoading) return; // Prevent multiple calls while loading
+
+        isLoading.set(true);
         currentPage = page;
-        fetchLatest();
-        loadTopics();
-        window.scrollTo({left: 0, top: 0, behavior: 'smooth'});
         window.currentTopicPage = page;
         console.log("Page changed to:", page);
+
+        // Load topics and then fetch latest data
+        loadTopics()
+            .then(() => fetchLatest())
+            .then(() => {
+                isLoading.set(false);
+                window.scrollTo({left: 0, top: 0, behavior: 'smooth'});
+            });
     }
     import { tick } from 'svelte';
     let scrollHandler;
 
-    onMount(()=> {
+    onMount(async () => {
+        isLoading.set(true);
         const container = document.querySelector("#container");
         console.log("component mounted");
-        fetchLatest();
-        loadTopics();
+
+        // First load existing topics from database
+        await loadTopics();
+
+        // Then fetch latest data from API
+        await fetchLatest();
+
         currentPlatform = platform();
         if (currentPlatform==="android"||currentPlatform==="ios"){
             visiblePagesTop=4;
@@ -301,6 +349,7 @@
             visiblePagesTop=8;
             visiblePagesBottom=15;
         }
+
         scrollHandler = () => {
             // console.log("Window scroll:", window.scrollY);
             if (window.scrollY > 100) {
@@ -308,8 +357,10 @@
             }
         };
 
-
         window.addEventListener("scroll", scrollHandler);
+
+        isLoading.set(false);
+
         return () => {
             // window.currentTopicPageScrollY = window.scrollY;
             window.removeEventListener("scroll", scrollHandler);

@@ -35,11 +35,14 @@
             isLoading.set(true);
             let topic_id = window.current_topic_id;
             let url = `http://127.0.0.1:4805/t/${topic_id}.json?print=true`; // with print=true, will fetch at most 1000 posts
-            let response = await fetch(url);
-            console.log('response', response);
-            let json = await response.json();
-            let posts = json?.post_stream?.posts;
-            
+            let json = await fetch(url).then(r => r.json()).catch(e => console.error(e));
+            if (!json || !json.post_stream) {
+                console.error(`Invalid response from ${url}`);
+                return Promise.resolve();
+            }
+
+            let posts = json?.post_stream?.posts || [];
+
             // Process all posts in one batch
             for (const item of posts) {
                 let _item = {
@@ -265,39 +268,6 @@
                 })
         ]);
     }
-    /*
-## Key Changes Made:
-1. **Added Loading State Tracking**:
-    - Added an `isLoading` state variable to track when data operations are in progress
-    - Added a loading spinner that displays during loading operations
-
-2. **Optimized `fetchLatestTopicPosts`**:
-    - Removed the redundant call to for each post `load_topic_posts`
-    - Now calls only once after all posts are processed `load_topic_posts`
-
-3. **Improved `handlePageChange`**:
-    - Added a guard to prevent multiple calls while loading
-    - Removed the call to since we only need to change the page view `fetchLatestTopicPosts`
-    - Added proper Promise chaining with the loading state
-
-4. **Enhanced `onMount`**:
-    - Made it async to properly handle the loading sequence
-    - First loads existing posts from database, then fetches latest from API
-    - Properly tracks loading state
-
-5. **Optimized `load_topic_posts`**:
-    - Used `Promise.all` to run database queries in parallel rather than sequentially
-
-This implementation ensures that:
-- The component loads data only once when mounted
-- Page changes only trigger necessary database operations
-- Loading states are properly tracked to prevent multiple simultaneous operations
-- Users get visual feedback during loading operations
-
-These changes should eliminate the flickering effect by ensuring that the topic posts are loaded only once at the appropriate times.
-
-
-     */
 </script>
 
 <!--<div class="flex justify-between items-center">-->

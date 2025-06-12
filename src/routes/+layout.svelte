@@ -22,6 +22,7 @@
         faShare,
         faEarthAmericas,
         faCaretLeft,
+        faRotateRight,
         faCaretDown
     } from '@fortawesome/free-solid-svg-icons';
     import {faDiscourse} from '@fortawesome/free-brands-svg-icons';
@@ -90,6 +91,10 @@
                 <div class="flex justify-center my-4 ml-2 mr-2">
                     <Spinner size="4" color="teal" />
                 </div>
+            {:else}
+                <Avatar class="w-10 h-10 mr-2" onclick={()=>{location.reload();}}>
+                    <Fa icon={faRotateRight} />
+                </Avatar>
             {/if}
             <Avatar class="w-10 h-10 mr-2" onclick={()=>{history.back();}}>
                 <Fa icon={faCaretLeft} />
@@ -101,8 +106,8 @@
         </div>
         <Dropdown placement="bottom" triggeredBy="#avatar-menu">
             <DropdownHeader>
-                <span class="block text-sm">Bonnie Green</span>
-                <span class="block truncate text-sm font-medium">useremail@localhost.internal</span>
+                <span class="block text-sm">Login</span>
+                <span class="block truncate text-sm font-medium">NotImplemented Yet</span>
             </DropdownHeader>
             <DropdownGroup>
                 <DropdownItem>Dashboard</DropdownItem>
