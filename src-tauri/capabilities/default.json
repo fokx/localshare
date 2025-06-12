@@ -55,7 +55,6 @@
     "sql:default",
     "sql:allow-execute",
     "os:default",
-    "blec:default",
     {
       "identifier": "http:default",
       "allow": [

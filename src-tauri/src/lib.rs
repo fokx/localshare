@@ -142,7 +142,6 @@ pub fn run() {
         .plugin(tauri_plugin_view::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sharetarget::init())
-        .plugin(tauri_plugin_blec::init())
         // .plugin(tauri_plugin_mic_recorder::init())
         .setup(|app| {
             info!("readfile11");
@@ -466,8 +465,8 @@ pub fn run() {
 
             // std::thread::spawn(move || block_on(tcc_main()));
             // tauri::async_runtime::spawn(actix_main());
-            // #[cfg(debug_assertions)] // only include this code on info builds
-            // {
+            #[cfg(debug_assertions)] // only include this code on info builds
+            {
                 let window = app.get_webview_window("main").unwrap();
                 window.open_devtools();
                 // let url = Url::parse("https://xjtu.app:443")?;
@@ -489,7 +488,7 @@ pub fn run() {
                 //                                 tauri::LogicalPosition::new(0, 0),
                 //                                 window.inner_size().unwrap(),
                 // );
-            // }
+            }
             let _handler_tuicc = tauri::async_runtime::spawn(crate::tuicc::main());
             let _handler_socks2http = tauri::async_runtime::spawn(crate::socks2http::main());
             warn!("waiting for web server to start");

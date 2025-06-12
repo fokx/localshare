@@ -110,7 +110,6 @@ url = "2.5.4"
 pem = "3.0.5"
 rustls = "0.23.27"
 zstd = "0.13.3"
-tauri-plugin-blec = "0.5.3"
 
 crossbeam-utils = { version = "0.8.21", default-features = false, features = ["std"] }
 env_logger = { version = "0.11.8", default-features = false, features = ["humantime"] }
