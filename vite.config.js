@@ -38,12 +38,14 @@ export default defineConfig(async () => ({
             ]
         }
     },
-    build: {
-        rollupOptions: {
-            external: [
-                '@tauri-apps/api',
-                '@tauri-apps/api/core'
-            ]
-        }
-    }
+    // the following will lead to runtime error (only) in production build on Android:
+    // Uncaught (in promise) TypeError: Failed to resolve module specifier "@tauri-apps/api/core". Relative references must start with either "/", "./", or "../".
+    // build: {
+        // rollupOptions: {
+            // external: [
+            //     '@tauri-apps/api',
+            //     '@tauri-apps/api/core'
+            // ]
+        // }
+    // }
 }));
