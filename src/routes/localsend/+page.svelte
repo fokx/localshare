@@ -13,7 +13,7 @@
     import {emit, listen} from '@tauri-apps/api/event';
     import { open } from '@tauri-apps/plugin-dialog';
     import Database from 'plugin-sql';
-
+    import { openPath } from '@tauri-apps/plugin-opener';
     import {generateRandomString} from "$lib";
     let settings_store: Store<any>;
     let current_settings;
@@ -117,6 +117,9 @@
     }
     let selected_files = $state([]);
     let selected_files_names = $state([]);
+    async function open_directory() {
+        await openPath(savingDir);
+    }
     async function select_files() {
         const files = await open({
             multiple: true,
@@ -197,6 +200,8 @@
         </div>
         <Button onclick={select_files}>Select File(s)</Button>
         <Button class="toggle_button" type="submit">Reconfigure</Button>
+        <Button onclick={open_directory}>Open Directory</Button>
+
     </form>
 
     <div>
@@ -251,6 +256,9 @@
 
 <div>
     <hr>
+    <p>
+        Make sure port 53317 is allowed by firewall
+    </p>
     <p>
         On Android, you have to acquire permission before first use:
         <Button class="ms-2" onclick={acquire_permission_android}>

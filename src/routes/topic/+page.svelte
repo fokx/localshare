@@ -315,7 +315,9 @@
                                 {/if}
                                 &nbsp;
                                 {#await getUserById(post.user_id) then user}
-                                    by {user.username}
+                                    {#if user}
+                                        by {user.username}
+                                    {/if}
                                 {/await}
                             </div>
 

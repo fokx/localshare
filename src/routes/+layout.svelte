@@ -2,7 +2,7 @@
     import "../app.css";
     import { SvelteToast } from '@zerodevx/svelte-toast';
     let { children } = $props();
-    import { DarkMode, Navbar, NavBrand, NavLi, NavUl, NavHamburger, Skeleton, ImagePlaceholder, BottomNav,
+    import { Modal,Label, Input, Checkbox,Button, DarkMode, Navbar, NavBrand, NavLi, NavUl, NavHamburger, Skeleton, ImagePlaceholder, BottomNav,
         BottomNavItem, Avatar, Dropdown, DropdownItem, DropdownHeader, DropdownGroup  } from "flowbite-svelte";
     const options = {
         duration: 1000,       // duration of progress bar tween to the `next` value
@@ -75,6 +75,7 @@
         return title;
     }
     import { fly } from "svelte/transition";
+    let formModal = $state(false);
 </script>
 
 <!--<container-->
@@ -86,6 +87,7 @@
             <span class="self-center font-semibold whitespace-nowrap dark:text-white">{currentSiteTitle}</span>
         </NavBrand>
         <div class="flex items-center md:order-2">
+            <button onclick={()=>{formModal=true}}>Login</button>
             <DarkMode />
             {#if $isLoading}
                 <div class="flex justify-center my-4 ml-2 mr-2">
@@ -106,7 +108,7 @@
         </div>
         <Dropdown placement="bottom" triggeredBy="#avatar-menu">
             <DropdownHeader>
-                <span class="block text-sm">Login</span>
+                <a class="block text-sm" onclick={()=>{formModal=true}}>Login</a>
                 <span class="block truncate text-sm font-medium">NotImplemented Yet</span>
             </DropdownHeader>
             <DropdownGroup>
@@ -124,6 +126,27 @@
         </NavUl>
     </Navbar>
 
+    <Modal bind:open={formModal} size="xs">
+        <form class="flex flex-col space-y-6" method="dialog" action="#">
+            <h3 class="mb-4 text-xl font-medium text-gray-900 dark:text-white">Sign in with xjtu.app account</h3>
+            <Label class="space-y-2">
+                <span>Email</span>
+                <Input type="email" name="email" placeholder="name@company.com" required />
+            </Label>
+            <Label class="space-y-2">
+                <span>Your password</span>
+                <Input type="password" name="password" placeholder="•••••" required />
+            </Label>
+            <div class="flex items-start">
+                <Checkbox>Remember me</Checkbox>
+                <a href="/" class="text-primary-700 dark:text-primary-500 ms-auto text-sm hover:underline">Lost password?</a>
+            </div>
+            <Button type="submit" class="w-full1">Login to your account</Button>
+            <div class="text-sm font-medium text-gray-500 dark:text-gray-300">
+                Not registered? <a href="/" class="text-primary-700 dark:text-primary-500 hover:underline">Create account</a>
+            </div>
+        </form>
+    </Modal>
     <div class="mx-auto flex flex-col gap-2 overflow-y-scroll min-h-screen">
     {@render children()}
     </div>
