@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@fabianlars/tauri-plugin-oauth':
+        specifier: '2'
+        version: 2.0.0
       '@fortawesome/free-brands-svg-icons':
         specifier: ^6.7.2
         version: 6.7.2
@@ -454,6 +457,9 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@fabianlars/tauri-plugin-oauth@2.0.0':
+    resolution: {integrity: sha512-I1s08ZXrsFuYfNWusAcpLyiCfr5TCvaBrRuKfTG+XQrcaqnAcwjdWH0U5J9QWuMDLwCUMnVxdobtMJzPR8raxQ==}
 
   '@fortawesome/fontawesome-common-types@6.7.2':
     resolution: {integrity: sha512-Zs+YeHUC5fkt7Mg1l6XTniei3k4bwG/yo3iFUtZWd/pMx9g3fdvkSK9E0FOC+++phXOka78uJcYb8JaFkW52Xg==}
@@ -1750,6 +1756,10 @@ snapshots:
 
   '@esbuild/win32-x64@0.25.5':
     optional: true
+
+  '@fabianlars/tauri-plugin-oauth@2.0.0':
+    dependencies:
+      '@tauri-apps/api': 2.5.0
 
   '@fortawesome/fontawesome-common-types@6.7.2': {}
 

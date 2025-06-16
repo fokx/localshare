@@ -9,7 +9,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use sysinfo::{Disks, System};
-use tauri::Manager;
+use tauri::{Emitter, Manager, Window};
 use tauri_plugin_android_fs::{AndroidFsExt, PersistableAccessMode};
 use tauri_plugin_fs::{FsExt, OpenOptions};
 use tauri_plugin_store::{JsonValue, StoreExt};
@@ -532,4 +532,18 @@ pub fn collect_sys_info() -> String {
     }
 
     return result;
+}
+
+#[tauri::command]
+pub fn start_oauth_server(window: Window) -> Result<u16, String> {
+    let config = tauri_plugin_oauth::OauthConfig {
+        ports: Some(vec![8000, 8001, 8002]),
+        response: Some("Login successful. You can close this window.".into()),
+    };
+
+    tauri_plugin_oauth::start_with_config(config, move |url| {
+        // Send the OAuth URL back to the frontend
+        let _ = window.emit("oauth_redirect", url);
+    })
+            .map_err(|err| err.to_string())
 }

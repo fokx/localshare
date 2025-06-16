@@ -15,6 +15,8 @@ use tauri_plugin_store::StoreExt;
 use tokio;
 use tokio::sync::{oneshot, Notify};
 use zstd::decode_all;
+
+mod login;
 mod commands;
 mod common;
 mod dufs;
@@ -23,7 +25,6 @@ mod localsend;
 mod reverse_proxy;
 mod socks2http;
 mod tuicc;
-
 use sha2::{Digest, Sha256};
 use std::fs::read;
 
@@ -139,6 +140,8 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_android_fs::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_oauth::init())
+
         .plugin(tauri_plugin_view::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sharetarget::init())
@@ -518,6 +521,8 @@ pub fn run() {
             commands::announce_once,
             commands::handle_incoming_request,
             commands::send_file_to_peer,
+            commands::start_oauth_server,
+            login::login_with_provider
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

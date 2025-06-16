@@ -135,6 +135,7 @@ tauri-plugin-http = { version = "2.4.4", features = ["unsafe-headers"] }
 #tauri-plugin-mic-recorder = "2.0.0"
 #tauri-plugin-mic-recorder = { git = "https://github.com/ayangweb/tauri-plugin-mic-recorder", branch = "fix-mobile" }
 #tauri-plugin-mic-recorder = "2.0.0"
+tauri-plugin-oauth = "2"
 
 [features]
 default = []
