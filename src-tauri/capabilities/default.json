@@ -16,11 +16,15 @@
         {
           "path": "$APPDATA/**"
         },
-        { "path": "$HOME/**" },
+        {
+          "path": "$HOME/**"
+        },
         {
           "path": "/**"
         },
-        { "path": "$HOME/.config/**" }
+        {
+          "path": "$HOME/.config/**"
+        }
       ]
     },
     "fs:read-all",
@@ -39,7 +43,14 @@
     "android-fs:default",
     "clipboard-manager:allow-write-text",
     "opener:default",
-    "opener:allow-open-path",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": "**/*"
+        }
+      ]
+    },
     {
       "identifier": "opener:allow-open-url",
       "allow": [
