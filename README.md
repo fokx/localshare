@@ -117,3 +117,12 @@ cp /f/tuic/.env /f/localshare/src-tauri
 
 rsync /f/tuic/tuic-client/src/ /f/localshare/src-tauri/src/tuicc/ -av --delete --exclude={"/mod.rs","/main.rs"}
 
+
+listen on localhost:8000 for result,
+user use distrust to do oauth, 
+will callback localhost:8000,
+should return username, email, etc.
+(+what if it also returns Api-Key, which can be pre-generated for all users / at registration)
+
+safety: 
+* Is hardcoding client_secret in user-side app safe?
