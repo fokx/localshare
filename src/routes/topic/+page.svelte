@@ -6,7 +6,7 @@
     import * as schema from "$lib/db/schema";
     import { db } from "$lib/db/database";
     import Inspect from "svelte-inspect-value";
-    import {Avatar, Card, Heading, Spinner, PaginationNav, Pagination, PaginationItem} from "flowbite-svelte";
+    import {Avatar, Button, Card, Heading, Spinner, PaginationNav, Pagination, PaginationItem} from "flowbite-svelte";
     import {dbb, display_time, process_cooked} from "$lib";
     import {count, eq} from "drizzle-orm";
     import {users, topics, posts} from "$lib/db/schema";
@@ -29,6 +29,8 @@
     let visiblePagesBottom = $state(7);
     let isDesktop = $state(false);
     import { siteTitle } from '$lib';
+    import {getCurrentUser, type OauthUser} from '$lib/auth';
+    let user: OauthUser | null = $state(null);
 
     async function fetchLatestTopicPosts() {
         try {
@@ -192,6 +194,8 @@
 
     onMount(async () => {
         isLoading.set(true);
+        user = await getCurrentUser();
+
         // First load existing posts from database
         await load_topic_posts(window.current_topic_id);
         // Then fetch latest posts from API
@@ -268,6 +272,7 @@
                 })
         ]);
     }
+
 </script>
 
 <!--<div class="flex justify-between items-center">-->
@@ -294,6 +299,7 @@
     <!--{/if}-->
 
 <!--    </div>-->
+
 
 {#if current_topic_posts && current_topic_posts.length > 0}
     {#each current_topic_posts as post}
@@ -330,13 +336,15 @@
                     {/if}
                     <div class="flex justify-end items-center">
                         <span class="text-blue-800 dark:text-blue-500 text-xl mr-2"># {post.post_number}</span>
-                        <button
-                                class="block"
-                                onclick={() => {}}
-                                title={`Reply to post #${post.post_number}`}
-                                aria-label={`Reply to post #${post.post_number}`}>
-                            Reply
-                        </button>
+                        {#if user}
+                            <Button
+                                    class="block"
+                                    onclick={()=>{}}
+                                    title={`Reply to post #${post.post_number}`}
+                                    aria-label={`Reply to post #${post.post_number}`}>
+                                Reply
+                            </Button>
+                        {/if}
                     </div>
                 </Card>
             </div>

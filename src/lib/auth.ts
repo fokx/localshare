@@ -2,7 +2,7 @@ import {invoke} from '@tauri-apps/api/core';
 import {load} from '@tauri-apps/plugin-store';
 
 
-export interface User {
+export interface OauthUser {
     id: string;
     name: string;
     email: string;
@@ -12,7 +12,7 @@ export interface User {
 }
 
 
-let currentUser: User | null = null;
+let currentUser: OauthUser | null = null;
 let store: Awaited<ReturnType<typeof load>> | null = null;
 
 
@@ -30,7 +30,7 @@ async function getStore() {
 }
 
 
-export async function login(provider: 'google' | 'github' | 'discourse'): Promise<User> {
+export async function login(provider: 'google' | 'github' | 'discourse'): Promise<OauthUser> {
     try {
         console.log('calling login_with_provider', currentUser);
 
@@ -68,11 +68,11 @@ export async function login(provider: 'google' | 'github' | 'discourse'): Promis
 }
 
 
-export async function getCurrentUser(): Promise<User | null> {
+export async function getCurrentUser(): Promise<OauthUser | null> {
     if (!currentUser) {
         try {
             const store = await getStore();
-            currentUser = await store.get<User>('user') || null;
+            currentUser = await store.get<OauthUser>('user') || null;
         } catch (error) {
             console.error('Failed to get stored user:', error);
         }

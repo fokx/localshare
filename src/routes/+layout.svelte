@@ -1,7 +1,7 @@
 <script lang="ts">
     import "../app.css";
     import {SvelteToast, toast} from '@zerodevx/svelte-toast';
-    import {login, type User, logout} from '$lib/auth';
+    import {login, type OauthUser, logout} from '$lib/auth';
 
     let {children} = $props();
     import {
@@ -105,20 +105,12 @@
     import {onMount} from "svelte";
     import {goto} from "$app/navigation";
 
-    let formModal = $state(false);
-    let user: User | null = $state(null);
+    let loginModal = $state(false);
+    let user: OauthUser | null = $state(null);
 
     onMount(async () => {
         try {
             user = await getCurrentUser();
-            // const currentPath = page.url.pathname;
-
-            // Handle authentication redirects
-            // if (currentPath === '/' && isAuthenticated) {
-            //     goto('/home');
-            // } else if (currentPath === '/home' && !isAuthenticated) {
-            //     goto('/');
-            // }
         } catch (error) {
             console.error('Authentication check failed:', error);
         } finally {
@@ -135,7 +127,7 @@
             isDiscourseLoading = true;
             await login('discourse');
             user = await getCurrentUser();
-            formModal = false;
+            loginModal = false;
             invalidateAll();
             toast.push('login successfully');
         } catch (error) {
@@ -168,7 +160,7 @@
         </NavBrand>
         <div class="flex items-center md:order-2">
             {#if !user}
-                <button onclick={()=>{formModal=true}}>Login</button>
+                <Button color="primary" onclick={()=>{loginModal=true}}>Login</Button>
             {/if}
             <DarkMode/>
             {#if $isLoading}
@@ -198,28 +190,28 @@
                     <DropdownItem>Settings</DropdownItem>
                 </DropdownGroup>
                 <DropdownHeader>
-                    <a class="block text-sm" onclick={handleLogout}>Logout</a>
+                    <Button class="block text-sm" onclick={handleLogout}>Logout</Button>
                 </DropdownHeader>
                 <DropdownHeader>
                     {user.name}
                 </DropdownHeader>
             {:else }
                 <DropdownHeader>
-                    <a class="block text-sm" onclick={()=>{formModal=true}}>Login</a>
+                    <Button class="block text-sm" onclick={()=>{loginModal=true}}>Login</Button>
                 </DropdownHeader>
             {/if}
 
         </Dropdown>
         <NavUl {activeUrl} transition={fly} transitionParams={{ y: -20, duration: 250 }}>
             <NavLi href="/">Home</NavLi>
+            <NavLi href="/chat">Chat</NavLi>
             <NavLi href="/localsend">LocalSend</NavLi>
             <NavLi href="/dufs">Dufs</NavLi>
-            <NavLi href="/chat">Chat</NavLi>
             <NavLi href="/discourse">Discourse</NavLi>
         </NavUl>
     </Navbar>
 
-    <Modal bind:open={formModal} size="xs">
+    <Modal bind:open={loginModal} size="xs">
         <h3 class="mb-4 text-xl font-medium text-gray-900 dark:text-white">Sign in with xjtu.app account</h3>
         <Button onclick={loginWithDiscourse}>
             {#if !isDiscourseLoading}
