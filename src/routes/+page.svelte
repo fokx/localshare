@@ -11,7 +11,7 @@
     import {eq} from "drizzle-orm";
     import {users} from "$lib/db/schema";
     import {goto} from "$app/navigation";
-    import {getUserById, emoji, isLoading} from "$lib";
+    import {getUserById, emoji_converter, isLoading} from "$lib";
     import { count, sql } from 'drizzle-orm';
     import Fa from 'svelte-fa';
     import {faArrowLeft, faArrowRight} from '@fortawesome/free-solid-svg-icons';
@@ -416,7 +416,7 @@
                 <Card class="max-w-[vw] p-6 ms-0.5 me-0.5" contentClass="dark:bg-gray-500" onclick={()=>{window.current_topic_id=topic.id; goto("/topic"); console.log(window.current_topic_id)}}>
                     {#if topic.title}
                         <div class="flex justify-center">
-                            <h5 class="me-6 mb-2 text-2xl font-bold tracking-tight">{emoji.replace_colons(topic.title)}</h5>
+                            <h5 class="me-6 mb-2 text-2xl font-bold tracking-tight">{emoji_converter.replace_colons(topic.title)}</h5>
                             in {topic.category_name}
                             &nbsp;
                             {#await getUserById(topic.user_id) then user}

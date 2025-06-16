@@ -9,9 +9,9 @@ dbb.version(1).stores({
     browse_history: '&topic_id',
 });
 import EmojiConvertor from 'emoji-js';
-export const emoji = new EmojiConvertor();
-emoji.replace_mode = 'unified';
-// emoji.img_set = 'twitter'; // this line seems to have no effect, see https://github.com/iamcal/emoji-data
+export const emoji_converter = new EmojiConvertor();
+emoji_converter.replace_mode = 'unified';
+// emoji_converter.img_set = 'twitter'; // this line seems to have no effect, see https://github.com/iamcal/emoji_converter-data
 
 export function generateRandomString(length: number) {
     let result = '';
@@ -51,7 +51,7 @@ export function process_cooked(cooked: string): string | string[] {
             // console.log(cooked);
         }
     }
-    cooked = emoji.replace_colons(cooked);
+    cooked = emoji_converter.replace_colons(cooked);
     cooked = cooked.replaceAll(`<span class="chcklst-box checked fa fa-square-check-o fa-fw">`,html_checked_square+`<span class="chcklst-box checked">`);
     cooked = cooked.replaceAll(`<span class="chcklst-box fa fa-square-o fa-fw">`,html_unchecked_square+`<span class="chcklst-box unchecked">`);
     // console.log(cooked);

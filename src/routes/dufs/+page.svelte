@@ -16,7 +16,7 @@
     import {exists, mkdir, readFile, writeFile} from "@tauri-apps/plugin-fs";
     import * as path from '@tauri-apps/api/path';
     import { platform } from '@tauri-apps/plugin-os';
-    import {emoji, siteTitle} from "$lib";
+    import {emoji_converter, siteTitle} from "$lib";
 
     let show_password = $state(false);
 

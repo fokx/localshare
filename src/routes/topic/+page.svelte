@@ -11,16 +11,41 @@
     import {count, eq} from "drizzle-orm";
     import {users, topics, posts} from "$lib/db/schema";
     import {goto} from "$app/navigation";
-    import {getUserById, emoji, isLoading} from "$lib";
+    import {getUserById, emoji_converter, isLoading} from "$lib";
     import Fa from 'svelte-fa';
     import {faArrowLeft, faArrowRight, faCaretLeft, faCaretUp, faCaretDown} from '@fortawesome/free-solid-svg-icons';
     import {platform} from "@tauri-apps/plugin-os";
     import { fetch } from '@tauri-apps/plugin-http';
+    import { Modal } from 'flowbite-svelte';
+    import { Carta, MarkdownEditor } from 'carta-md';
+    import { attachment } from '@cartamd/plugin-attachment';
+    import { emoji } from '@cartamd/plugin-emoji';
+    import { slash } from '@cartamd/plugin-slash';
+    import { code } from '@cartamd/plugin-code';
+
+    import 'carta-md/default.css';
+
+    const carta = new Carta({
+        sanitizer: false,
+        extensions: [
+            attachment({
+                async upload() {
+                    return 'some-url-from-server.xyz';
+                }
+            }),
+            emoji(),
+            slash(),
+            code()
+        ]
+    });
 
     let current_topic_posts = $state([]);
     let current_topic = $state(null);
     let currentPage = $state(1);
-    
+    let replyModal = $state(false);
+    let replyContent = $state('');
+    let replyingToPost = $state(null);
+
     let totalPages = $state(9999);
     const NUM_POSTS_PER_PAGE = 30;
     let postsCount = $state();
@@ -65,7 +90,7 @@
                 await db.insert(schema.posts).values(_item)
                     .onConflictDoUpdate({target: schema.posts.id, set: _item});
             }
-            
+
             // Only call load_topic_posts once after all posts are processed
             await load_topic_posts(window.current_topic_id);
         } catch (error) {
@@ -174,7 +199,7 @@
 
     function handlePageChange(page: number) {
         if ($isLoading) return; // Prevent multiple calls while loading
-        
+
         isLoading.set(true);
         dbb.browse_history.update(window.current_topic_id, {
             topic_id: window.current_topic_id,
@@ -183,7 +208,7 @@
         currentPage = page;
         console.log("window.current_topic_id", window.current_topic_id);
         console.log("Page changed to:", page);
-        
+
         // Only load posts, don't fetch new data on page change
         load_topic_posts(window.current_topic_id)
             .then(() => {
@@ -200,7 +225,7 @@
         await load_topic_posts(window.current_topic_id);
         // Then fetch latest posts from API
         await fetchLatestTopicPosts();
-        
+
         currentPlatform = platform();
         if (currentPlatform === "android" || currentPlatform === "ios") {
             visiblePagesTop = 4;
@@ -212,7 +237,7 @@
         }
         isLoading.set(false);
     });
-    
+
     $effect(async () => {
         let tmp = await db.select({ count: count() }).from(schema.posts)
             .where(eq(schema.posts.topic_id, window.current_topic_id));
@@ -224,7 +249,54 @@
             }
         }
     });
-    
+    import DOMPurify from 'isomorphic-dompurify';
+
+    async function submitReply() {
+        if (!replyingToPost || !replyContent.trim()) {
+            return;
+        }
+
+        try {
+            isLoading.set(true);
+
+            // Construct the API endpoint for creating a reply
+            const url = `http://127.0.0.1:4805/posts`;
+
+            // Prepare the request payload
+            const payload = {
+                topic_id: window.current_topic_id,
+                raw: replyContent,
+                reply_to_post_number: replyingToPost.post_number
+            };
+
+            // Send the POST request to create the reply
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to create reply: ${response.status} ${response.statusText}`);
+            }
+
+            // Close the modal and reset state
+            replyModal = false;
+            replyContent = '';
+            replyingToPost = null;
+
+            // Fetch the latest posts to show the new reply
+            await fetchLatestTopicPosts();
+        } catch (error) {
+            console.error('Error submitting reply:', error);
+            // You might want to show an error message to the user here
+        } finally {
+            isLoading.set(false);
+        }
+    }
+
     async function load_topic_posts(topic_id: number) {
         let tmp = await dbb.browse_history.get({topic_id: topic_id});
         if (tmp) {
@@ -237,10 +309,10 @@
                 page_number: 1,
             });
         }
-        
+
         let offset = (currentPage-1)*NUM_POSTS_PER_PAGE;
         console.log("finding topic with id", topic_id);
-        
+
         // Run these queries in parallel with Promise.all
         await Promise.all([
             db.query.topics
@@ -252,12 +324,12 @@
                 .execute()
                 .then((result) => {
                     if (result) {
-                        siteTitle.set(emoji.replace_colons(result.title));
+                        siteTitle.set(emoji_converter.replace_colons(result.title));
                         current_topic = result;
                     }
 
                 }),
-                
+
             db.query.posts
                 .findMany({
                     limit: NUM_POSTS_PER_PAGE,
@@ -278,7 +350,7 @@
 <!--<div class="flex justify-between items-center">-->
 <!--    <Heading tag="h5" class="text-primary-700 dark:text-primary-500 mx-auto">-->
 <!--        {#if current_topic}-->
-<!--            {emoji.replace_colons(current_topic.title)}-->
+<!--            {emoji_converter.replace_colons(current_topic.title)}-->
 <!--        {:else}-->
 <!--            Topic {window.current_topic_id}-->
 <!--        {/if}-->
@@ -339,7 +411,11 @@
                         {#if user}
                             <Button
                                     class="block"
-                                    onclick={()=>{}}
+                                    onclick={() => {
+                                        replyingToPost = post;
+                                        replyContent = '';
+                                        replyModal = true;
+                                    }}
                                     title={`Reply to post #${post.post_number}`}
                                     aria-label={`Reply to post #${post.post_number}`}>
                                 Reply
@@ -366,5 +442,29 @@
             <Avatar class="w-10 h-10" onclick={()=>{window.scrollTo({left: 0, top: 0, behavior: 'smooth'});}}><Fa icon={faCaretUp} /></Avatar>
         </div>
     </div>
-
 {/if}
+
+<!-- Reply Modal -->
+<Modal bind:open={replyModal} size="xl" title={replyingToPost ? `Reply to post #${replyingToPost.post_number}` : 'Reply'}>
+    <div class="space-y-4">
+        <div class="h-64 border border-gray-300 rounded-lg overflow-hidden">
+            <MarkdownEditor bind:value={replyContent} mode="auto"  {carta}/>
+        </div>
+        <div class="flex justify-end space-x-2">
+            <Button color="alternative" onclick={() => replyModal = false}>Cancel</Button>
+            <Button color="primary" onclick={submitReply}>Submit Reply</Button>
+        </div>
+    </div>
+</Modal>
+
+
+<style>
+    /* Set your monospace font  */
+    /* Required to have the editor working correctly! */
+    :global(.carta-font-code) {
+        font-family: '...', monospace;
+        font-size: 1.1rem;
+        line-height: 1.1rem;
+        letter-spacing: normal;
+    }
+</style>
