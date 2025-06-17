@@ -9,6 +9,11 @@ export interface OauthUser {
     avatar?: string;
     provider: string;
     accessToken: string;
+    username: string;
+    admin: boolean;
+    moderator: boolean;
+    groups: Array<string>;
+    user_global_api_key: string;
 }
 
 
@@ -41,6 +46,11 @@ export async function login(provider: 'google' | 'github' | 'discourse'): Promis
             avatar: string | null;
             provider: string;
             access_token: string;
+            username: string;
+            admin: boolean;
+            moderator: boolean;
+            groups: Array<string>;
+            user_global_api_key: string;
         }>('login_with_provider', {provider});
         console.log('called login_with_provider', currentUser);
 
@@ -51,8 +61,13 @@ export async function login(provider: 'google' | 'github' | 'discourse'): Promis
             avatar: userInfo.avatar || undefined,
             provider: userInfo.provider as 'google' | 'github' | 'discourse',
             accessToken: userInfo.access_token,
+            username: userInfo.username,
+            admin: userInfo.admin,
+            moderator: userInfo.moderator,
+            groups: userInfo.groups,
+            user_global_api_key: userInfo.user_global_api_key,
         };
-        console.log('User logged in:', currentUser);
+        console.log('currentUser', currentUser);
 
         // Store user in Tauri Store
         const store = await getStore();

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::sync::mpsc;
+use clap::builder::Str;
 use tauri::Window;
 use tauri_plugin_opener::OpenerExt;
 use url::Url;
@@ -21,7 +22,7 @@ pub struct OAuthConfigs {
     pub discourse: OAuthConfig,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct UserInfo {
     pub id: String,
     pub name: String,
@@ -29,6 +30,11 @@ pub struct UserInfo {
     pub avatar: Option<String>,
     pub provider: String,
     pub access_token: String,
+    pub username: String,
+    pub admin: bool,
+    pub moderator: bool,
+    pub groups: Vec<String>,
+    pub user_global_api_key: String,
 }
 
 #[tauri::command]
@@ -172,42 +178,66 @@ pub async fn login_with_provider(
         .map_err(|err| err.to_string())?;
 
     // Extract user info based on provider
-    let (id, name, email, avatar) = match provider.as_str() {
-        "google" => (
-            user_info["sub"].as_str().unwrap_or("").to_string(),
-            user_info["name"].as_str().unwrap_or("").to_string(),
-            user_info["email"].as_str().unwrap_or("").to_string(),
-            user_info["picture"].as_str().map(|s| s.to_string()),
-        ),
-        "github" => (
-            user_info["id"].to_string(),
-            user_info["name"]
-                .as_str()
-                .unwrap_or_else(|| user_info["login"].as_str().unwrap_or(""))
-                .to_string(),
-            user_info["email"].as_str().unwrap_or("").to_string(),
-            user_info["avatar_url"].as_str().map(|s| s.to_string()),
-        ),
-        "discourse" => (
-            user_info["id"].to_string(),
-            user_info["name"]
-                .as_str()
-                .unwrap_or_else(|| user_info["login"].as_str().unwrap_or(""))
-                .to_string(),
-            user_info["email"].as_str().unwrap_or("").to_string(),
-            user_info["avatar_url"].as_str().map(|s| s.to_string()),
-        ),
-        _ => return Err(format!("Unsupported provider: {}", provider)),
-    };
+    if provider == "discourse" {
+        println!("user_info: {:?}", user_info);
+        let avatar_url = user_info.get("avatar_url").and_then(|v| Option::from(v.as_str().unwrap_or("").to_string()));
+        let userinfo = UserInfo {
+            id: user_info["external_id"].to_string(),
+            name: user_info["name"]
+                    .as_str()
+                    .unwrap_or_else(|| user_info["username"].as_str().unwrap_or(""))
+                    .to_string(),
+            email: user_info["email"].as_str().unwrap_or("").to_string(),
+            avatar: avatar_url,
+            provider: "discourse".to_string(),
+            access_token: access_token.to_string(),
+            username: user_info["username"].as_str().unwrap_or("").to_string(),
+            admin: user_info["admin"].as_str().unwrap_or("").to_string() == "true",
+            moderator: user_info["moderator"].as_str().unwrap_or("").to_string() == "true",
+            groups: user_info["groups"]
+                .as_array()
+                .ok_or("Expected groups to be an array")?
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect(),
+            user_global_api_key: user_info["user_global_api_key"].as_str().unwrap_or("").to_string(),
+        };
+        warn!("userinfo: {:?}", userinfo);
+        return Ok(userinfo)
+    } else {
+        let (id, name, email, avatar) = match provider.as_str() {
+            "google" => (
+                user_info["sub"].as_str().unwrap_or("").to_string(),
+                user_info["name"].as_str().unwrap_or("").to_string(),
+                user_info["email"].as_str().unwrap_or("").to_string(),
+                user_info["picture"].as_str().map(|s| s.to_string()),
+            ),
+            "github" => (
+                user_info["id"].to_string(),
+                user_info["name"]
+                        .as_str()
+                        .unwrap_or_else(|| user_info["login"].as_str().unwrap_or(""))
+                        .to_string(),
+                user_info["email"].as_str().unwrap_or("").to_string(),
+                user_info["avatar_url"].as_str().map(|s| s.to_string()),
+            ),
+            _ => return Err(format!("Unsupported provider: {}", provider)),
+        };
+        return Ok(UserInfo {
+            id,
+            name: name.clone(),
+            email,
+            avatar,
+            provider,
+            access_token: access_token.to_string(),
+            username: name,
+            admin: false,
+            moderator: false,
+            groups: vec![],
+            user_global_api_key: "".parse().unwrap(),
+        })
+    }
 
-    Ok(UserInfo {
-        id,
-        name,
-        email,
-        avatar,
-        provider,
-        access_token: access_token.to_string(),
-    })
 }
 
 // Helper function to generate a random string

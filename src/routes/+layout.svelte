@@ -195,7 +195,15 @@
                     <Button class="block text-sm" onclick={handleLogout}>Logout</Button>
                 </DropdownHeader>
                 <DropdownHeader>
-                    {user.name}
+                    {user?.name}
+                    {user?.email}
+                    {user?.id}
+                    {user?.provider}
+                    {user?.username}
+                    {user?.admin}
+                    {user?.moderator}
+                    {user?.groups}
+                    {user?.user_global_api_key}
                 </DropdownHeader>
             {:else }
                 <DropdownHeader>

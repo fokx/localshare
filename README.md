@@ -126,3 +126,6 @@ should return username, email, etc.
 
 safety: 
 * Is hardcoding client_secret in user-side app safe?
+
+https://oidc.xjtu.app
+http://192.168.174.93:3010
