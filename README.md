@@ -118,9 +118,9 @@ cp /f/tuic/.env /f/localshare/src-tauri
 rsync /f/tuic/tuic-client/src/ /f/localshare/src-tauri/src/tuicc/ -av --delete --exclude={"/mod.rs","/main.rs"}
 
 
-listen on localhost:8000 for result,
+listen on localhost:4810 for result,
 user use distrust to do oauth, 
-will callback localhost:8000,
+will callback localhost:4810,
 should return username, email, etc.
 (+what if it also returns Api-Key, which can be pre-generated for all users / at registration)
 

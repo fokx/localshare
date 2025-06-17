@@ -258,7 +258,7 @@ pub async fn handler_upload(
     }
 
     let res = async {
-        println!("{:?}", query_params);
+        info!("{:?}", query_params);
         let path = format!("{}/{}", savingDir, filename);
         debug!("saving to path: {}", path);
         // Save binary data to the file

@@ -44,7 +44,7 @@ pub async fn login_with_provider(
     provider: String,
 ) -> Result<UserInfo, String> {
     let configs = load_oauth_configs()?;
-    println!("configs: {:?}", &configs);
+    
     // Get provider-specific configuration
     let config = match provider.as_str() {
         "google" => configs.google,
@@ -54,7 +54,7 @@ pub async fn login_with_provider(
     };
     // OAuth configuration for the server
     let oauth_config = tauri_plugin_oauth::OauthConfig {
-        ports: Some(vec![8000, 8001, 8002]),
+        ports: Some(vec![4810, 4811, 4812]),
         response: Some("OAuth process completed. You can close this window.".into()),
     };
 
@@ -79,7 +79,7 @@ pub async fn login_with_provider(
 
     // Build the authorization URL
     let mut auth_url_obj = Url::parse(&config.auth_url).map_err(|err| err.to_string())?;
-    println!("redirect_uri: {:?}", &format!("http://localhost:{}", port));
+    info!("redirect_uri: {:?}", &format!("http://localhost:{}", port));
     auth_url_obj
         .query_pairs_mut()
         .append_pair("client_id", &config.client_id)
@@ -90,7 +90,7 @@ pub async fn login_with_provider(
     // Generate a random state for CSRF protection
     let state = generate_random_string(16);
     auth_url_obj.query_pairs_mut().append_pair("state", &state);
-    println!("{:?}", auth_url_obj.as_str());
+    info!("{:?}", auth_url_obj.as_str());
     app.opener()
         .open_url(auth_url_obj.as_str(), None::<&str>)
         .map_err(|err| err.to_string())?;
@@ -117,7 +117,7 @@ pub async fn login_with_provider(
         .await
         .map_err(|err| err.to_string())?;
 
-    println!("token_response: {:?}", token_response);
+    info!("token_response: {:?}", token_response);
     if !token_response.status().is_success() {
         return Err(format!(
             "Failed to exchange code for token: {}",
@@ -131,7 +131,7 @@ pub async fn login_with_provider(
         .as_str()
         .ok_or("No access token found")?;
 
-    println!("access_token: {:?}", access_token);
+    info!("access_token: {:?}", access_token);
 
     // Get user info
     let user_info_response = match provider.as_str() {
@@ -179,7 +179,7 @@ pub async fn login_with_provider(
 
     // Extract user info based on provider
     if provider == "discourse" {
-        println!("user_info: {:?}", user_info);
+        info!("user_info: {:?}", user_info);
         let avatar_url = user_info.get("avatar_url").and_then(|v| Option::from(v.as_str().unwrap_or("").to_string()));
         let userinfo = UserInfo {
             id: user_info["external_id"].to_string(),

@@ -250,17 +250,26 @@
         }
     });
     import DOMPurify from 'isomorphic-dompurify';
+    import {toast} from "@zerodevx/svelte-toast";
 
     async function submitReply() {
-        if (!replyingToPost || !replyContent.trim()) {
+        if (!replyingToPost) {
+            toast.push('not replying to any post');
             return;
         }
-
+        if (!replyContent.trim()){
+            toast.push('reply content cannot be empty');
+            return;
+        }
+        if (!user) {
+            toast.push('please login first');
+            return;
+        }
         try {
             isLoading.set(true);
 
             // Construct the API endpoint for creating a reply
-            const url = `http://127.0.0.1:4805/posts`;
+            const url = `http://127.0.0.1:4805/posts.json`;
 
             // Prepare the request payload
             const payload = {
@@ -273,7 +282,9 @@
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Api-Username': user.username,
+                    'Api-Key': user.user_global_api_key,
                 },
                 body: JSON.stringify(payload)
             });
@@ -281,6 +292,7 @@
             if (!response.ok) {
                 throw new Error(`Failed to create reply: ${response.status} ${response.statusText}`);
             }
+            toast.push('reply successfully');
 
             // Close the modal and reset state
             replyModal = false;

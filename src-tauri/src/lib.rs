@@ -267,8 +267,8 @@ pub fn run() {
                 let pem_serialized = cert.pem();
                 let pem = pem::parse(&pem_serialized)?;
                 let der_serialized = pem.contents();
-                println!("{pem_serialized}");
-                println!("{}", key_pair.serialize_pem());
+                info!("{pem_serialized}");
+                info!("{}", key_pair.serialize_pem());
                 // std::fs::create_dir_all("certs/")?;
                 std::fs::write(cer_dst.clone(), pem_serialized.as_bytes())?;
                 std::fs::write(cer_der_dst, der_serialized)?;

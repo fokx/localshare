@@ -218,8 +218,8 @@ pub fn generate_cert_key() -> (Certificate, KeyPair) {
     let subject_alt_names = vec!["hello.world.example".to_string(), "localhost".to_string()];
 
     let CertifiedKey { cert, key_pair } = generate_simple_self_signed(subject_alt_names).unwrap();
-    // println!("{}", cert.pem());
-    println!("{}", key_pair.serialize_pem());
+    // info!("{}", cert.pem());
+    info!("{}", key_pair.serialize_pem());
 
     return (cert, key_pair);
 }
