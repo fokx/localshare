@@ -537,7 +537,7 @@ pub fn collect_sys_info() -> String {
 #[tauri::command]
 pub fn start_oauth_server(window: Window) -> Result<u16, String> {
     let config = tauri_plugin_oauth::OauthConfig {
-        ports: Some(vec![4810, 8001, 4812]),
+        ports: Some(vec![4810, 4811, 4812]),
         response: Some("Login successful. You can close this window.".into()),
     };
 
