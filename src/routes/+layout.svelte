@@ -181,7 +181,7 @@
                     onclick={()=>{window.scrollTo({left: 0, top: document.body.scrollHeight, behavior: 'smooth'});}}>
                 <Fa icon={faCaretDown}/>
             </Avatar>
-            <Avatar id="avatar-menu" src="/favicon.png" class="rotate-80 me-1 ms-3 size-6"/>
+            <Avatar id="avatar-menu" src={user?.avatar_url ? user?.avatar_url : "/favicon.png"} class="me-1 ms-3 size-6"/>
             <NavHamburger/>
         </div>
         <Dropdown placement="bottom" triggeredBy="#avatar-menu">
@@ -197,6 +197,7 @@
                 <DropdownHeader>
                     {user?.name}
                     {user?.email}
+                    {user?.avatar_url}
                     {user?.id}
                     {user?.provider}
                     {user?.username}

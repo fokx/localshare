@@ -6,7 +6,7 @@ export interface OauthUser {
     id: string;
     name: string;
     email: string;
-    avatar?: string;
+    avatar_url?: string;
     provider: string;
     accessToken: string;
     username: string;
@@ -43,7 +43,7 @@ export async function login(provider: 'google' | 'github' | 'discourse'): Promis
             id: string;
             name: string;
             email: string;
-            avatar: string | null;
+            avatar_url: string | null;
             provider: string;
             access_token: string;
             username: string;
@@ -58,7 +58,7 @@ export async function login(provider: 'google' | 'github' | 'discourse'): Promis
             id: userInfo.id,
             name: userInfo.name,
             email: userInfo.email,
-            avatar: userInfo.avatar || undefined,
+            avatar_url: userInfo.avatar_url || undefined,
             provider: userInfo.provider as 'google' | 'github' | 'discourse',
             accessToken: userInfo.access_token,
             username: userInfo.username,

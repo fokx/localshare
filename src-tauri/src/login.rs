@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::mpsc;
 use clap::builder::Str;
+use dotenvy_macro::dotenv;
 use tauri::Window;
 use tauri_plugin_opener::OpenerExt;
 use url::Url;
@@ -27,7 +28,7 @@ pub struct UserInfo {
     pub id: String,
     pub name: String,
     pub email: String,
-    pub avatar: Option<String>,
+    pub avatar_url: Option<String>,
     pub provider: String,
     pub access_token: String,
     pub username: String,
@@ -55,7 +56,7 @@ pub async fn login_with_provider(
     // OAuth configuration for the server
     let oauth_config = tauri_plugin_oauth::OauthConfig {
         ports: Some(vec![4810, 4811, 4812]),
-        response: Some("OAuth process completed. You can close this window.".into()),
+        response: Some(dotenv!("OAUTH_CALLBACK_COMPLETE_HTML").into()),
     };
 
     // Create a channel to receive the authorization code
@@ -188,7 +189,7 @@ pub async fn login_with_provider(
                     .unwrap_or_else(|| user_info["username"].as_str().unwrap_or(""))
                     .to_string(),
             email: user_info["email"].as_str().unwrap_or("").to_string(),
-            avatar: avatar_url,
+            avatar_url: avatar_url,
             provider: "discourse".to_string(),
             access_token: access_token.to_string(),
             username: user_info["username"].as_str().unwrap_or("").to_string(),
@@ -205,7 +206,7 @@ pub async fn login_with_provider(
         warn!("userinfo: {:?}", userinfo);
         return Ok(userinfo)
     } else {
-        let (id, name, email, avatar) = match provider.as_str() {
+        let (id, name, email, avatar_url) = match provider.as_str() {
             "google" => (
                 user_info["sub"].as_str().unwrap_or("").to_string(),
                 user_info["name"].as_str().unwrap_or("").to_string(),
@@ -227,7 +228,7 @@ pub async fn login_with_provider(
             id,
             name: name.clone(),
             email,
-            avatar,
+            avatar_url,
             provider,
             access_token: access_token.to_string(),
             username: name,
