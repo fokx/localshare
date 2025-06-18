@@ -51,7 +51,6 @@
     let postsCount = $state();
     let currentPlatform;
     let visiblePagesTop = $state(4);
-    let visiblePagesBottom = $state(7);
     let isDesktop = $state(false);
     import { siteTitle } from '$lib';
     import {getCurrentUser, type OauthUser} from '$lib/auth';
@@ -216,7 +215,8 @@
                 window.scrollTo({left: 0, top: 0, behavior: 'smooth'});
             });
     }
-
+    let visiblePagesBottomSmall = 5;
+    let visiblePagesBottomLarge = 14;
     onMount(async () => {
         isLoading.set(true);
         user = await getCurrentUser();
@@ -229,11 +229,9 @@
         currentPlatform = platform();
         if (currentPlatform === "android" || currentPlatform === "ios") {
             visiblePagesTop = 4;
-            visiblePagesBottom = 7;
         } else {
             isDesktop = true;
             visiblePagesTop = 8;
-            visiblePagesBottom = 15;
         }
         isLoading.set(false);
     });
@@ -443,8 +441,11 @@
 {/if}
 {#if totalPages>1}
     <div class="flex justify-between items-center">
-        <div class="mx-auto">
-            <PaginationNav visiblePages={Math.min(visiblePagesBottom, totalPages)} class="sticky" {currentPage} {totalPages} onPageChange={handlePageChange} />
+        <div class="mx-auto sm:hidden">
+            <PaginationNav visiblePages={Math.min(visiblePagesBottomSmall, totalPages)} class="sticky" {currentPage} {totalPages} onPageChange={handlePageChange} />
+        </div>
+        <div class="mx-auto max-sm:hidden">
+            <PaginationNav visiblePages={Math.min(visiblePagesBottomLarge, totalPages)} class="sticky" {currentPage} {totalPages} onPageChange={handlePageChange} />
         </div>
         <div class="flex">
             <Avatar class="w-10 h-10 mr-2" onclick={()=>{history.back();}}>

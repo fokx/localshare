@@ -32,7 +32,8 @@
     let topicsCount = $state();
     let currentPlatform;
     let visiblePagesTop = $state(3);
-    let visiblePagesBottom = $state(7);
+    let visiblePagesBottomSmall = 7;
+    let visiblePagesBottomLarge = 15;
     let isDesktop = $state(false);
 
     async function loadTopics() {
@@ -343,11 +344,9 @@
         currentPlatform = platform();
         if (currentPlatform==="android"||currentPlatform==="ios"){
             visiblePagesTop=4;
-            visiblePagesBottom=7;
         } else {
             isDesktop=true;
             visiblePagesTop=8;
-            visiblePagesBottom=15;
         }
 
         scrollHandler = () => {
@@ -442,7 +441,10 @@
     {/if}
 
 {#if totalPages > 1}
-    <div class="flex justify-center">
-        <PaginationNav visiblePages={Math.min(visiblePagesBottom, totalPages)} class="sticky" {currentPage} {totalPages} onPageChange={handlePageChange} />
+    <div class="flex justify-center sm:hidden">
+        <PaginationNav visiblePages={Math.min(visiblePagesBottomSmall, totalPages)} class="sticky" {currentPage} {totalPages} onPageChange={handlePageChange} />
+    </div>
+    <div class="flex justify-center max-sm:hidden">
+        <PaginationNav visiblePages={Math.min(visiblePagesBottomLarge, totalPages)} class="sticky" {currentPage} {totalPages} onPageChange={handlePageChange} />
     </div>
 {/if}
