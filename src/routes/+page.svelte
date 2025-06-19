@@ -62,8 +62,9 @@
     // Add this flag as a state
     let skipSessionReload = $state(false);
 
-   // Reference to chat container
+   // Reference to chat container and textarea
    let chatContainer;
+   let textareaElement;
 
    // Scroll to bottom function
    function scrollToBottom() {
@@ -72,12 +73,119 @@
        }
    }
 
-   onMount(() => {
-       scrollToBottom(); // Scroll when chat is mounted
-   });
+   // Auto-resize textarea function
+   function autoResize() {
+       if (textareaElement) {
+           // Reset height to auto to get the correct scrollHeight
+           textareaElement.style.height = 'auto';
 
-    // Load chat sessions and listen for new messages
+           // Set the height to the scrollHeight (content height)
+           const newHeight = Math.min(textareaElement.scrollHeight, 150); // 150px is approximately 5 lines
+           textareaElement.style.height = `${newHeight}px`;
+       }
+   }
+
+   // Load chat sessions and listen for new messages
     onMount(async () => {
+        // Scroll to bottom when chat is mounted
+        scrollToBottom();
+
+        // Initialize textarea height if it exists
+        setTimeout(() => {
+            if (textareaElement) {
+                autoResize();
+            }
+        }, 0);
+
+        // Set the bottom nav height CSS variable
+        const setBottomNavHeight = () => {
+            // Check if we're on a large screen (sm breakpoint in Tailwind is 640px)
+            const isLargeScreen = window.innerWidth >= 640;
+
+            // On large screens, always set bottom-nav-height to 0
+            if (isLargeScreen) {
+                document.documentElement.style.setProperty('--bottom-nav-height', '0px');
+                console.log('Large screen detected, setting bottom-nav-height to 0');
+                return;
+            }
+
+            // For small screens, continue with the existing logic
+            // Try different possible selectors for the bottom navbar
+            const bottomNav = document.querySelector('.bottom-nav, [class*="bottom-nav"], nav[class*="bottom"], .flowbite-bottom-nav, div[class*="flowbite-bottom-nav"], div[class*="bottom-nav"], nav.sticky, nav.fixed, nav[class*="sm:hidden"]');
+
+            // Debug: Log all elements that match our selectors individually
+            console.log('Debugging bottom nav selectors:');
+            ['.bottom-nav', '[class*="bottom-nav"]', 'nav[class*="bottom"]', '.flowbite-bottom-nav', 
+             'div[class*="flowbite-bottom-nav"]', 'div[class*="bottom-nav"]', 'nav.sticky', 'nav.fixed', 
+             'nav[class*="sm:hidden"]'].forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                console.log(`Selector "${selector}" matched ${elements.length} elements`);
+                elements.forEach((el, i) => {
+                    console.log(`  Element ${i+1}: tag=${el.tagName}, classes=${el.className}, height=${el.offsetHeight}`);
+                });
+            });
+
+            if (bottomNav) {
+                const bottomNavHeight = bottomNav.offsetHeight;
+                document.documentElement.style.setProperty('--bottom-nav-height', `${bottomNavHeight}px`);
+                console.log('Bottom nav found:', bottomNav);
+                console.log('Bottom nav height set to:', bottomNavHeight);
+                console.log('Bottom nav classes:', bottomNav.className);
+            } else {
+                // On small screens, use a default value of 60px if we can't find the bottom navbar
+                document.documentElement.style.setProperty('--bottom-nav-height', '60px');
+                console.log('Bottom nav not found on small screen, using default height of 60px');
+
+                // Try a more direct approach - look for the BottomNav in the layout
+                const allNavs = document.querySelectorAll('nav');
+                console.log(`Found ${allNavs.length} nav elements on the page:`);
+                allNavs.forEach((nav, i) => {
+                    console.log(`  Nav ${i+1}: classes=${nav.className}, height=${nav.offsetHeight}`);
+                });
+
+                // Try to find the bottom nav by looking for specific elements that are likely to be part of it
+                const bottomNavItems = document.querySelectorAll('[class*="bottom-nav-item"]');
+                if (bottomNavItems.length > 0) {
+                    console.log(`Found ${bottomNavItems.length} bottom nav items`);
+                    // Find the parent element that might be the bottom nav
+                    const possibleBottomNav = bottomNavItems[0].closest('nav') || bottomNavItems[0].parentElement;
+                    if (possibleBottomNav) {
+                        const bottomNavHeight = possibleBottomNav.offsetHeight;
+                        document.documentElement.style.setProperty('--bottom-nav-height', `${bottomNavHeight}px`);
+                        console.log('Possible bottom nav found via nav items:', possibleBottomNav);
+                        console.log('Bottom nav height set to:', bottomNavHeight);
+                        console.log('Bottom nav classes:', possibleBottomNav.className);
+                    }
+                }
+
+                // As a last resort, look for elements with specific content that might be in the bottom nav
+                const homeNavItem = Array.from(document.querySelectorAll('a, button, div')).find(el => 
+                    el.textContent?.includes('Home') && 
+                    (el.closest('nav') || el.closest('[class*="bottom"]'))
+                );
+                if (homeNavItem) {
+                    const possibleBottomNav = homeNavItem.closest('nav') || homeNavItem.closest('[class*="bottom"]') || homeNavItem.parentElement?.parentElement;
+                    if (possibleBottomNav) {
+                        const bottomNavHeight = possibleBottomNav.offsetHeight;
+                        document.documentElement.style.setProperty('--bottom-nav-height', `${bottomNavHeight}px`);
+                        console.log('Possible bottom nav found via Home nav item:', possibleBottomNav);
+                        console.log('Bottom nav height set to:', bottomNavHeight);
+                        console.log('Bottom nav classes:', possibleBottomNav.className);
+                    }
+                }
+            }
+        };
+
+        // Initial setting
+        setTimeout(setBottomNavHeight, 100); // Small delay to ensure DOM is fully rendered
+
+        // Update on resize
+        window.addEventListener('resize', setBottomNavHeight);
+
+        // Add a mutation observer to detect when the bottom nav might be added/removed from DOM
+        const observer = new MutationObserver(setBottomNavHeight);
+        observer.observe(document.body, { childList: true, subtree: true });
+
         try {
             settings_store = await load('settings.json', {autoSave: true});
             current_settings = await settings_store.get('localsend');
@@ -145,6 +253,11 @@
             isLoading = false;
 
             return () => {
+                // Clean up event listeners
+                window.removeEventListener('resize', setBottomNavHeight);
+                observer.disconnect();
+
+                // Clean up message listeners
                 unlistenChatMessage();
                 unlistenRefreshPeers();
             };
@@ -200,7 +313,7 @@
            if (session) {
                session.unread_count = 0;
            }
-           
+
            skipSessionReload = false; // Allow session reload when needed
        } catch (error) {
            console.error('Error marking messages as read:', error);
@@ -361,9 +474,9 @@
                 {/if}
 
                 <!-- Chat messages -->
-                <div class="flex flex-col h-screen">
+                <div class="flex flex-col h-full relative">
     <!-- Chat messages container -->
-    <div class="flex-1 overflow-y-auto p-4" style="margin-bottom: var(--input-box-height, 64px);" bind:this={chatContainer}>
+    <div class="flex-1 overflow-y-auto p-4 pb-40" bind:this={chatContainer}>
         {#if chatHistory.length === 0}
             <p class="text-center text-gray-500 dark:text-gray-400">
                 No messages yet. Start the conversation!
@@ -393,14 +506,20 @@
     </div>
 
     <!-- Chat input box (always visible) -->
-    <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky bottom-0" style="--input-box-height: 64px;">
+    <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 fixed left-0 right-0 z-50" style="bottom: var(--bottom-nav-height, 0);">
         <div class="flex">
-            <Input
-                class="flex-1"
-                placeholder="Type a message..."
-                bind:value={newMessage}
-                on:keydown={handleKeydown}
-            />
+            <div class="flex-1 relative">
+                <textarea
+                    class="w-full px-3 py-2 text-sm text-gray-900 bg-white rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    placeholder="Type a message..."
+                    bind:value={newMessage}
+                    onkeydown={handleKeydown}
+                    oninput={autoResize}
+                    rows="1"
+                    style="min-height: 38px; max-height: 150px; resize: none; overflow-y: auto;"
+                    bind:this={textareaElement}
+                ></textarea>
+            </div>
             <Button class="ml-2" color="blue" onclick={sendMessage}>
                 <Fa icon={faPaperPlane} />
             </Button>
