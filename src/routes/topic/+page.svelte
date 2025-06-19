@@ -414,7 +414,7 @@
                     {#if post.cooked}
                         {@html process_cooked(post.cooked)}
                     {:else if post.excerpt}
-                        {@html process_cooked(post.excerpt + '<br>......')}
+                        {@html process_cooked(post.excerpt + '<br>......', true)}
                     {/if}
                     <div class="flex justify-end items-center">
                         <span class="text-blue-800 dark:text-blue-500 text-xl mr-2"># {post.post_number}</span>

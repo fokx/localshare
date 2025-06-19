@@ -433,7 +433,7 @@
 
                     </div>
                     <div class="primary-links">
-                        {@html process_cooked(topic.excerpt)}
+                        {@html process_cooked(topic.excerpt, true)}
                     </div>
                 </Card>
             </div>
