@@ -4,6 +4,7 @@ use socket2::{Domain, Socket, Type};
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
+use std::time::SystemTime;
 
 pub(crate) const FINGERPRINT_LENGTH: u16 = 32;
 pub(crate) const SESSION_LENGTH: u16 = 32;
@@ -222,4 +223,48 @@ pub fn generate_cert_key() -> (Certificate, KeyPair) {
     info!("{}", key_pair.serialize_pem());
 
     return (cert, key_pair);
+}
+
+// Chat message structures
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ChatMessage {
+    pub id: String,
+    pub sender_fingerprint: String,
+    pub sender_alias: String,
+    pub receiver_fingerprint: String,
+    pub content: String,
+    pub timestamp: SystemTime,
+    pub read: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct ChatHistory {
+    pub messages: Vec<ChatMessage>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ChatSession {
+    pub peer_fingerprint: String,
+    pub peer_alias: String,
+    pub last_message: Option<ChatMessage>,
+    pub unread_count: u32,
+    pub color: String, // Background color for this chat
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct ChatSessions {
+    pub sessions: HashMap<String, ChatSession>, // Key is peer_fingerprint
+}
+
+// Generate a random color for chat backgrounds
+pub fn generate_random_color() -> String {
+    use rand::Rng;
+    let mut rng = rand::rng();
+
+    // Generate pastel colors (lighter shades) for better readability
+    let r = rng.random_range(180..=240);
+    let g = rng.random_range(180..=240);
+    let b = rng.random_range(180..=240);
+
+    format!("#{:02x}{:02x}{:02x}", r, g, b)
 }

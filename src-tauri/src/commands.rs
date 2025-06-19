@@ -1,6 +1,7 @@
 use crate::common::{
-    create_udp_socket, generate_random_string, Files, Message, PeerInfo, PrepareUploadRequest,
-    Session, Sessions, UploadFile, FILEID_LENGTH,
+    create_udp_socket, generate_random_color, generate_random_string, ChatHistory, ChatMessage,
+    ChatSession, ChatSessions, Files, Message, PeerInfo, PrepareUploadRequest, Session, Sessions,
+    UploadFile, FILEID_LENGTH,
 };
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use std::collections::HashMap;
@@ -301,6 +302,26 @@ pub fn handle_incoming_request(
 }
 
 #[tauri::command(rename_all = "snake_case")]
+pub fn get_peers(
+    app_handle: tauri::AppHandle,
+) -> anyhow::Result<Vec<PeerInfo>, String> {
+    debug!("get_peers");
+
+    let peers_store = app_handle.store("peers.json").unwrap();
+    let mut peers = Vec::new();
+
+    for key in peers_store.keys() {
+        if let Some(peer_value) = peers_store.get(&key) {
+            let peer_info: PeerInfo = serde_json::from_value(peer_value)
+                .map_err(|e| format!("Failed to parse peer info: {}", e))?;
+            peers.push(peer_info);
+        }
+    }
+
+    Ok(peers)
+}
+
+#[tauri::command(rename_all = "snake_case")]
 pub async fn announce_once(
     my_response: tauri::State<'_, Message>,
 ) -> anyhow::Result<String, String> {
@@ -547,3 +568,5 @@ pub fn start_oauth_server(window: Window) -> Result<u16, String> {
     })
             .map_err(|err| err.to_string())
 }
+
+

@@ -215,7 +215,7 @@
         </Dropdown>
         <NavUl {activeUrl} transition={fly} transitionParams={{ y: -20, duration: 250 }}>
             <NavLi href="/">Home</NavLi>
-            <NavLi href="/chat">Chat</NavLi>
+            <NavLi href="/topics">Topics</NavLi>
             <NavLi href="/localsend">LocalSend</NavLi>
             <NavLi href="/dufs">Dufs</NavLi>
             <NavLi href="/discourse">Discourse</NavLi>
@@ -259,7 +259,7 @@
             <Fa icon={faDiscourse}/>
         </BottomNavItem>
 
-        <BottomNavItem btnName="Chat" href="/chat">
+        <BottomNavItem btnName="Topics" href="/topics">
             <Fa icon={faMessage}/>
         </BottomNavItem>
 

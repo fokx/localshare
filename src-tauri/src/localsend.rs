@@ -1,5 +1,5 @@
 use crate::common::{
-    create_udp_socket, generate_random_string, Message, PeerInfo, PrepareUploadParams,
+    create_udp_socket, generate_random_string, ChatMessage, Message, PeerInfo, PrepareUploadParams,
     PrepareUploadRequest, PrepareUploadRequestAndSessionId, Session, Sessions, TokenAndUploadFile,
     UploadQuery, FILE_TOKEN_LENGTH, SESSION_LENGTH,
 };
@@ -196,6 +196,35 @@ pub async fn handler_prepare_upload(
 
 // #[axum::debug_handler]
 #[allow(non_snake_case)]
+pub async fn handler_chat(
+    State(state): State<Arc<AppState>>,
+    Json(chat_message): Json<ChatMessage>,
+) -> Json<anyhow::Result<(), String>> {
+    debug!("handler_chat: received chat message: {:?}", chat_message);
+
+    let app_handle = state.app_handle.clone();
+
+    // Forward the chat message to the frontend
+    match app_handle.emit("chat-message-received", chat_message.clone()) {
+        Ok(_) => {
+            debug!("handler_chat: emitted chat-message-received event");
+
+            // Call the handle_incoming_chat_message command to process the message
+            match crate::chat_commands::handle_incoming_chat_message(app_handle, chat_message) {
+                Ok(_) => Json(Ok(())),
+                Err(e) => {
+                    error!("Error handling incoming chat message: {}", e);
+                    Json(Err(format!("Error handling incoming chat message: {}", e)))
+                }
+            }
+        },
+        Err(e) => {
+            error!("Error emitting chat-message-received event: {}", e);
+            Json(Err(format!("Error emitting chat-message-received event: {}", e)))
+        }
+    }
+}
+
 pub async fn handler_upload(
     State(state): State<Arc<AppState>>,
     Query(query_params): Query<UploadQuery>,

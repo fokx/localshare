@@ -19,6 +19,8 @@
     let current_settings;
     let peers_store: Store<any>;
     let peers = $state([]);
+    let savingDir = $state("/storage/emulated/0/");
+    let fingerprint = $state("");
     import {siteTitle} from "$lib";
 
     let announce_btn_disable = $state(false);
@@ -139,8 +141,7 @@
             }
         });
     }
-    let savingDir = $state("/storage/emulated/0/");
-    let fingerprint = $state("");
+
     async function acquire_permission_android(event: Event) {
         event.preventDefault();
         invoke('acquire_permission_android')

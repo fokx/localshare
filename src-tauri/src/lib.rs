@@ -25,6 +25,7 @@ mod localsend;
 mod reverse_proxy;
 mod socks2http;
 mod tuicc;
+mod chat_commands;
 use sha2::{Digest, Sha256};
 use std::fs::read;
 
@@ -40,7 +41,7 @@ use common::{generate_random_string, Message, Sessions, FINGERPRINT_LENGTH};
 // use std::io::prelude::*;
 use crate::rustls::crypto::CryptoProvider;
 use localsend::{
-    daemon, handler_prepare_upload, handler_register, handler_upload, periodic_announce,
+    daemon, handler_chat, handler_prepare_upload, handler_register, handler_upload, periodic_announce,
 };
 use rcgen::{date_time_ymd, CertificateParams, DistinguishedName, DnType, KeyPair, SanType};
 use reverse_proxy::{
@@ -351,6 +352,7 @@ pub fn run() {
                         post(handler_prepare_upload),
                     )
                     .route("/api/localsend/v2/upload", post(handler_upload))
+                    .route("/api/localsend/v2/chat", post(handler_chat))
                     .route("/api/files", get(list_files))
                     .route("/api/files/download/{filename}", get(download_file))
                     .route("/api/files/upload/{filename}", post(upload_file))
@@ -522,7 +524,12 @@ pub fn run() {
             commands::handle_incoming_request,
             commands::send_file_to_peer,
             commands::start_oauth_server,
-            login::login_with_provider
+            login::login_with_provider,
+            chat_commands::send_chat_message,
+            chat_commands::handle_incoming_chat_message,
+            chat_commands::get_chat_history,
+            chat_commands::get_chat_sessions,
+            chat_commands::mark_messages_as_read
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
