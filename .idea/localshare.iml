@@ -13,6 +13,8 @@
       <excludeFolder url="file://$MODULE_DIR$/src-tauri/res" />
       <excludeFolder url="file://$MODULE_DIR$/src-tauri/gen/android" />
       <excludeFolder url="file://$MODULE_DIR$/src-tauri/gen/schemas" />
+      <excludeFolder url="file://$MODULE_DIR$/build" />
+      <excludeFolder url="file://$MODULE_DIR$/jsons" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

@@ -131,3 +131,16 @@ safety:
 
 https://oidc.xjtu.app
 http://192.168.174.93:3010
+
+
+## what do I want to achieve in chat? (why use this app over existing IM app)
+* visually prevent sending messages to the wrong person / group 
+by automatically using different background colors for different chat
+* support chatting with peers in the local network (without an external / central server)
+* support chatting with peers via Bluetooth
+* automatic message synchronization across devices
+* export messages
+* support sending audio messages and automatic transcription
+* support P2P video / audio calling
+* support group video / audio meeting
+* support chat thread
