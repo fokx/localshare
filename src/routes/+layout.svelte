@@ -69,11 +69,11 @@
 
     $effect(() => {
         activeUrl = page.url.pathname;
-        if (activeUrl === '/') {
-            currentSiteTitle = SITE_TITLE;
-        } else {
+        // if (activeUrl === '/') {
+        //     currentSiteTitle = SITE_TITLE;
+        // } else {
             currentSiteTitle = $siteTitle;
-        }
+        // }
     });
 
     function toggleDarkMode(event) {

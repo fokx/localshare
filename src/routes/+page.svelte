@@ -278,7 +278,7 @@
         <!-- Chat sessions sidebar -->
         <div class="w-1/4 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
             <div class="p-4">
-                <Heading tag="h3" class="mb-4">Chat Sessions</Heading>
+                <Heading tag="h5" class="mb-4">Chat Sessions</Heading>
 
                 {#if isLoading}
                     <div class="flex justify-center my-4">
@@ -314,7 +314,7 @@
             </div>
 
             <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-                <Heading tag="h3" class="mb-4">Available Peers</Heading>
+                <Heading tag="h5" class="mb-4">Available Peers</Heading>
                 <Button class="w-full mb-4" disabled={announce_btn_disable} onclick={refreshPeers}>Discover Peers</Button>
 
                 {#if peers.length === 0}
