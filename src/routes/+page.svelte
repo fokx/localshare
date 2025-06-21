@@ -143,32 +143,16 @@
                     console.log(`  Nav ${i+1}: classes=${nav.className}, height=${nav.offsetHeight}`);
                 });
 
-                // Try to find the bottom nav by looking for specific elements that are likely to be part of it
-                const bottomNavItems = document.querySelectorAll('[class*="bottom-nav-item"]');
+                let bottomNavItems = document.querySelectorAll('[id="bottom-nav-bar"]');
                 if (bottomNavItems.length > 0) {
                     console.log(`Found ${bottomNavItems.length} bottom nav items`);
                     // Find the parent element that might be the bottom nav
-                    const possibleBottomNav = bottomNavItems[0].closest('nav') || bottomNavItems[0].parentElement;
+                    const possibleBottomNav = bottomNavItems[0];
+                    console.log('possibleBottomNav', possibleBottomNav);
                     if (possibleBottomNav) {
                         const bottomNavHeight = possibleBottomNav.offsetHeight;
                         document.documentElement.style.setProperty('--bottom-nav-height', `${bottomNavHeight}px`);
-                        console.log('Possible bottom nav found via nav items:', possibleBottomNav);
-                        console.log('Bottom nav height set to:', bottomNavHeight);
-                        console.log('Bottom nav classes:', possibleBottomNav.className);
-                    }
-                }
-
-                // As a last resort, look for elements with specific content that might be in the bottom nav
-                const homeNavItem = Array.from(document.querySelectorAll('a, button, div')).find(el => 
-                    el.textContent?.includes('Home') && 
-                    (el.closest('nav') || el.closest('[class*="bottom"]'))
-                );
-                if (homeNavItem) {
-                    const possibleBottomNav = homeNavItem.closest('nav') || homeNavItem.closest('[class*="bottom"]') || homeNavItem.parentElement?.parentElement;
-                    if (possibleBottomNav) {
-                        const bottomNavHeight = possibleBottomNav.offsetHeight;
-                        document.documentElement.style.setProperty('--bottom-nav-height', `${bottomNavHeight}px`);
-                        console.log('Possible bottom nav found via Home nav item:', possibleBottomNav);
+                        console.log('Possible bottom nav found via bottom nav items:', possibleBottomNav);
                         console.log('Bottom nav height set to:', bottomNavHeight);
                         console.log('Bottom nav classes:', possibleBottomNav.className);
                     }

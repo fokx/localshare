@@ -253,7 +253,7 @@
         {@render children()}
     </div>
     <!--</container>-->
-    <BottomNav {activeUrl} position="sticky" outerClass="bg-white bg:bg-dark-800 sm:hidden" innerClass="grid-cols-5">
+    <BottomNav id="bottom-nav-bar" {activeUrl} position="sticky" outerClass="bg-white bg:bg-dark-800 sm:hidden" innerClass="grid-cols-5">
         <!--<BottomNav {activeUrl} position="absolute" innerClass="grid-cols-3">-->
         <BottomNavItem btnName="Discourse" onclick={event => window.location = "http://127.0.0.1:4805/"}>
             <Fa icon={faDiscourse}/>
