@@ -1,6 +1,6 @@
 {
   "name": "localshare",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "",
   "type": "module",
   "scripts": {
@@ -63,7 +63,6 @@
     "dotenv": "^16.5.0",
     "drizzle-orm": "1.0.0-beta.1-c0277c0",
     "emoji-js": "^3.8.1",
-    "flowbite-svelte": "link:../flowbite-svelte",
     "isomorphic-dompurify": "^2.25.0",
     "plugin-sql": "link:../plugins-workspace/plugins/sql",
     "svelte-fa": "^4.0.4",
@@ -74,6 +73,7 @@
     "tauri-plugin-view-api": "^0.0.5"
   },
   "devDependencies": {
+    "flowbite-svelte": "1.7.1",
     "@castlenine/svelte-qrcode": "^2.3.0",
     "@sveltejs/adapter-static": "^3.0.8",
     "@sveltejs/kit": "^2.21.5",
