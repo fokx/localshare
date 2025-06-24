@@ -39,21 +39,14 @@
     }
 
     // State
-    let chatSessions = $state<ChatSessions>({ sessions: {} });
+    let chatSessions = $state<ChatSessions>({sessions: {}});
     let selectedPeer = $state<string | null>(null);
     let chatHistory = $state<ChatMessage[]>([]);
     let newMessage = $state('');
     let peers = $state([]);
     let isLoading = $state(true);
     let announce_btn_disable = $state(false);
-    async function announce_once() {
-        // change the button color gradully to gray and then back to blue
-        announce_btn_disable = true;
-        setTimeout(() => {
-            announce_btn_disable = false;
-        }, 1000);
-        await invoke("announce_once");
-    }
+
     let settings_store: Store<any>;
     let current_settings;
     let savingDir = $state("/storage/emulated/0/");
@@ -62,30 +55,30 @@
     // Add this flag as a state
     let skipSessionReload = $state(false);
 
-   // Reference to chat container and textarea
-   let chatContainer;
-   let textareaElement;
+    // Reference to chat container and textarea
+    let chatContainer;
+    let textareaElement;
 
-   // Scroll to bottom function
-   function scrollToBottom() {
-       if (chatContainer) {
-           chatContainer.scrollTop = chatContainer.scrollHeight;
-       }
-   }
+    // Scroll to bottom function
+    function scrollToBottom() {
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    }
 
-   // Auto-resize textarea function
-   function autoResize() {
-       if (textareaElement) {
-           // Reset height to auto to get the correct scrollHeight
-           textareaElement.style.height = 'auto';
+    // Auto-resize textarea function
+    function autoResize() {
+        if (textareaElement) {
+            // Reset height to auto to get the correct scrollHeight
+            textareaElement.style.height = 'auto';
 
-           // Set the height to the scrollHeight (content height)
-           const newHeight = Math.min(textareaElement.scrollHeight, 150); // 150px is approximately 5 lines
-           textareaElement.style.height = `${newHeight}px`;
-       }
-   }
+            // Set the height to the scrollHeight (content height)
+            const newHeight = Math.min(textareaElement.scrollHeight, 150); // 150px is approximately 5 lines
+            textareaElement.style.height = `${newHeight}px`;
+        }
+    }
 
-   // Load chat sessions and listen for new messages
+    // Load chat sessions and listen for new messages
     onMount(async () => {
         // Scroll to bottom when chat is mounted
         scrollToBottom();
@@ -115,13 +108,13 @@
 
             // Debug: Log all elements that match our selectors individually
             console.log('Debugging bottom nav selectors:');
-            ['.bottom-nav', '[class*="bottom-nav"]', 'nav[class*="bottom"]', '.flowbite-bottom-nav', 
-             'div[class*="flowbite-bottom-nav"]', 'div[class*="bottom-nav"]', 'nav.sticky', 'nav.fixed', 
-             'nav[class*="sm:hidden"]'].forEach(selector => {
+            ['.bottom-nav', '[class*="bottom-nav"]', 'nav[class*="bottom"]', '.flowbite-bottom-nav',
+                'div[class*="flowbite-bottom-nav"]', 'div[class*="bottom-nav"]', 'nav.sticky', 'nav.fixed',
+                'nav[class*="sm:hidden"]'].forEach(selector => {
                 const elements = document.querySelectorAll(selector);
                 console.log(`Selector "${selector}" matched ${elements.length} elements`);
                 elements.forEach((el, i) => {
-                    console.log(`  Element ${i+1}: tag=${el.tagName}, classes=${el.className}, height=${el.offsetHeight}`);
+                    console.log(`  Element ${i + 1}: tag=${el.tagName}, classes=${el.className}, height=${el.offsetHeight}`);
                 });
             });
 
@@ -140,7 +133,7 @@
                 const allNavs = document.querySelectorAll('nav');
                 console.log(`Found ${allNavs.length} nav elements on the page:`);
                 allNavs.forEach((nav, i) => {
-                    console.log(`  Nav ${i+1}: classes=${nav.className}, height=${nav.offsetHeight}`);
+                    console.log(`  Nav ${i + 1}: classes=${nav.className}, height=${nav.offsetHeight}`);
                 });
 
                 let bottomNavItems = document.querySelectorAll('[id="bottom-nav-bar"]');
@@ -168,7 +161,7 @@
 
         // Add a mutation observer to detect when the bottom nav might be added/removed from DOM
         const observer = new MutationObserver(setBottomNavHeight);
-        observer.observe(document.body, { childList: true, subtree: true });
+        observer.observe(document.body, {childList: true, subtree: true});
 
         try {
             settings_store = await load('settings.json', {autoSave: true});
@@ -188,7 +181,7 @@
                     peers.push(peerValue);
                 }
             }
-            console.log('loadiing peers');
+            console.log('loading peers');
             $state.snapshot(peers);
 
             // Discover more peers
@@ -272,46 +265,45 @@
     // Load chat history for a specific peer
     async function loadChatHistory(peerFingerprint: string) {
         try {
-            const history = await invoke('get_chat_history', { peerFingerprint });
+            const history = await invoke('get_chat_history', {peerFingerprint});
             chatHistory = history.messages;
             console.log('Chat history:');
             $state.snapshot(chatHistory);
 
             // Mark messages as read
             await markMessagesAsRead(peerFingerprint);
-            scrollToBottom(); // Scroll when chat is mounted
+            scrollToBottom();
         } catch (error) {
             console.error('Error loading chat history:', error);
             toast.push('Error loading chat history');
         }
     }
 
-   // Mark messages as read without reloading sessions
-   async function markMessagesAsRead(peerFingerprint: string) {
-       try {
-           skipSessionReload = true; // Temporarily skip session reload to avoid the loop
-           await invoke('mark_messages_as_read', { peerFingerprint });
+    // Mark messages as read without reloading sessions
+    async function markMessagesAsRead(peerFingerprint: string) {
+        try {
+            skipSessionReload = true; // Temporarily skip session reload to avoid the loop
+            await invoke('mark_messages_as_read', {peerFingerprint});
 
-           // Optionally, update session data in memory without fully reloading
-           const session = chatSessions.sessions[peerFingerprint];
-           if (session) {
-               session.unread_count = 0;
-           }
+            // Optionally, update session data in memory without fully reloading
+            const session = chatSessions.sessions[peerFingerprint];
+            if (session) {
+                session.unread_count = 0;
+            }
 
-           skipSessionReload = false; // Allow session reload when needed
-       } catch (error) {
-           console.error('Error marking messages as read:', error);
-           skipSessionReload = false;
-       }
-   }
+            skipSessionReload = false; // Allow session reload when needed
+        } catch (error) {
+            console.error('Error marking messages as read:', error);
+            skipSessionReload = false;
+        }
+    }
 
     // Send a message to a peer
     async function sendMessage() {
-        console.log('pre sending ', newMessage, ' to ', selectedPeer);
         if (!selectedPeer || !newMessage.trim()) {
             return;
         }
-        console.log('sending ', newMessage, ' to ', selectedPeer);
+        console.log('sending message to peer ', selectedPeer, newMessage);
         try {
             await invoke('send_chat_message', {
                 peerFingerprint: selectedPeer,
@@ -338,6 +330,10 @@
     // Refresh the list of peers
     async function refreshPeers() {
         try {
+            announce_btn_disable = true;
+            setTimeout(() => {
+                announce_btn_disable = false;
+            }, 1000);
             // Announce to discover peers
             await invoke('announce_once');
 
@@ -353,7 +349,7 @@
     // Format timestamp for display
     function formatTimestamp(timestamp: string): string {
         const date = new Date(timestamp.secs_since_epoch * 1000);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
     }
 
     // Handle Enter key in the message input
@@ -370,16 +366,15 @@
     }
 </script>
 
-<div class="flex flex-col h-screen">
+<div class="flex flex-col">
     <div class="flex flex-1 overflow-hidden">
         <!-- Chat sessions sidebar -->
-        <div class="w-1/4 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
+        <div class="w-1/8 border-r border-gray-200 dark:border-gray-700">
             <div class="p-4">
-                <Heading tag="h5" class="mb-4">Chat Sessions</Heading>
-
+                <Heading tag="h6" class="mb-4">Sessions</Heading>
                 {#if isLoading}
                     <div class="flex justify-center my-4">
-                        <Spinner size="6" />
+                        <Spinner size="6"/>
                     </div>
                 {:else if Object.keys(chatSessions.sessions).length === 0}
                     <p class="text-gray-500 dark:text-gray-400 text-center">
@@ -388,10 +383,10 @@
                 {:else}
                     <div class="space-y-2">
                         {#each Object.values(chatSessions.sessions) as session}
-                            <div 
-                                class="p-3 rounded-lg cursor-pointer transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                style="background-color: {session.peer_fingerprint === selectedPeer ? session.color : 'transparent'}; opacity: {session.peer_fingerprint === selectedPeer ? '0.7' : '1'}"
-                                onclick={() => selectPeer(session.peer_fingerprint)}
+                            <div
+                                    class="p-3 rounded-lg cursor-pointer transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    style="background-color: {session.peer_fingerprint === selectedPeer ? session.color : 'transparent'}; opacity: {session.peer_fingerprint === selectedPeer ? '0.7' : '1'}"
+                                    onclick={() => selectPeer(session.peer_fingerprint)}
                             >
                                 <div class="flex justify-between items-center">
                                     <div class="font-medium">{session.peer_alias}</div>
@@ -404,6 +399,7 @@
                                         {session.last_message.content}
                                     </div>
                                 {/if}
+
                             </div>
                         {/each}
                     </div>
@@ -411,8 +407,9 @@
             </div>
 
             <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-                <Heading tag="h5" class="mb-4">Available Peers</Heading>
-                <Button class="w-full mb-4" disabled={announce_btn_disable} onclick={refreshPeers}>Discover Peers</Button>
+                <Heading tag="h6" class="mb-4">Peers</Heading>
+                <Button class="w-full mb-4" disabled={announce_btn_disable} onclick={refreshPeers}>Discover Peers
+                </Button>
 
                 {#if peers.length === 0}
                     <p class="text-gray-500 dark:text-gray-400 text-center">
@@ -422,9 +419,9 @@
                     <div class="space-y-2">
                         {#each peers as peer}
                             {#if peer.message}
-                                <div 
-                                    class="p-3 rounded-lg cursor-pointer transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    onclick={() => selectPeer(peer.message.fingerprint)}
+                                <div
+                                        class="p-3 rounded-lg cursor-pointer transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                        onclick={() => selectPeer(peer.message.fingerprint)}
                                 >
                                     <div class="font-medium">{peer.message.alias}</div>
                                     <div class="text-xs text-gray-500 dark:text-gray-400">
@@ -442,7 +439,8 @@
         <div class="flex-1 flex flex-col">
             {#if selectedPeer}
                 {#if chatSessions.sessions[selectedPeer]}
-                    <div class="p-4 border-b border-gray-200 dark:border-gray-700" style="background-color: {chatSessions.sessions[selectedPeer].color}; opacity: 0.7">
+                    <div class="p-4 border-b border-gray-200 dark:border-gray-700"
+                         style="background-color: {chatSessions.sessions[selectedPeer].color}; opacity: 0.7">
                         <Heading tag="h3">{chatSessions.sessions[selectedPeer].peer_alias}</Heading>
                         <div class="text-sm text-gray-600 dark:text-gray-400">
                             {selectedPeer.substring(0, 8)}...
@@ -459,57 +457,58 @@
 
                 <!-- Chat messages -->
                 <div class="flex flex-col h-full relative">
-    <!-- Chat messages container -->
-    <div class="flex-1 overflow-y-auto p-4 pb-40" bind:this={chatContainer}>
-        {#if chatHistory.length === 0}
-            <p class="text-center text-gray-500 dark:text-gray-400">
-                No messages yet. Start the conversation!
-            </p>
-        {:else}
-            <div class="space-y-4">
-                {#each chatHistory as message}
-                    <div class="flex {message.sender_fingerprint === selectedPeer ? 'justify-start' : 'justify-end'}">
-                        <div 
-                            class="max-w-[70%] p-3 rounded-lg {message.sender_fingerprint === selectedPeer ? 'bg-gray-200 dark:bg-gray-700' : 'bg-blue-500 text-white'}"
-                            style={message.sender_fingerprint === selectedPeer && chatSessions.sessions[selectedPeer] ? `background-color: ${chatSessions.sessions[selectedPeer].color}; opacity: 0.7` : ''}
-                        >
-                            <div class="text-sm font-medium">
-                                {message.sender_alias}
+                    <!-- Chat messages container -->
+                    <div class="flex-1 overflow-y-auto p-4 pb-40" bind:this={chatContainer}>
+                        {#if chatHistory.length === 0}
+                            <p class="text-center text-gray-500 dark:text-gray-400">
+                                No messages yet. Start the conversation!
+                            </p>
+                        {:else}
+                            <div class="space-y-4">
+                                {#each chatHistory as message}
+                                    <div class="flex {message.sender_fingerprint === selectedPeer ? 'justify-start' : 'justify-end'}">
+                                        <div
+                                                class="max-w-[70%] p-3 rounded-lg {message.sender_fingerprint === selectedPeer ? 'bg-gray-200 dark:bg-gray-700' : 'bg-blue-500 text-white'}"
+                                                style={message.sender_fingerprint === selectedPeer && chatSessions.sessions[selectedPeer] ? `background-color: ${chatSessions.sessions[selectedPeer].color}; opacity: 0.7` : ''}
+                                        >
+                                            <div class="text-sm font-medium">
+                                                {message.sender_alias}
+                                            </div>
+                                            <div class="mt-1">
+                                                {message.content}
+                                            </div>
+                                            <div class="text-xs text-right mt-1 {message.sender_fingerprint === selectedPeer ? 'text-gray-500 dark:text-gray-400' : 'text-blue-100'}">
+                                                {formatTimestamp(message.timestamp)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {/each}
                             </div>
-                            <div class="mt-1">
-                                {message.content}
+                        {/if}
+                    </div>
+
+                    <!-- Chat input box (always visible) -->
+                    <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 fixed left-0 right-0 z-50"
+                         style="bottom: var(--bottom-nav-height, 0);">
+                        <div class="flex">
+                            <div class="flex-1 relative">
+                                <textarea
+                                        class="w-full px-3 py-2 text-sm text-gray-900 bg-white rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                        placeholder="Type a message..."
+                                        bind:value={newMessage}
+                                        onkeydown={handleKeydown}
+                                        oninput={autoResize}
+                                        rows="1"
+                                        style="min-height: 38px; max-height: 150px; resize: none; overflow-y: auto;"
+                                        bind:this={textareaElement}
+                                ></textarea>
                             </div>
-                            <div class="text-xs text-right mt-1 {message.sender_fingerprint === selectedPeer ? 'text-gray-500 dark:text-gray-400' : 'text-blue-100'}">
-                                {formatTimestamp(message.timestamp)}
-                            </div>
+                            <Button class="ml-2" color="blue" onclick={sendMessage}>
+                                <Fa icon={faPaperPlane}/>
+                            </Button>
                         </div>
                     </div>
-                {/each}
-            </div>
-        {/if}
-    </div>
-
-    <!-- Chat input box (always visible) -->
-    <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 fixed left-0 right-0 z-50" style="bottom: var(--bottom-nav-height, 0);">
-        <div class="flex">
-            <div class="flex-1 relative">
-                <textarea
-                    class="w-full px-3 py-2 text-sm text-gray-900 bg-white rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    placeholder="Type a message..."
-                    bind:value={newMessage}
-                    onkeydown={handleKeydown}
-                    oninput={autoResize}
-                    rows="1"
-                    style="min-height: 38px; max-height: 150px; resize: none; overflow-y: auto;"
-                    bind:this={textareaElement}
-                ></textarea>
-            </div>
-            <Button class="ml-2" color="blue" onclick={sendMessage}>
-                <Fa icon={faPaperPlane} />
-            </Button>
-        </div>
-    </div>
-</div>
+                </div>
             {:else}
                 <div class="flex-1 flex items-center justify-center">
                     <div class="text-center">
