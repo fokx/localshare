@@ -87,10 +87,11 @@ will show logging >= info!
 `pnpm tauri android dev`
 will not
 
+ip.src == 192.168.236.122 && udp.port==53317 || ip.dst == 192.168.236.56 && udp.port==53317 || ip.dst == 224.0.0.167
 
 
-Localsend calculates sha256 of cert's der bytes as fingerprint
-`ip.dst_host==224.0.0.167` got fingerprint,
+Localsend calculates sha256 of cert's der bytes as fingerprint 
+got fingerprint,
 download https certificate pem from https share link, convert pem to der using:
 https://www.sslshopper.com/ssl-converter.html
 then sha256 *.der gives the same fingerprint
