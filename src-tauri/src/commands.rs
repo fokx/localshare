@@ -60,9 +60,9 @@ pub async fn send_file_to_peer(
     peer_fingerprint: String,
     files: Vec<String>,
 ) -> anyhow::Result<String, String> {
-    debug!("send_file_to_peer");
-    debug!("peer fingerprint: {}", peer_fingerprint);
-    debug!("files: {:?}", files);
+    info!("send_file_to_peer");
+    info!("peer fingerprint: {}", peer_fingerprint);
+    info!("files: {:?}", files);
     let peers_store = app_handle.store("peers.json").unwrap();
     let peers_store_clone = peers_store.clone();
     // let peer_fingerprint = peer_fingerprint.clone();
@@ -77,7 +77,7 @@ pub async fn send_file_to_peer(
         warn!("remote remote_protocol: {}", remote_protocol.clone());
     } else {
         let msg = format!("peer {} not found in peers store", peer_fingerprint);
-        debug!("{}", msg);
+        info!("{}", msg);
         return Err(msg.to_string());
     }
     // this client's security is decided by peer
@@ -94,7 +94,7 @@ pub async fn send_file_to_peer(
     for file in files {
         let fileId = generate_random_string(FILEID_LENGTH);
         let filename = app_handle.path().file_name(&file.clone()).unwrap();
-        debug!("filename: {}", filename);
+        info!("filename: {}", filename);
         let filesize = if cfg!(target_os = "android") {
             let fs_api = app_handle.fs();
             // The Tauri FS plugin doesn't support read metadata from Rust side,
@@ -112,11 +112,11 @@ pub async fn send_file_to_peer(
             let filesize: u64 = match file_metatdata {
                 Ok(metadata) => {
                     let size = metadata.len();
-                    debug!("file size: {}", size);
+                    info!("file size: {}", size);
                     size
                 }
                 Err(e) => {
-                    debug!("error getting file size: {:?}", e);
+                    info!("error getting file size: {:?}", e);
                     9999
                 }
             };
@@ -157,7 +157,7 @@ pub async fn send_file_to_peer(
     remote_addrs.push_front(remote_host_53317);
     for remote_addr in remote_addrs {
         let client_maybe_insecure_clone = client_maybe_insecure.clone();
-        debug!("remote host: {}", remote_addr);
+        info!("remote host: {}", remote_addr);
         let res = client_maybe_insecure_clone
             .post(format!(
                 "{}://{}/api/localsend/v2/prepare-upload",
@@ -168,22 +168,22 @@ pub async fn send_file_to_peer(
             .await;
         match res {
             Ok(response) => {
-                debug!("peer reply to prepare-upload: {:?}", response);
+                info!("peer reply to prepare-upload: {:?}", response);
                 // log response content
                 let status = response.status();
-                debug!("peer reply to prepare-upload status: {:?}", status);
+                info!("peer reply to prepare-upload status: {:?}", status);
                 if status.is_success() {
                     let response_text = response.text().await.unwrap();
-                    debug!("peer reply to prepare-upload response: {:?}", response_text);
+                    info!("peer reply to prepare-upload response: {:?}", response_text);
                     let response_json: HashMap<String, JsonValue> =
                         serde_json::from_str(&response_text).unwrap();
-                    debug!(
+                    info!(
                         "peer reply to prepare-upload response json: {:?}",
                         response_json
                     );
                     if let Some(sessionId) = response_json.get("sessionId") {
                         let sessionId = sessionId.as_str().unwrap();
-                        debug!("peer reply to prepare-upload sessionId: {:?}", sessionId);
+                        info!("peer reply to prepare-upload sessionId: {:?}", sessionId);
                         let filesIdToToken = response_json.get("files").unwrap();
                         for (fileId, _file) in &files_map {
                             let token = filesIdToToken.get(fileId.clone()).unwrap();
@@ -214,7 +214,7 @@ pub async fn send_file_to_peer(
                                 "{}://{}/api/localsend/v2/upload?sessionId={}&fileId={}&token={}",
                                 remote_protocol, remote_addr, sessionId, fileId, token
                             );
-                            debug!("url: {}", url);
+                            info!("url: {}", url);
                             let res = client_maybe_insecure_2
                                 .post(url)
                                 .body(file_binary)
@@ -222,12 +222,12 @@ pub async fn send_file_to_peer(
                                 .await;
                             match res {
                                 Ok(response) => {
-                                    debug!("peer reply to upload: {:?}", response);
+                                    info!("peer reply to upload: {:?}", response);
                                     let status = response.status();
-                                    debug!("peer reply to upload status: {:?}", status);
+                                    info!("peer reply to upload status: {:?}", status);
                                 }
                                 Err(e) => {
-                                    debug!("error uploadr: {:?}", e);
+                                    info!("error uploadr: {:?}", e);
                                 }
                             };
                         }
@@ -235,14 +235,14 @@ pub async fn send_file_to_peer(
                     // when transfer to one address succeeds, won't try another address
                     break;
                 } else {
-                    debug!(
+                    info!(
                         "peer reply to prepare-upload error: {:?}",
                         response.text().await.unwrap()
                     );
                 }
             }
             Err(e) => {
-                debug!("error prepare-uploadr: {:?}", e);
+                info!("error prepare-uploadr: {:?}", e);
             }
         }
     }
@@ -257,12 +257,12 @@ pub fn handle_incoming_request(
     sessionId: String,
     accept: bool,
 ) -> anyhow::Result<String, String> {
-    debug!("handle_incoming_request: entering");
+    info!("handle_incoming_request: entering");
     let sessions_state = app_handle.state::<Mutex<Sessions>>();
-    debug!("handle_incoming_request: acquiring lock on sessions");
+    info!("handle_incoming_request: acquiring lock on sessions");
     let mut sessions = sessions_state.lock().unwrap();
-    debug!("handle_incoming_request: acquired lock on sessions");
-    debug!("sessions cloned (before) {:?}", sessions.clone());
+    info!("handle_incoming_request: acquired lock on sessions");
+    info!("sessions cloned (before) {:?}", sessions.clone());
     let session = sessions.sessions.get(&sessionId).cloned();
     if let Some(session) = session {
         if accept {
@@ -287,7 +287,7 @@ pub fn handle_incoming_request(
             );
         }
     }
-    debug!("sessions cloned (after) {:?}", sessions.clone());
+    info!("sessions cloned (after) {:?}", sessions.clone());
     drop(sessions);
     // let mut session = session.unwrap();
     // let mut files_tokens = HashMap::new();
@@ -305,7 +305,7 @@ pub fn handle_incoming_request(
 pub fn get_peers(
     app_handle: tauri::AppHandle,
 ) -> anyhow::Result<Vec<PeerInfo>, String> {
-    debug!("get_peers");
+    info!("get_peers");
 
     let peers_store = app_handle.store("peers.json").unwrap();
     let mut peers = Vec::new();
@@ -339,7 +339,7 @@ pub async fn announce_once(
         download: my_response.download,
         announce: Some(true),
     };
-    debug!("announce_once: {:?}", my_response_new);
+    info!("announce_once: {:?}", my_response_new);
     let udp_socket = app_handle.state::<Arc<tokio::net::UdpSocket>>();
     udp_socket.send_to(
         &serde_json::to_vec(&my_response_new).expect("Failed to serialize Message"),
@@ -360,7 +360,7 @@ pub fn toggle_server(
     auth_passwd: String,
     allow_upload: bool,
 ) -> anyhow::Result<String, String> {
-    debug!("using server_port: {}", server_port);
+    info!("using server_port: {}", server_port);
     let mut state_locked = server_handle.lock().unwrap();
 
     if let Some(shutdown_tx) = state_locked.take() {
@@ -397,7 +397,7 @@ pub fn acquire_permission_android(app: tauri::AppHandle) -> anyhow::Result<Strin
     let _res = api
         .acquire_app_manage_external_storage()
         .unwrap_or_else(|_| {
-            debug!("Permission acquire_app_manage_external_storage not granted");
+            info!("Permission acquire_app_manage_external_storage not granted");
             ()
         });
     return Ok("done".to_string());
@@ -418,22 +418,22 @@ pub fn acquire_permission_android(app: tauri::AppHandle) -> anyhow::Result<Strin
     // },
     // }
     // }
-    // debug!("reading /storage/emulated/0/books/index.html");
-    // debug!("Selected folder: {:?}", &selected_dir_uri);
+    // info!("reading /storage/emulated/0/books/index.html");
+    // info!("Selected folder: {:?}", &selected_dir_uri);
     // let res3 = std::fs::read_to_string("/storage/emulated/0/books/index.html").unwrap();
-    // debug!("res3: {:?}", res3);
+    // info!("res3: {:?}", res3);
     //
     // let res1 = api
     //     .check_persisted_uri_permission(&selected_dir_uri, PersistableAccessMode::ReadAndWrite)
     //     .unwrap();
-    // debug!("res1 {:?}", res1);
+    // info!("res1 {:?}", res1);
     // let res2 = api
     //     .take_persistable_uri_permission(&selected_dir_uri)
     //     .unwrap();
-    // debug!("res2 {:?}", res2);
+    // info!("res2 {:?}", res2);
     // let persisted_uri_perms = api.get_all_persisted_uri_permissions();
     // for permission in persisted_uri_perms {
-    //     debug!("Persisted URI: {:?}", permission.collect::<Vec<_>>());
+    //     info!("Persisted URI: {:?}", permission.collect::<Vec<_>>());
     // }
     // let file_path: tauri_plugin_fs::FilePath = selected_dir_uri.into();
     // let file_path = PathResolver::file_name(selected_dir_uri);
@@ -447,7 +447,7 @@ pub fn acquire_permission_android(app: tauri::AppHandle) -> anyhow::Result<Strin
     //                 mime_type,
     //                 ..
     //             } => {
-    //                 debug!("***file {:?}", (name, uri, last_modified, len, mime_type));
+    //                 info!("***file {:?}", (name, uri, last_modified, len, mime_type));
     //             }
     //             tauri_plugin_android_fs::Entry::Dir {
     //                 name,
@@ -455,7 +455,7 @@ pub fn acquire_permission_android(app: tauri::AppHandle) -> anyhow::Result<Strin
     //                 last_modified,
     //                 ..
     //             } => {
-    //                 debug!("***dir {:?}", (name, uri, last_modified));
+    //                 info!("***dir {:?}", (name, uri, last_modified));
     //             }
     //         }
     //     }

@@ -145,3 +145,6 @@ by automatically using different background colors for different chat
 * support P2P video / audio calling
 * support group video / audio meeting
 * support chat thread
+
+cargo tauri android dev 2>&1 |grep -v -i -E 'webview|vri|console|ime|buffer|libc|qdgralloc|surface|insets'
+((tcp.port == 53317) || (udp.port == 53317) || (tcp.dstport != 1420) || (!tcp && !udp)) && ip

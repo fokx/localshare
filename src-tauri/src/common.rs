@@ -184,7 +184,13 @@ pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket
 
     let interfaces = pnet::datalink::interfaces();
     let mut ip_addr = Ipv4Addr::UNSPECIFIED;
+    // if true {
     if cfg!(target_os = "android") {
+        // for Android, if peer is connected via Soft AP (Hotspot/USB thethering),
+        // when join multicast group and bind 0.0.0.0
+        // will have the error:
+        // called `Result::unwrap()` on an `Err` value: Os { code: 19, kind: Uncategorized, message: "No such device" }
+        // so we find the most likely network range, from 192.168/16, to 172.16/12, to 10.0/8
         for interface in interfaces {
             warn!(
                 "Name: {}, MAC: {:?}, IPs: {:?}, Flags: {:?}",
@@ -232,15 +238,8 @@ pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket
     }
     info!("Using IP address: {}", ip_addr);
     socket.join_multicast_v4(&addr, &ip_addr)?;
-    #[cfg(not(windows))]
     socket.bind(&SocketAddrV4::new(ip_addr, port).into())?;
-    // https://github.com/bluejekyll/multicast-example/blob/74f8f882134305634ce5bb46a71523c0d624bd22/src/lib.rs#L40
-    // On Windows, unlike all Unix variants, it is improper to bind to the multicast address
-    // see https://msdn.microsoft.com/en-us/library/windows/desktop/ms737550(v=vs.85).aspx
-    #[cfg(windows)]
-    let addr = SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), port);
-    #[cfg(windows)]
-    socket.bind(&socket2::SockAddr::from(addr));
+
     Ok(Arc::new(tokio::net::UdpSocket::from_std(socket.into())?))
     // Ok(Arc::new(socket.into()))
 }

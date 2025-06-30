@@ -155,17 +155,25 @@ pub fn run() {
             let app_handle2 = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let udp_socket = create_udp_socket(port).unwrap();
+                info!("udp_socket created");
                 app_handle2.manage(udp_socket);
+                info!("udp_socket managed");
                 notify_clone_udp_socket.notify_one();
+                info!("udp_socket notify");
             });
+            info!("udp_socket creation start waiting");
             let result = tauri::async_runtime::block_on(async {
                 tokio::time::timeout(
-                    tokio::time::Duration::from_secs(5),
+                    tokio::time::Duration::from_secs(10),
                     notify_udp_socket.notified(),
                 )
                         .await
             });
-
+            if result.is_err() {
+                return Err(format!("udp socket failed to initialize within {} seconds.", 10).into());
+            } else {
+                info!("udp_socket creation finished");
+            }
             info!("readfile11");
             let db_dst = app
                 .path()
@@ -325,7 +333,7 @@ pub fn run() {
             let message = Message {
                 alias: my_fingerprint[0..6].to_string(),
                 version: "2.1".to_string(),
-                device_model: Some("localshare".to_string()),
+                device_model: Some("localshare_device".to_string()),
                 device_type: None,
                 fingerprint: my_fingerprint.clone(),
                 port,

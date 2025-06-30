@@ -34,27 +34,27 @@ pub async fn handler_register(
         .to_string();
     // ) -> Json<Message> {
     // Here you can process the payload as needed
-    debug!("axum register_handler received message: {:?}", payload);
+    info!("axum register_handler received message: {:?}", payload);
     let peer_fingerprint = payload.fingerprint.clone();
     let my_fingerprint_clone = my_fingerprint.clone();
     if payload.fingerprint == my_fingerprint_clone {
-        debug!("skip my own fingerprint");
+        info!("skip my own fingerprint");
         return;
     }
     // if fingerprint is in keys of the store, return
     if let Some(peer_value) = peers_store.get(&peer_fingerprint) {
         let peer_info: PeerInfo = serde_json::from_value(peer_value).unwrap();
         if peer_info.remote_addrs.contains(&remote_addr) {
-            debug!("skip already registered fingerprint: {}", peer_fingerprint);
+            info!("skip already registered fingerprint: {}", peer_fingerprint);
             return;
         } else {
-            debug!("add new remote address: {:?}", remote_addr);
+            info!("add new remote address: {:?}", remote_addr);
             let mut peer_info = peer_info;
             peer_info.add_remote_addr(remote_addr);
             peers_store.set(peer_fingerprint, serde_json::json!(peer_info));
         }
     } else {
-        debug!(
+        info!(
             "received new multicast message from {:?}: {:?}",
             remote_addr, payload
         );
@@ -76,8 +76,8 @@ pub async fn handler_prepare_upload(
     Query(params): Query<PrepareUploadParams>,
     Json(payload): Json<PrepareUploadRequest>,
 ) -> Json<HashMap<String, JsonValue>> {
-    debug!("axum handler_prepare_upload Payload: {:?}", payload);
-    debug!(
+    info!("axum handler_prepare_upload Payload: {:?}", payload);
+    info!(
         "axum handler_prepare_upload Received request with params: {:?}",
         params
     );
@@ -111,7 +111,7 @@ pub async fn handler_prepare_upload(
     tokio::select! {
         _ = tokio::time::sleep(tokio::time::Duration::from_secs(10)) => {
             // Timeout after 10 seconds
-            debug!("Timeout waiting for user to accept the request");
+            info!("Timeout waiting for user to accept the request");
             return Json({
                 let mut response = HashMap::new();
                 response.insert("error".to_string(), serde_json::to_value("Timeout waiting for user to accept the request").unwrap());
@@ -123,7 +123,7 @@ pub async fn handler_prepare_upload(
                 let session = {
                     let sessions_state = app_handle.state::<Mutex<Sessions>>();
                     let sessions = sessions_state.lock().unwrap();
-                    debug!("handler_prepare_upload: acquired lock on sessions");
+                    info!("handler_prepare_upload: acquired lock on sessions");
                     let session = sessions.sessions.get(&sessionId).cloned();
                     drop(sessions); // Explicitly drop the MutexGuard here
                     session
@@ -144,9 +144,9 @@ pub async fn handler_prepare_upload(
                                 };
                             {
                                 let sessions_state = app_handle.state::<Mutex<Sessions>>();
-                                debug!("handler_prepare_upload: acquiring lock on sessions");
+                                info!("handler_prepare_upload: acquiring lock on sessions");
                                 let mut sessions = sessions_state.lock().unwrap();
-                                debug!("handler_prepare_upload: acquired lock on sessions");
+                                info!("handler_prepare_upload: acquired lock on sessions");
                                 sessions.sessions.insert(sessionId.clone(), Session{
                                     accepted: true,
                                     userFeedback: true,
@@ -154,7 +154,7 @@ pub async fn handler_prepare_upload(
                                     fileIdtoTokenAndUploadFile: files_tokenAndUploadFiles,
                                 });
                                 drop(sessions);
-                                debug!("handler_prepare_upload: released lock on sessions1");
+                                info!("handler_prepare_upload: released lock on sessions1");
                             }
                             return Json({
                                     let mut response = HashMap::new();
@@ -169,12 +169,12 @@ pub async fn handler_prepare_upload(
                              else {
                                 {
                                     let sessions_state = app_handle.state::<Mutex<Sessions>>();
-                                    debug!("handler_prepare_upload: acquiring lock on sessions");
+                                    info!("handler_prepare_upload: acquiring lock on sessions");
                                     let mut sessions = sessions_state.lock().unwrap();
-                                    debug!("handler_prepare_upload: acquired lock on sessions");
+                                    info!("handler_prepare_upload: acquired lock on sessions");
                                     sessions.sessions.remove(&sessionId);
                                     drop(sessions);
-                                    debug!("handler_prepare_upload: released lock on sessions2");
+                                    info!("handler_prepare_upload: released lock on sessions2");
                                 }
 
                                 return Json({
@@ -185,7 +185,7 @@ pub async fn handler_prepare_upload(
                             }
                         }
                     }
-                    debug!("Waiting 500ms for user feedback...");
+                    info!("Waiting 500ms for user feedback...");
                     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                 }
             } => {
@@ -200,14 +200,14 @@ pub async fn handler_chat(
     State(state): State<Arc<AppState>>,
     Json(chat_message): Json<ChatMessage>,
 ) -> Json<anyhow::Result<(), String>> {
-    debug!("handler_chat: received chat message: {:?}", chat_message);
+    info!("handler_chat: received chat message: {:?}", chat_message);
 
     let app_handle = state.app_handle.clone();
 
     // Forward the chat message to the frontend
     match app_handle.emit("chat-message-received", chat_message.clone()) {
         Ok(_) => {
-            debug!("handler_chat: emitted chat-message-received event");
+            info!("handler_chat: emitted chat-message-received event");
 
             // Call the handle_incoming_chat_message command to process the message
             match crate::chat_commands::handle_incoming_chat_message(app_handle, chat_message) {
@@ -230,11 +230,11 @@ pub async fn handler_upload(
     Query(query_params): Query<UploadQuery>,
     body: axum::body::Body,
 ) -> Json<anyhow::Result<(), String>> {
-    debug!(
+    info!(
         "axum handler_prepare_upload query_params: {:?}",
         query_params
     );
-    debug!("handler_upload: entering");
+    info!("handler_upload: entering");
     let mut filename: String;
     let mut savingDir: String;
     let app_handle = state.app_handle.clone();
@@ -254,10 +254,10 @@ pub async fn handler_upload(
             None => "/tmp".to_string(),
         };
         let sessions_state = app_handle.state::<Mutex<Sessions>>();
-        debug!("handler_upload: acquiring lock on sessions");
+        info!("handler_upload: acquiring lock on sessions");
         let sessions = sessions_state.lock().unwrap();
-        debug!("handler_upload: acquired lock on sessions");
-        debug!("sessions cloned (before) {:?}", sessions.clone());
+        info!("handler_upload: acquired lock on sessions");
+        info!("sessions cloned (before) {:?}", sessions.clone());
         let session = sessions.sessions.get(&query_params.sessionId).cloned();
 
         if let Some(session) = session.clone() {
@@ -282,14 +282,14 @@ pub async fn handler_upload(
         } else {
             return Json(Err("Session not found".to_string()));
         }
-        debug!("handler_upload: released lock on sessions3");
+        info!("handler_upload: released lock on sessions3");
         drop(sessions);
     }
 
     let res = async {
         info!("{:?}", query_params);
         let path = format!("{}/{}", savingDir, filename);
-        debug!("saving to path: {}", path);
+        info!("saving to path: {}", path);
         // Save binary data to the file
         let body_with_io_error = body.into_data_stream().map_err(io::Error::other);
         let body_reader = StreamReader::new(body_with_io_error);
@@ -318,7 +318,7 @@ pub async fn periodic_announce(
     let mut count = 0;
     let announce_interval = 10;
     loop {
-        debug!("announce sequence {}", count);
+        info!("announce sequence {}", count);
         let my_response_new = Message {
             alias: my_response.alias.clone(),
             version: my_response.version.clone(),
@@ -361,7 +361,6 @@ pub async fn daemon(
     loop {
         let (count, remote_addr) = udp_socket.recv_from(&mut buf).await?;
         let data = buf[..count].to_vec();
-        let udp_clone = Arc::clone(&udp_socket);
         let response_clone = my_response.clone();
         let my_fingerprint_clone = my_fingerprint.clone();
         let peers_store_clone = peers_store.clone();
@@ -371,14 +370,14 @@ pub async fn daemon(
         tauri::async_runtime::spawn(async move {
             if let Ok(parsed_msg) = serde_json::from_slice::<Message>(&data) {
                 let remote_port = parsed_msg.port;
-                debug!(
+                info!(
                     "daemon received msg: {}",
                     serde_json::to_string(&*response_clone).unwrap()
                 );
 
                 // Skip if it's my own message
                 if parsed_msg.fingerprint == my_fingerprint_clone {
-                    debug!("skip my own fingerprint");
+                    info!("skip my own fingerprint");
                     return;
                 }
 
@@ -391,7 +390,7 @@ pub async fn daemon(
                             .set(parsed_msg.fingerprint.clone(), serde_json::json!(peer_info));
                     }
                 } else {
-                    debug!(
+                    info!(
                         "received new multicast message from {:?}: {:?}",
                         remote_addr, parsed_msg
                     );
@@ -418,7 +417,7 @@ pub async fn daemon(
                     )
                     .await
                     {
-                        debug!("File sync with peer failed: {}", e);
+                        info!("File sync with peer failed: {}", e);
                     }
                 }
             } else {
