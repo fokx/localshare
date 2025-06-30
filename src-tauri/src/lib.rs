@@ -149,11 +149,21 @@ pub fn run() {
         .plugin(tauri_plugin_sharetarget::init())
         // .plugin(tauri_plugin_mic_recorder::init())
         .setup(|app| {
+            let notify_udp_socket = Arc::new(Notify::new());
+            let notify_clone_udp_socket = Arc::clone(&notify_udp_socket);
             let port = 53317;
             let app_handle2 = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let udp_socket = create_udp_socket(port).unwrap();
                 app_handle2.manage(udp_socket);
+                notify_clone_udp_socket.notify_one();
+            });
+            let result = tauri::async_runtime::block_on(async {
+                tokio::time::timeout(
+                    tokio::time::Duration::from_secs(5),
+                    notify_udp_socket.notified(),
+                )
+                        .await
             });
 
             info!("readfile11");
