@@ -184,8 +184,8 @@ pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket
 
     let interfaces = pnet::datalink::interfaces();
     let mut ip_addr = Ipv4Addr::UNSPECIFIED;
-    // if true {
-    if cfg!(target_os = "android") {
+    if false {
+    // if cfg!(target_os = "android") {
         // for Android, if peer is connected via Soft AP (Hotspot/USB thethering),
         // when join multicast group and bind 0.0.0.0
         // will have the error:
