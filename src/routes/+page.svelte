@@ -436,7 +436,7 @@
         <!-- Chat window -->
         <div class="flex-1 flex flex-col">
             {#if selectedPeer}
-                <div style="background-color: {chatSessions.sessions[selectedPeer].color}; opacity: 0.7">
+                <div style={chatSessions.sessions[selectedPeer] ? `background-color: ${chatSessions.sessions[selectedPeer].color}; opacity: 0.7` : ''}>
                     {#if chatSessions.sessions[selectedPeer]}
                         <div class="p-4 border-b border-gray-200 dark:border-gray-700"
                         >
