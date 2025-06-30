@@ -181,9 +181,59 @@ pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket
     socket.set_reuse_address(true)?;
     socket.set_nonblocking(true)?;
     let addr = "224.0.0.167".parse().unwrap();
-    socket.join_multicast_v4(&addr, &Ipv4Addr::UNSPECIFIED)?;
+
+    let interfaces = pnet::datalink::interfaces();
+    let mut ip_addr = Ipv4Addr::UNSPECIFIED;
+    if cfg!(target_os = "android") {
+        for interface in interfaces {
+            warn!(
+                "Name: {}, MAC: {:?}, IPs: {:?}, Flags: {:?}",
+                interface.name, interface.mac, interface.ips, interface.flags
+            );
+            // prefer 192.168, 172.16.0.0 – 172.31.255.255, 10.0.0.0/8
+            for ip in &interface.ips {
+                if let pnet::ipnetwork::IpNetwork::V4(ipv4_network) = ip {
+                    let network =
+                        pnet::ipnetwork::Ipv4Network::new(Ipv4Addr::new(192, 168, 0, 0), 16)
+                            .unwrap();
+                    if network.contains(ipv4_network.ip()) {
+                        ip_addr = ipv4_network.ip();
+                        break;
+                    }
+                }
+            }
+            if ip_addr == Ipv4Addr::UNSPECIFIED {
+                for ip in &interface.ips {
+                    if let pnet::ipnetwork::IpNetwork::V4(ipv4_network) = ip {
+                        let network =
+                            pnet::ipnetwork::Ipv4Network::new(Ipv4Addr::new(172, 16, 0, 0), 12)
+                                .unwrap();
+                        if network.contains(ipv4_network.ip()) {
+                            ip_addr = ipv4_network.ip();
+                            break;
+                        }
+                    }
+                }
+            }
+            if ip_addr == Ipv4Addr::UNSPECIFIED {
+                for ip in &interface.ips {
+                    if let pnet::ipnetwork::IpNetwork::V4(ipv4_network) = ip {
+                        let network =
+                            pnet::ipnetwork::Ipv4Network::new(Ipv4Addr::new(10, 0, 0, 0), 8)
+                                .unwrap();
+                        if network.contains(ipv4_network.ip()) {
+                            ip_addr = ipv4_network.ip();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    info!("Using IP address: {}", ip_addr);
+    socket.join_multicast_v4(&addr, &ip_addr)?;
     #[cfg(not(windows))]
-    socket.bind(&SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into())?;
+    socket.bind(&SocketAddrV4::new(ip_addr, port).into())?;
     // https://github.com/bluejekyll/multicast-example/blob/74f8f882134305634ce5bb46a71523c0d624bd22/src/lib.rs#L40
     // On Windows, unlike all Unix variants, it is improper to bind to the multicast address
     // see https://msdn.microsoft.com/en-us/library/windows/desktop/ms737550(v=vs.85).aspx
@@ -191,8 +241,8 @@ pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket
     let addr = SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), port);
     #[cfg(windows)]
     socket.bind(&socket2::SockAddr::from(addr));
-
     Ok(Arc::new(tokio::net::UdpSocket::from_std(socket.into())?))
+    // Ok(Arc::new(socket.into()))
 }
 
 pub fn generate_fingerprint_cert(cert: Certificate) -> String {

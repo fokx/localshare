@@ -57,6 +57,7 @@ use tokio_rustls::rustls::{self, ServerConfig};
 use tokio_rustls::TlsAcceptor;
 use tower::Service;
 use url::Url;
+use crate::common::create_udp_socket;
 
 #[tokio::test]
 async fn client_test() -> std::io::Result<()> {
@@ -79,8 +80,7 @@ async fn client_test() -> std::io::Result<()> {
 
     let my_response_for_announce = Arc::clone(&my_response);
     let my_response_clone = Arc::clone(&my_response);
-
-    periodic_announce(my_response_for_announce).await?;
+    tokio::spawn(periodic_announce(my_response_for_announce));
     // POST to "/api/localsend/v2/register"
     let client = reqwest::Client::new();
     let res = client
@@ -120,6 +120,7 @@ pub fn run() {
             kind: MigrationKind::Up,
         },
     ];
+
     tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_os::init())
@@ -148,6 +149,13 @@ pub fn run() {
         .plugin(tauri_plugin_sharetarget::init())
         // .plugin(tauri_plugin_mic_recorder::init())
         .setup(|app| {
+            let port = 53317;
+            let app_handle2 = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let udp_socket = create_udp_socket(port).unwrap();
+                app_handle2.manage(udp_socket);
+            });
+
             info!("readfile11");
             let db_dst = app
                 .path()
@@ -156,26 +164,26 @@ pub fn run() {
                 std::fs::create_dir(db_dst).unwrap();
             }
 
-            // info!("readfile1.1");
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Audio).unwrap());
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Config).unwrap());
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Data).unwrap());
-            // info!("2");
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::LocalData).unwrap());
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Document).unwrap());
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Download).unwrap());
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Picture).unwrap());
-            // info!("3");
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Resource).unwrap());
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppConfig).unwrap());
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppData).unwrap());
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLocalData).unwrap());
-            // info!("4");
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppCache).unwrap());
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLog).unwrap());
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Home).unwrap());
-            // info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
+            info!("readfile1.1");
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Audio).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Config).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Data).unwrap());
+            info!("2");
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::LocalData).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Document).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Download).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Picture).unwrap());
+            info!("3");
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Resource).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppConfig).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppData).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLocalData).unwrap());
+            info!("4");
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppCache).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::AppLog).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Home).unwrap());
+            info!("{:?}", app.path().resolve("xap.db", tauri::path::BaseDirectory::Cache).unwrap());
             // cd src-tauri/res; zstdmt -19 xap.db -o xap.db.zst
             let db_src = app
                 .path()
@@ -304,7 +312,6 @@ pub fn run() {
                     .to_string(),
             };
             info!("my fingerprint : {}", my_fingerprint);
-            let port = 53317;
             let message = Message {
                 alias: my_fingerprint[0..6].to_string(),
                 version: "2.1".to_string(),
@@ -318,11 +325,10 @@ pub fn run() {
             };
             let my_response = Arc::new(message.clone());
             app.manage(message);
+
             let my_response_for_announce = Arc::clone(&my_response);
             let my_response_for_daemon = Arc::clone(&my_response);
 
-            let _handler_announce =
-                tauri::async_runtime::spawn(periodic_announce(my_response_for_announce));
             let app_handle_axum = app.handle().clone();
             let socks5_url = reqwest::Url::parse("socks5h://127.0.0.1:4807").unwrap();
 
@@ -459,6 +465,9 @@ pub fn run() {
                 .unwrap()
             });
 
+
+
+
             let app_handle = app.handle().clone();
             let _handler_daemon = tauri::async_runtime::spawn(daemon(
                 app_handle,
@@ -466,6 +475,8 @@ pub fn run() {
                 my_response_for_daemon,
                 my_fingerprint.clone(),
             ));
+
+
             // let res = join!(_handle_announce, _handle_axum_server, _handle_daemon);
 
             // std::thread::spawn(move || block_on(tcc_main()));
@@ -494,19 +505,26 @@ pub fn run() {
                 //                                 window.inner_size().unwrap(),
                 // );
             }
+
+
             let _handler_tuicc = tauri::async_runtime::spawn(crate::tuicc::main());
             let _handler_socks2http = tauri::async_runtime::spawn(crate::socks2http::main());
-            warn!("waiting for web server to start");
+            let TIMEOUT_SERVER_START = 5;
+            warn!("waiting {}s for web server to start", TIMEOUT_SERVER_START);
             let result = tauri::async_runtime::block_on(async {
                 tokio::time::timeout(
-                    tokio::time::Duration::from_secs(5),
+                    tokio::time::Duration::from_secs(TIMEOUT_SERVER_START),
                     notify_handler_axum_http_server.notified(),
                 )
                 .await
             });
 
+            let app_handle3 = app.handle().clone();
+            let _handler_announce =
+                    tauri::async_runtime::spawn(periodic_announce(app_handle3, my_response_for_announce));
+
             if result.is_err() {
-                return Err("HTTP server failed to start within 5 seconds.".into());
+                return Err(format!("HTTP server failed to start within {} seconds.", TIMEOUT_SERVER_START).into());
             } else {
                 warn!(" web server started");
             }

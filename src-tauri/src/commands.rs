@@ -323,10 +323,10 @@ pub fn get_peers(
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn announce_once(
+    app_handle: tauri::AppHandle,
     my_response: tauri::State<'_, Message>,
 ) -> anyhow::Result<String, String> {
     let port = 53317;
-    let udp = create_udp_socket(port).unwrap();
     let addr: std::net::Ipv4Addr = "224.0.0.167".parse().unwrap();
     let my_response_new = Message {
         alias: my_response.alias.clone(),
@@ -339,14 +339,15 @@ pub async fn announce_once(
         download: my_response.download,
         announce: Some(true),
     };
-    udp.send_to(
+    debug!("announce_once: {:?}", my_response_new);
+    let udp_socket = app_handle.state::<Arc<tokio::net::UdpSocket>>();
+    udp_socket.send_to(
         &serde_json::to_vec(&my_response_new).expect("Failed to serialize Message"),
         (addr, port),
     )
     .await
-    .expect("cannot send message to socket");
-
-    Ok("started".to_string())
+    .unwrap_or_else(|e| { warn!("Failed to send multicast message: {}", e); 0 });
+    Ok("announced".to_string())
 }
 #[tauri::command(rename_all = "snake_case")]
 pub fn toggle_server(

@@ -309,14 +309,16 @@ pub async fn handler_upload(
     }
 }
 
-pub async fn periodic_announce(my_response: Arc<Message>) -> std::io::Result<()> {
+pub async fn periodic_announce(
+    app_handle: tauri::AppHandle,
+    my_response: Arc<Message>) -> std::io::Result<()> {
     let port = 53317;
-    let udp = create_udp_socket(port)?;
+    let udp_socket = app_handle.state::<Arc<tokio::net::UdpSocket>>();
     let addr: std::net::Ipv4Addr = "224.0.0.167".parse().unwrap();
     let mut count = 0;
-    let announce_interval = 600;
+    let announce_interval = 10;
     loop {
-        debug!("announce  sequence {}", count);
+        debug!("announce sequence {}", count);
         let my_response_new = Message {
             alias: my_response.alias.clone(),
             version: my_response.version.clone(),
@@ -328,15 +330,14 @@ pub async fn periodic_announce(my_response: Arc<Message>) -> std::io::Result<()>
             download: my_response.download,
             announce: Some(true),
         };
-        udp.send_to(
+        udp_socket.send_to(
             &serde_json::to_vec(&my_response_new).expect("Failed to serialize Message"),
             (addr, port),
         )
         .await
-        .expect("cannot send message to socket");
+        .unwrap_or_else(|e| { warn!("Failed to send multicast message: {}", e); 0 });
         tokio::time::sleep(std::time::Duration::from_secs(announce_interval)).await;
         count += 1;
-        break;
     }
     Ok(())
 }
@@ -348,7 +349,7 @@ pub async fn daemon(
     my_response: Arc<Message>,
     my_fingerprint: String,
 ) -> std::io::Result<()> {
-    let udp = create_udp_socket(port)?;
+    let udp_socket = app_handle.state::<Arc<tokio::net::UdpSocket>>();
     let mut buf = [0; 1024];
     let addr: std::net::Ipv4Addr = "224.0.0.167".parse().unwrap();
     let peers_store = app_handle.store("peers.json").unwrap();
@@ -358,9 +359,9 @@ pub async fn daemon(
         .unwrap();
 
     loop {
-        let (count, remote_addr) = udp.recv_from(&mut buf).await?;
+        let (count, remote_addr) = udp_socket.recv_from(&mut buf).await?;
         let data = buf[..count].to_vec();
-        let udp_clone = Arc::clone(&udp);
+        let udp_clone = Arc::clone(&udp_socket);
         let response_clone = my_response.clone();
         let my_fingerprint_clone = my_fingerprint.clone();
         let peers_store_clone = peers_store.clone();
