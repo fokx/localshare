@@ -77,7 +77,7 @@ content_inspector = "0.2"
 anyhow = "1.0"
 chardetng = "0.1"
 glob = "0.3"
-indexmap = "2.9"
+indexmap = "2.10"
 serde_yaml = "0.9"
 sha-crypt = "0.5"
 base64 = "0.22"
@@ -108,7 +108,7 @@ url = "2.5.4"
 #libsqlite3-sys = { version = "0.30", features = ["bundled-sqlcipher-vendored-openssl"] }
 
 pem = "3.0.5"
-rustls = "0.23.27"
+rustls = "0.23.28"
 zstd = "0.13.3"
 
 crossbeam-utils = { version = "0.8.21", default-features = false, features = ["std"] }
@@ -131,7 +131,7 @@ dotenvy_macro = "0.15.7"
 async-socks5 = "0.6.0"
 httparse = "1.10.1"
 obfstr = "0.4.4"
-tauri-plugin-http = { version = "2.4.4", features = ["unsafe-headers"] }
+tauri-plugin-http = { version = "2.5.0", features = ["unsafe-headers"] }
 #tauri-plugin-mic-recorder = "2.0.0"
 #tauri-plugin-mic-recorder = { git = "https://github.com/ayangweb/tauri-plugin-mic-recorder", branch = "fix-mobile" }
 #tauri-plugin-mic-recorder = "2.0.0"
