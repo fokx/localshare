@@ -111,7 +111,7 @@
     onMount(async () => {
         try {
             let _user = await getCurrentUser();
-            console.log(_user);
+            // console.log(_user);
             user = _user;
         } catch (error) {
             console.error('Authentication check failed:', error);

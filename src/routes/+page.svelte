@@ -98,7 +98,7 @@
             // On large screens, always set bottom-nav-height to 0
             if (isLargeScreen) {
                 document.documentElement.style.setProperty('--bottom-nav-height', '0px');
-                console.log('Large screen detected, setting bottom-nav-height to 0');
+                // console.log('Large screen detected, setting bottom-nav-height to 0');
                 return;
             }
 
@@ -181,8 +181,8 @@
                     peers.push(peerValue);
                 }
             }
-            console.log('loading peers');
-            $state.snapshot(peers);
+            // console.log('loading peers');
+            // $state.snapshot(peers);
 
             // Discover more peers
             await refreshPeers();
@@ -223,8 +223,8 @@
                     }
                 }
 
-                console.log('Updated peers:');
-                $state.snapshot(peers);
+                // console.log('Updated peers:');
+                // $state.snapshot(peers);
             });
 
             isLoading = false;
@@ -249,8 +249,8 @@
     async function loadChatSessions() {
         try {
             chatSessions = await invoke('get_chat_sessions');
-            console.log('Chat sessions:');
-            $state.snapshot(chatSessions);
+            // console.log('Chat sessions:');
+            // $state.snapshot(chatSessions);
 
             // If a peer is selected, load its chat history
             if (selectedPeer) {
@@ -267,8 +267,8 @@
         try {
             const history = await invoke('get_chat_history', {peerFingerprint});
             chatHistory = history.messages;
-            console.log('Chat history:');
-            $state.snapshot(chatHistory);
+            // console.log('Chat history:');
+            // $state.snapshot(chatHistory);
 
             // Mark messages as read
             await markMessagesAsRead(peerFingerprint);
