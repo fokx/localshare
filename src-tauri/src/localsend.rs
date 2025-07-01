@@ -359,14 +359,14 @@ pub async fn daemon(
         .unwrap();
 
     loop {
-        let (count, remote_addr) = udp_socket.recv_from(&mut buf).await?;
+        let udp_socket_clone = udp_socket.clone();
+        let (count, remote_addr) = udp_socket_clone.recv_from(&mut buf).await?;
         let data = buf[..count].to_vec();
         let response_clone = my_response.clone();
         let my_fingerprint_clone = my_fingerprint.clone();
         let peers_store_clone = peers_store.clone();
         let app_handle_clone = app_handle.clone();
         let client_insecure_clone = client_insecure.clone();
-
         tauri::async_runtime::spawn(async move {
             // Other LocalSend members will listen to messages from the multicast group,
             // when an announcement message comes, will reply with own information.
@@ -416,10 +416,18 @@ pub async fn daemon(
                         info!("Response: {:?}", response);
                     }
                     Err(e) => {
-                        info!("Error: {:?}", e);
+                        info!("post to register Error: {:?}", e);
+                        let udp_socket_clone2 = app_handle_clone.state::<Arc<tokio::net::UdpSocket>>();
+                        udp_socket_clone2.send_to(
+                            &serde_json::to_vec(&*response_clone).expect("Failed to serialize Message"),
+                            (addr, port),
+                        )
+                                .await
+                                .unwrap_or_else(|e| { warn!("Failed to send multicast message: {}", e); 0 });
+                        info!("announced after post error");
                     }
                 }
-                
+
                 if parsed_msg.device_model.unwrap() == "localshare_device" {
                     info!("peer is localshare, start syncing files");
                     // Initiate file sync with peer
