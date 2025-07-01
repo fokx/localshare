@@ -12,7 +12,7 @@ pnpm i
 rm -r /tmp/localshare
 mkdir /tmp/localshare
 pnpm tauri-build-apk; 
-VERSION=0.6.4
+VERSION=0.6.5
 cp src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk  /tmp/localshare/io.github.fokx.localshare-${VERSION}.apk
 pnpm tauri-build-win;
 cp src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/localshare_${VERSION}_x64-setup.exe  /tmp/localshare/

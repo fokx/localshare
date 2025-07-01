@@ -182,10 +182,11 @@ pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket
     socket.set_nonblocking(true)?;
     let addr = "224.0.0.167".parse().unwrap();
 
-    let interfaces = pnet::datalink::interfaces();
     let mut ip_addr = Ipv4Addr::UNSPECIFIED;
     // if false {
+    #[cfg(target_os = "android")]
     if cfg!(target_os = "android") {
+        let interfaces = pnet::datalink::interfaces();
         // for Android, if peer is connected via Soft AP (Hotspot/USB thethering),
         // may not work after joining multicast group and bind 0.0.0.0
         // so we find the most likely network range, from 192.168/16, to 172.16/12, to 10.0/8

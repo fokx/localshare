@@ -1,6 +1,6 @@
 [package]
 name = "localshare"
-version = "0.6.4"
+version = "0.6.5"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -137,7 +137,13 @@ tauri-plugin-http = { version = "2.5.0", features = ["unsafe-headers"] }
 #tauri-plugin-mic-recorder = "2.0.0"
 tauri-plugin-oauth = "2"
 
+
+[target.'cfg(target_os = "android")'.dependencies]
 pnet = "0.35.0"
+# pnet makes windows build failed
+# error: linking with `lld-link` failed: exit status: 1
+#  = note: lld-link: error: could not open 'Packet.lib': No such file or directory
+# pnpm tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc
 
 [features]
 default = []
