@@ -184,12 +184,10 @@ pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket
 
     let interfaces = pnet::datalink::interfaces();
     let mut ip_addr = Ipv4Addr::UNSPECIFIED;
-    // if true {
+    // if false {
     if cfg!(target_os = "android") {
         // for Android, if peer is connected via Soft AP (Hotspot/USB thethering),
-        // when join multicast group and bind 0.0.0.0
-        // will have the error:
-        // called `Result::unwrap()` on an `Err` value: Os { code: 19, kind: Uncategorized, message: "No such device" }
+        // may not work after joining multicast group and bind 0.0.0.0
         // so we find the most likely network range, from 192.168/16, to 172.16/12, to 10.0/8
         for interface in interfaces {
             warn!(
@@ -239,7 +237,10 @@ pub fn create_udp_socket(port: u16) -> std::io::Result<Arc<tokio::net::UdpSocket
     info!("Using IP address: {}", ip_addr);
     socket.join_multicast_v4(&addr, &ip_addr)?;
     socket.bind(&SocketAddrV4::new(ip_addr, port).into())?;
-
+    // may not be able to send udp message on Android:
+    // W localshare_lib::localsend: [localshare_lib::localsend] Failed to send multicast message: Operation not permitted (os error 1)
+    // this may also fail when no NIC is active:
+    // called `Result::unwrap()` on an `Err` value: Os { code: 19, kind: Uncategorized, message: "No such device" }
     Ok(Arc::new(tokio::net::UdpSocket::from_std(socket.into())?))
     // Ok(Arc::new(socket.into()))
 }
