@@ -368,6 +368,8 @@ pub async fn daemon(
         let client_insecure_clone = client_insecure.clone();
 
         tauri::async_runtime::spawn(async move {
+            // Other LocalSend members will listen to messages from the multicast group,
+            // when an announcement message comes, will reply with own information.
             if let Ok(parsed_msg) = serde_json::from_slice::<Message>(&data) {
                 let remote_port = parsed_msg.port;
                 info!(
@@ -402,7 +404,22 @@ pub async fn daemon(
                         .set(parsed_msg.fingerprint.clone(), serde_json::json!(peer_info));
                 }
                 app_handle_clone.emit("refresh-peers", ()).unwrap();
-
+                let register_url = format!("{}://{}/api/localsend/v2/register", parsed_msg.protocol, remote_addr);
+                warn!("post to register_url: {}", register_url);
+                let res = client_insecure_clone
+                        .post(register_url)
+                        .json(&*response_clone)
+                        .send()
+                        .await;
+                match res {
+                    Ok(response) => {
+                        info!("Response: {:?}", response);
+                    }
+                    Err(e) => {
+                        info!("Error: {:?}", e);
+                    }
+                }
+                
                 if parsed_msg.device_model.unwrap() == "localshare_device" {
                     info!("peer is localshare, start syncing files");
                     // Initiate file sync with peer
