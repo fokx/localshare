@@ -4,7 +4,7 @@
     import {invoke} from '@tauri-apps/api/core';
     import {emit, listen} from '@tauri-apps/api/event';
 
-    import {onMount, onDestroy} from 'svelte';
+    import {onMount, onDestroy, tick} from 'svelte';
     import {toast} from "@zerodevx/svelte-toast";
     import Fa from 'svelte-fa';
     import {faPaperPlane, faCircle} from '@fortawesome/free-solid-svg-icons';
@@ -56,12 +56,16 @@
     let skipSessionReload = $state(false);
 
     // Reference to chat container and textarea
-    let chatContainer;
-    let textareaElement;
+    let chatContainer = $state();
+    let textareaElement = $state();
 
     // Scroll to bottom function
     function scrollToBottom() {
+        console.log('scrollToBottom');
         if (chatContainer) {
+            console.log(chatContainer.scrollTop);
+            console.log(chatContainer.clientHeight);
+            console.log(chatContainer.scrollHeight);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
     }
@@ -272,6 +276,7 @@
 
             // Mark messages as read
             await markMessagesAsRead(peerFingerprint);
+            await tick();
             scrollToBottom();
         } catch (error) {
             console.error('Error loading chat history:', error);
@@ -315,6 +320,7 @@
 
             // Reload chat history to show the sent message
             await loadChatHistory(selectedPeer);
+            autoResize();
         } catch (error) {
             console.error('Error sending message:', error);
             toast.push('Error sending message');
@@ -484,28 +490,6 @@
                                 </div>
                             {/if}
                         </div>
-
-                        <!-- Chat input box (always visible) -->
-                        <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 fixed left-0 right-0 z-50"
-                             style="bottom: var(--bottom-nav-height, 0);">
-                            <div class="flex">
-                                <div class="flex-1 relative">
-                                    <textarea
-                                            class="w-full px-3 py-2 text-sm text-gray-900 bg-white rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                                            placeholder="Type a message..."
-                                            bind:value={newMessage}
-                                            onkeydown={handleKeydown}
-                                            oninput={autoResize}
-                                            rows="1"
-                                            style="min-height: 38px; max-height: 150px; resize: none; overflow-y: auto;"
-                                            bind:this={textareaElement}
-                                    ></textarea>
-                                </div>
-                                <Button class="ml-2" color="blue" onclick={sendMessage}>
-                                    <Fa icon={faPaperPlane}/>
-                                </Button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             {:else}
@@ -519,5 +503,30 @@
                 </div>
             {/if}
         </div>
+        {#if selectedPeer}
+            <!-- Chat input box (always visible) -->
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 fixed left-0 right-0 z-50"
+                 style="bottom: var(--bottom-nav-height, 0);">
+                <div class="flex">
+                    <div class="flex-1 relative">
+                                        <textarea
+                                                class="w-full px-3 py-2 text-sm text-gray-900 bg-white rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                                placeholder="Type a message..."
+                                                bind:value={newMessage}
+                                                onkeydown={handleKeydown}
+                                                oninput={autoResize}
+                                                rows="1"
+                                                style="min-height: 38px; max-height: 150px; resize: none; overflow-y: auto;"
+                                                bind:this={textareaElement}
+                                        ></textarea>
+                    </div>
+                    <div class="flex justify-end">
+                        <Button class="ml-2 h-10" color="blue" onclick={sendMessage}>
+                            <Fa icon={faPaperPlane}/>
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        {/if}
     </div>
 </div>
